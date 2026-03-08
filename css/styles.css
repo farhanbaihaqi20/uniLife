@@ -617,3 +617,163 @@ body {
     color: #ffffff;
     border-color: var(--primary);
 }
+
+/* -------------------
+   FAB MENU (Floating Action Button) 
+   ------------------- */
+.fab-container {
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    z-index: 100;
+}
+
+.fab-main {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--primary-gradient);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    z-index: 102;
+}
+
+.fab-main:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+}
+
+.fab-main.active {
+    transform: rotate(45deg);
+}
+
+.fab-menu {
+    position: absolute;
+    bottom: 70px;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.fab-menu.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.fab-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    transform: translateY(10px) scale(0.8);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.fab-menu.active .fab-menu-item {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+}
+
+.fab-menu.active .fab-menu-item:nth-child(1) {
+    transition-delay: 0.05s;
+}
+
+.fab-menu.active .fab-menu-item:nth-child(2) {
+    transition-delay: 0.1s;
+}
+
+.fab-menu.active .fab-menu-item:nth-child(3) {
+    transition-delay: 0.15s;
+}
+
+.fab-menu.active .fab-menu-item:nth-child(4) {
+    transition-delay: 0.2s;
+}
+
+.fab-menu-label {
+    background: var(--bg-card);
+    color: var(--text-main);
+    padding: 0.5rem 0.875rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+}
+
+.fab-menu-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--bg-card);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s;
+}
+
+.fab-menu-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.fab-menu-btn.inbox {
+    background: linear-gradient(135deg, #3B82F6, #2563EB);
+    color: white;
+    border: none;
+}
+
+.fab-menu-btn.schedule {
+    background: linear-gradient(135deg, #8B5CF6, #7C3AED);
+    color: white;
+    border: none;
+}
+
+.fab-menu-btn.task {
+    background: linear-gradient(135deg, #10B981, #059669);
+    color: white;
+    border: none;
+}
+
+.fab-menu-btn.note {
+    background: linear-gradient(135deg, #F59E0B, #D97706);
+    color: white;
+    border: none;
+}
+
+.fab-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 99;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+}
+
+.fab-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+

@@ -8,21 +8,91 @@ const inboxManager = {
     },
 
     setupQuickCaptureButton: function () {
-        // Create floating action button
+        // Create floating action button menu
         const fabHtml = `
-            <button id="quick-capture-fab" class="fab" onclick="inboxManager.openQuickCapture()" style="position: fixed; bottom: 80px; right: 20px; width: 56px; height: 56px; border-radius: 50%; background: var(--primary-gradient); color: white; border: none; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); cursor: pointer; z-index: 100; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; transition: transform 0.2s;">
-                <i class="ph-bold ph-plus"></i>
-            </button>
+            <div class="fab-backdrop" id="fab-backdrop" onclick="inboxManager.toggleFabMenu()"></div>
+            <div class="fab-container" id="fab-container">
+                <div class="fab-menu" id="fab-menu">
+                    <div class="fab-menu-item">
+                        <span class="fab-menu-label">Tangkap Cepat</span>
+                        <button class="fab-menu-btn inbox" onclick="inboxManager.openQuickCapture()">
+                            <i class="ph-bold ph-lightning"></i>
+                        </button>
+                    </div>
+                    <div class="fab-menu-item">
+                        <span class="fab-menu-label">Jadwal Kuliah</span>
+                        <button class="fab-menu-btn schedule" onclick="inboxManager.openScheduleAdd()">
+                            <i class="ph-bold ph-calendar-plus"></i>
+                        </button>
+                    </div>
+                    <div class="fab-menu-item">
+                        <span class="fab-menu-label">Tambah Tugas</span>
+                        <button class="fab-menu-btn task" onclick="inboxManager.openTaskAdd()">
+                            <i class="ph-bold ph-check-square"></i>
+                        </button>
+                    </div>
+                    <div class="fab-menu-item">
+                        <span class="fab-menu-label">Catatan Materi</span>
+                        <button class="fab-menu-btn note" onclick="inboxManager.openNoteAdd()">
+                            <i class="ph-bold ph-note-pencil"></i>
+                        </button>
+                    </div>
+                </div>
+                <button class="fab-main" id="fab-main" onclick="inboxManager.toggleFabMenu()">
+                    <i class="ph-bold ph-plus"></i>
+                </button>
+            </div>
         `;
         document.body.insertAdjacentHTML('beforeend', fabHtml);
+    },
 
-        // Hover effect
-        const fab = document.getElementById('quick-capture-fab');
-        fab.addEventListener('mouseenter', () => fab.style.transform = 'scale(1.1)');
-        fab.addEventListener('mouseleave', () => fab.style.transform = 'scale(1)');
+    toggleFabMenu: function () {
+        const fabMenu = document.getElementById('fab-menu');
+        const fabMain = document.getElementById('fab-main');
+        const fabBackdrop = document.getElementById('fab-backdrop');
+
+        if (fabMenu && fabMain && fabBackdrop) {
+            fabMenu.classList.toggle('active');
+            fabMain.classList.toggle('active');
+            fabBackdrop.classList.toggle('active');
+        }
+    },
+
+    closeFabMenu: function () {
+        const fabMenu = document.getElementById('fab-menu');
+        const fabMain = document.getElementById('fab-main');
+        const fabBackdrop = document.getElementById('fab-backdrop');
+
+        if (fabMenu && fabMain && fabBackdrop) {
+            fabMenu.classList.remove('active');
+            fabMain.classList.remove('active');
+            fabBackdrop.classList.remove('active');
+        }
+    },
+
+    openScheduleAdd: function () {
+        this.closeFabMenu();
+        if (typeof scheduleManager !== 'undefined') {
+            scheduleManager.openAddModal();
+        }
+    },
+
+    openTaskAdd: function () {
+        this.closeFabMenu();
+        if (typeof tasksManager !== 'undefined') {
+            tasksManager.openAddModal();
+        }
+    },
+
+    openNoteAdd: function () {
+        this.closeFabMenu();
+        if (typeof notesManager !== 'undefined') {
+            notesManager.openAddModal();
+        }
     },
 
     openQuickCapture: function () {
+        this.closeFabMenu();
         const modal = document.getElementById('modal-quick-capture');
         if (modal) {
             modal.classList.add('active');
@@ -67,16 +137,19 @@ const inboxManager = {
 
     renderInboxItems: function () {
         const container = document.getElementById('inbox-list');
+        const emptyState = document.getElementById('inbox-empty-state');
         if (!container) return;
 
         container.innerHTML = '';
 
         if (this.inbox.length === 0) {
             container.style.display = 'none';
+            if (emptyState) emptyState.style.display = 'block';
             return;
         }
 
         container.style.display = 'block';
+        if (emptyState) emptyState.style.display = 'none';
 
         this.inbox.forEach(item => {
             const el = document.createElement('div');

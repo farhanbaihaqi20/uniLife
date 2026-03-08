@@ -169,7 +169,6 @@ const homeManager = {
 
     deleteReminder: function (id) {
         this.reminders = this.reminders.filter(r => r.id !== id);
-        Storage.setReminders(this.reminders);
         this.renderReminders();
     }
 };

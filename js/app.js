@@ -52,10 +52,61 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 4. Initialize Sub-modules
+    // 4. Universal Drag-to-Scroll for Horizontal Containers (e.g. .day-tabs, #home-schedule-list)
+    const scrollableContainers = document.querySelectorAll('.day-tabs, #home-schedule-list');
+
+    // Function to re-bind dynamically (since tabs might get re-rendered)
+    window.setupDragToScroll = function (containerSelector = '.day-tabs, #home-schedule-list') {
+        const containers = document.querySelectorAll(containerSelector);
+        containers.forEach(slider => {
+            // Unbind old events if they exist to prevent duplicates
+            slider.onmousedown = null;
+            slider.onmouseleave = null;
+            slider.onmouseup = null;
+            slider.onmousemove = null;
+
+            let isDown = false;
+            let startX;
+            let scrollLeft;
+
+            slider.addEventListener('mousedown', (e) => {
+                isDown = true;
+                slider.style.cursor = 'grabbing';
+                startX = e.pageX - slider.offsetLeft;
+                scrollLeft = slider.scrollLeft;
+            });
+            slider.addEventListener('mouseleave', () => {
+                isDown = false;
+                slider.style.cursor = 'grab';
+            });
+            slider.addEventListener('mouseup', () => {
+                isDown = false;
+                slider.style.cursor = 'grab';
+            });
+            slider.addEventListener('mousemove', (e) => {
+                if (!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - slider.offsetLeft;
+                const walk = (x - startX) * 2; // Scroll speed multiplier
+                slider.scrollLeft = scrollLeft - walk;
+            });
+
+            // Initial cursor state
+            slider.style.cursor = 'grab';
+        });
+    };
+
+    // Run initial setup
+    window.setupDragToScroll();
+
+    // 5. Initialize Sub-modules
     if (typeof i18n !== 'undefined') i18n.init();
     if (typeof profileManager !== 'undefined') profileManager.init();
     if (typeof gradeGoals !== 'undefined') gradeGoals.init();
+    if (typeof notesManager !== 'undefined') {
+        notesManager.init();
+        notesManager.injectModal();
+    }
     if (typeof inboxManager !== 'undefined') {
         inboxManager.init();
         inboxManager.injectModal();
@@ -129,6 +180,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof scheduleManager !== 'undefined') {
                 scheduleManager.schedules = Storage.getSchedules();
                 scheduleManager.renderScheduleList();
+            }
+        }
+
+        // Notes changed
+        if (!key || key === 'unilife_notes') {
+            if (typeof notesManager !== 'undefined') {
+                notesManager.notes = Storage.getNotes() || [];
+                notesManager.renderNotesDashboard();
+                notesManager.renderCategoryTabs();
             }
         }
     });

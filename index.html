@@ -52,10 +52,10 @@
                 </div>
 
                 <div class="quick-actions"
-                    style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem;">
+                    style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-bottom: 2rem;">
                     <button class="card"
                         onclick="document.querySelector('.nav-item[data-target=\'view-schedule\']').click()"
-                        style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; padding:1rem 0.5rem; border:none; background:var(--bg-card); cursor:pointer;">
+                        style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; padding:1rem 0.25rem; border:none; background:var(--bg-card); cursor:pointer;">
                         <div
                             style="width:40px; height:40px; border-radius:50%; background:var(--primary-light); color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:1.5rem;">
                             <i class="ph ph-calendar"></i>
@@ -65,7 +65,7 @@
                     </button>
                     <button class="card"
                         onclick="document.querySelector('.nav-item[data-target=\'view-tasks\']').click()"
-                        style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; padding:1rem 0.5rem; border:none; background:var(--bg-card); cursor:pointer;">
+                        style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; padding:1rem 0.25rem; border:none; background:var(--bg-card); cursor:pointer;">
                         <div
                             style="width:40px; height:40px; border-radius:50%; background:rgba(16, 185, 129, 0.1); color:var(--success); display:flex; align-items:center; justify-content:center; font-size:1.5rem;">
                             <i class="ph ph-check-square-offset"></i>
@@ -75,13 +75,21 @@
                     </button>
                     <button class="card"
                         onclick="document.querySelector('.nav-item[data-target=\'view-focus\']').click()"
-                        style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; padding:1rem 0.5rem; border:none; background:var(--bg-card); cursor:pointer;">
+                        style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; padding:1rem 0.25rem; border:none; background:var(--bg-card); cursor:pointer;">
                         <div
                             style="width:40px; height:40px; border-radius:50%; background:rgba(245, 158, 11, 0.1); color:var(--warning); display:flex; align-items:center; justify-content:center; font-size:1.5rem;">
                             <i class="ph ph-timer"></i>
                         </div>
                         <span data-i18n="home_quick_focus"
                             style="font-size:0.75rem; font-weight:600; color:var(--text-main)">Fokus</span>
+                    </button>
+                    <button class="card" onclick="notesManager.openNotesDashboard()"
+                        style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; padding:1rem 0.25rem; border:none; background:var(--bg-card); cursor:pointer;">
+                        <div
+                            style="width:40px; height:40px; border-radius:50%; background:rgba(217, 119, 6, 0.1); color:#D97706; display:flex; align-items:center; justify-content:center; font-size:1.5rem;">
+                            <i class="ph ph-notebook"></i>
+                        </div>
+                        <span style="font-size:0.75rem; font-weight:600; color:var(--text-main)">Catatan</span>
                     </button>
                 </div>
 
@@ -117,26 +125,22 @@
                     <!-- Populated by JS -->
                 </div>
 
-                <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
-                    <h3 style="flex:1; font-size: 1.2rem; font-weight:600;"><i class="ph ph-push-pin"
-                            style="color:var(--warning)"></i> <span data-i18n="home_quick_reminder">Pengingat Cepat</span></h3>
-                    <button class="icon-btn" onclick="homeManager.addReminder()"
-                        style="width:32px;height:32px;background:var(--bg-card);color:var(--primary);border:1px solid var(--border-color);">
-                        <i class="ph ph-plus"></i>
-                    </button>
-                </div>
-                <div id="home-reminders-list"
-                    style="display:grid; grid-template-columns: 1fr; gap:0.5rem; margin-bottom: 1rem;">
-                    <!-- Populated by JS -->
-                </div>
-
                 <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; margin-top: 2rem;">
                     <h3 style="flex:1; font-size: 1.2rem; font-weight:600;"><i class="ph ph-inbox"
                             style="color:var(--primary)"></i> <span data-i18n="inbox_section">Inbox Cepat</span></h3>
                 </div>
-                <div id="inbox-list" style="display: none;">
+                <div id="inbox-list" style="display: none; margin-bottom: 1rem;">
                     <!-- Populated by JS -->
                 </div>
+                <div id="inbox-empty-state"
+                    style="text-align: center; padding: 2rem 1rem; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-color);">
+                    <i class="ph ph-tray"
+                        style="font-size: 3rem; opacity: 0.3; margin-bottom: 0.75rem; display: block;"></i>
+                    <p style="font-size: 0.9rem; font-weight: 500;">Inbox kosong</p>
+                    <p style="font-size: 0.8rem; opacity: 0.7; margin-top: 0.25rem;">Tekan tombol + untuk menambah
+                        tangkapan cepat</p>
+                </div>
+
             </section>
 
             <!-- SCHEDULE VIEW -->
@@ -167,7 +171,8 @@
                 <!-- Academic Summary Charts -->
                 <div
                     style="background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius-md); box-shadow: var(--shadow-sm); margin-bottom: 1.5rem;">
-                    <h3 style="font-size: 1.1rem; margin-bottom: 1rem;"><span data-i18n="grades_ipk_cumulative">IPK Kumulatif:</span> <span id="ipk-display"
+                    <h3 style="font-size: 1.1rem; margin-bottom: 1rem;"><span data-i18n="grades_ipk_cumulative">IPK
+                            Kumulatif:</span> <span id="ipk-display"
                             style="color:var(--primary); font-size:1.5rem;">0.00</span></h3>
                     <div style="height: 250px; position: relative;">
                         <canvas id="ipkChart"></canvas>
@@ -176,8 +181,10 @@
 
                 <div
                     style="background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius-md); box-shadow: var(--shadow-sm); margin-bottom: 1.5rem;">
-                    <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem; margin-top:0;" data-i18n="grades_course_chart">Nilai Akhir Mata Kuliah</h3>
-                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;" data-i18n="grades_course_compare_note">Perbandingan skor
+                    <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem; margin-top:0;" data-i18n="grades_course_chart">
+                        Nilai Akhir Mata Kuliah</h3>
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;"
+                        data-i18n="grades_course_compare_note">Perbandingan skor
                         akhir dari semester terisi paling baru.</div>
                     <div style="height: 250px; position: relative;">
                         <canvas id="courseChart"></canvas>
@@ -238,7 +245,9 @@
                     </div>
 
                     <div style="margin-bottom: 2rem;">
-                        <label style="display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; font-weight: 500;" data-i18n="focus_select_task">Pilih Tugas (Opsional)</label>
+                        <label
+                            style="display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; font-weight: 500;"
+                            data-i18n="focus_select_task">Pilih Tugas (Opsional)</label>
                         <div id="focus-task-selector">
                             <!-- Populated by JS -->
                         </div>
@@ -274,6 +283,26 @@
                             <p class="stat-value" id="stats-minutes">0</p>
                         </div>
                     </div>
+                </div>
+            </section>
+
+            <!-- NOTES DASHBOARD VIEW -->
+            <section id="view-notes" class="view-section">
+                <div class="section-header">
+                    <h2>Catatan Kuliah</h2>
+                    <button class="btn btn-primary" onclick="notesManager.openAddModal()">
+                        <i class="ph ph-plus"></i> Tambah
+                    </button>
+                </div>
+
+                <!-- Category Tabs -->
+                <div class="day-tabs" id="notes-category-tabs">
+                    <!-- Populated by JS -->
+                </div>
+
+                <div id="notes-dashboard-list"
+                    style="display: grid; grid-template-columns: 1fr; gap: 0.75rem; margin-bottom: 2rem;">
+                    <!-- Populated by JS -->
                 </div>
             </section>
 
@@ -380,7 +409,8 @@
             <form id="form-schedule">
                 <div class="form-group">
                     <label data-i18n="schedule_course_name">Nama Mata Kuliah</label>
-                    <input type="text" id="sch-name" required placeholder="Contoh: Pemrograman Web" data-i18n-placeholder="schedule_course_placeholder">
+                    <input type="text" id="sch-name" required placeholder="Contoh: Pemrograman Web"
+                        data-i18n-placeholder="schedule_course_placeholder">
                 </div>
                 <div class="form-group row">
                     <div class="col">
@@ -411,13 +441,16 @@
                 </div>
                 <div class="form-group">
                     <label data-i18n="schedule_room">Ruangan</label>
-                    <input type="text" id="sch-room" placeholder="Contoh: Lab Komputer A" data-i18n-placeholder="schedule_room_placeholder">
+                    <input type="text" id="sch-room" placeholder="Contoh: Lab Komputer A"
+                        data-i18n-placeholder="schedule_room_placeholder">
                 </div>
                 <div class="form-group">
                     <label data-i18n="schedule_lecturer">Dosen Pengampu</label>
-                    <input type="text" id="sch-lecturer" placeholder="Nama Dosen" data-i18n-placeholder="schedule_lecturer_placeholder">
+                    <input type="text" id="sch-lecturer" placeholder="Nama Dosen"
+                        data-i18n-placeholder="schedule_lecturer_placeholder">
                 </div>
-                <button type="submit" class="btn btn-primary full-width mt-4" data-i18n="schedule_save">Simpan Jadwal</button>
+                <button type="submit" class="btn btn-primary full-width mt-4" data-i18n="schedule_save">Simpan
+                    Jadwal</button>
             </form>
         </div>
     </div>
@@ -451,11 +484,13 @@
             </div>
 
             <div style="border-top: 1px solid var(--border-color); padding-top: 1rem;">
-                <h4 style="font-size: 1.1rem; margin-bottom:0.75rem;" data-i18n="schedule_detail_grades_title">Nilai Akademik</h4>
+                <h4 style="font-size: 1.1rem; margin-bottom:0.75rem;" data-i18n="schedule_detail_grades_title">Nilai
+                    Akademik</h4>
                 <div
                     style="background:var(--bg-main); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
                     <div id="detail-course-grade-info">
-                        <span style="font-size:0.85rem; color:var(--text-muted)" data-i18n="schedule_detail_no_grades">Belum ada data nilai terhubung.</span>
+                        <span style="font-size:0.85rem; color:var(--text-muted)"
+                            data-i18n="schedule_detail_no_grades">Belum ada data nilai terhubung.</span>
                     </div>
                     <button class="btn btn-outline" onclick="scheduleManager.manageCourseGrade()"
                         style="padding:0.4rem 0.8rem; font-size:0.8rem;">
@@ -467,7 +502,8 @@
             <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
                 <button class="btn btn-outline full-width" onclick="scheduleManager.deleteCurrentCourseDetail()"
                     style="color:var(--danger); border-color:var(--danger);">
-                    <i class="ph ph-trash"></i> <span data-i18n="schedule_detail_delete_course">Hapus Jadwal Matkul Ini</span>
+                    <i class="ph ph-trash"></i> <span data-i18n="schedule_detail_delete_course">Hapus Jadwal Matkul
+                        Ini</span>
                 </button>
             </div>
         </div>
@@ -512,7 +548,8 @@
                     </div>
                     <div class="col">
                         <label data-i18n="profile_level_semester">Level/Semester</label>
-                        <input type="text" id="prof-sem" required placeholder="Cth: 1" data-i18n-placeholder="profile_level_placeholder">
+                        <input type="text" id="prof-sem" required placeholder="Cth: 1"
+                            data-i18n-placeholder="profile_level_placeholder">
                     </div>
                 </div>
                 <div class="form-group">
@@ -540,7 +577,8 @@
                     <label
                         style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 0.5rem 0;">
                         <span style="font-weight: 500; display:flex; align-items:center; gap:0.5rem;"><i
-                            class="ph ph-flag"></i> <span data-i18n="profile_lang_indonesian">Bahasa Indonesia</span></span>
+                                class="ph ph-flag"></i> <span data-i18n="profile_lang_indonesian">Bahasa
+                                Indonesia</span></span>
                         <input type="radio" name="lang_setting" value="id" checked
                             style="width:18px; height:18px; accent-color:var(--primary);">
                     </label>
@@ -556,7 +594,8 @@
                 <button class="btn btn-primary full-width mt-4" onclick="profileManager.saveSettings()"
                     data-i18n="settings_save">Simpan
                     Pengaturan</button>
-                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 1rem; text-align: center;" data-i18n="profile_english_dummy_note">*English
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 1rem; text-align: center;"
+                    data-i18n="profile_english_dummy_note">*English
                     support is just a dummy toggle for now.</p>
             </div>
         </div>
@@ -566,7 +605,8 @@
     <div id="semester-loader"
         style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:var(--bg-main); z-index:9999; flex-direction:column; justify-content:center; align-items:center; opacity:0; transition:opacity 0.3s ease;">
         <i class="ph ph-spinner" style="font-size:3rem; color:var(--primary); animation:spin 1s linear infinite;"></i>
-        <h3 id="semester-loader-text" style="margin-top:1rem; color:var(--text-main);" data-i18n="loader_switching_semester">Mengalihkan ke Semester...</h3>
+        <h3 id="semester-loader-text" style="margin-top:1rem; color:var(--text-main);"
+            data-i18n="loader_switching_semester">Mengalihkan ke Semester...</h3>
         <style>
             @keyframes spin {
                 100% {
@@ -580,6 +620,7 @@
     <script src="js/storage.js"></script>
     <script src="js/i18n.js"></script>
     <script src="js/inbox.js"></script>
+    <script src="js/notes.js"></script>
     <script src="js/radar.js"></script>
     <script src="js/gradeGoals.js"></script>
     <script src="js/calendarExport.js"></script>

@@ -60,5 +60,9 @@ const Storage = {
 
     // Grade Goals (target scores per course)
     getGradeGoals: () => Storage.get('unilife_grade_goals', []), // Array of { courseId, semesterId, targetGrade, targetScore }
-    setGradeGoals: (data) => Storage.set('unilife_grade_goals', data)
+    setGradeGoals: (data) => Storage.set('unilife_grade_goals', data),
+
+    // Notes (catatan materi)
+    getNotes: () => Storage.get('unilife_notes', []), // Array of { id, title, content, category, createdAt, updatedAt }
+    setNotes: (data) => Storage.set('unilife_notes', data)
 };
