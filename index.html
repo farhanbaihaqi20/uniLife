@@ -313,11 +313,13 @@
                 </div>
 
                 <!-- Search & Filter Bar -->
-                <div style="background: var(--bg-card); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color);">
+                <div
+                    style="background: var(--bg-card); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color);">
                     <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
                         <div style="flex: 1; min-width: 200px; position: relative;">
-                            <i class="ph ph-magnifying-glass" style="position: absolute; left: 0.875rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 1.1rem;"></i>
-                            <input type="text" id="notes-search-input" placeholder="Cari catatan..." 
+                            <i class="ph ph-magnifying-glass"
+                                style="position: absolute; left: 0.875rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 1.1rem;"></i>
+                            <input type="text" id="notes-search-input" placeholder="Cari catatan..."
                                 style="width: 100%; padding: 0.625rem 0.875rem 0.625rem 2.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-main); color: var(--text-main); font-size: 0.9rem;"
                                 oninput="notesManager.handleSearch(this.value)">
                         </div>
@@ -348,10 +350,13 @@
                     <h2>Rekap Presensi</h2>
                 </div>
 
-                <div class="card" style="padding: 1rem; margin-bottom: 1rem; background: linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(59, 130, 246, 0.12));">
-                    <h3 style="font-size: 1rem; margin-bottom: 0.35rem;"><i class="ph ph-info"></i> Aturan Kehadiran</h3>
+                <div class="card"
+                    style="padding: 1rem; margin-bottom: 1rem; background: linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(59, 130, 246, 0.12));">
+                    <h3 style="font-size: 1rem; margin-bottom: 0.35rem;"><i class="ph ph-info"></i> Aturan Kehadiran
+                    </h3>
                     <p style="font-size: 0.85rem; color: var(--text-muted);">
-                        Total pertemuan standar: <b>16 kali</b>. Minimal kehadiran: <b>75%</b> (setara minimal <b>12 pertemuan</b>).
+                        Total pertemuan standar: <b>16 kali</b>. Minimal kehadiran: <b>75%</b> (setara minimal <b>12
+                            pertemuan</b>).
                     </p>
                 </div>
 
@@ -360,16 +365,21 @@
                 </div>
 
                 <div class="card" style="padding: 1rem; margin-bottom: 1rem;">
-                    <h3 style="font-size: 1rem; margin-bottom: 0.65rem;"><i class="ph ph-warning-circle" style="color: var(--danger);"></i> Belum Memenuhi 75%</h3>
+                    <h3 style="font-size: 1rem; margin-bottom: 0.65rem;"><i class="ph ph-warning-circle"
+                            style="color: var(--danger);"></i> Belum Memenuhi 75%</h3>
                     <div id="attendance-under-target-list">
                         <!-- Populated by JS -->
                     </div>
                 </div>
 
-                <div class="attendance-filters" style="display:flex; gap:0.5rem; margin-bottom: 1rem; background: var(--bg-card); padding: 0.25rem; border:1px solid var(--border-color); border-radius: var(--radius-sm);">
-                    <button class="attendance-filter-btn active" data-filter="all" onclick="presensiManager.setRecapFilter('all')">Semua</button>
-                    <button class="attendance-filter-btn" data-filter="under" onclick="presensiManager.setRecapFilter('under')">Belum 75%</button>
-                    <button class="attendance-filter-btn" data-filter="met" onclick="presensiManager.setRecapFilter('met')">Sudah 75%</button>
+                <div class="attendance-filters"
+                    style="display:flex; gap:0.5rem; margin-bottom: 1rem; background: var(--bg-card); padding: 0.25rem; border:1px solid var(--border-color); border-radius: var(--radius-sm);">
+                    <button class="attendance-filter-btn active" data-filter="all"
+                        onclick="presensiManager.setRecapFilter('all')">Semua</button>
+                    <button class="attendance-filter-btn" data-filter="under"
+                        onclick="presensiManager.setRecapFilter('under')">Belum 75%</button>
+                    <button class="attendance-filter-btn" data-filter="met"
+                        onclick="presensiManager.setRecapFilter('met')">Sudah 75%</button>
                 </div>
 
                 <div id="attendance-recap-list" style="margin-bottom: 2rem;">
@@ -442,6 +452,178 @@
                 </div>
             </section>
 
+            <!-- COMPLEX PROFILE DASHBOARD VIEW -->
+            <section id="view-profile-dashboard" class="view-section">
+                <!-- Profile Header with Photo -->
+                <div class="section-header"
+                    style="justify-content: center; flex-direction: column; align-items: center; padding-top: 1rem; padding-bottom: 2rem; position: relative;">
+                    <div id="profile-dashboard-photo" class="profile-avatar profile-avatar-initial"
+                        style="width: 100px; height: 100px; font-size: 3rem; margin-bottom: 1rem;">
+                        U
+                    </div>
+                    <h1 id="profile-dashboard-name"
+                        style="font-size: 1.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.25rem;">
+                        Nama Pengguna</h1>
+                    <p id="profile-dashboard-univ"
+                        style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 0.5rem;">Universitas</p>
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center;">
+                        <span
+                            style="background: var(--primary-light); color: var(--primary); padding: 0.35rem 0.75rem; border-radius: 1rem; font-size: 0.8rem; font-weight: 600;">
+                            <i class="ph ph-books"></i>&nbsp; <span id="profile-dashboard-sem">Semester 1</span>
+                        </span>
+                        <span
+                            style="background: rgba(99, 102, 241, 0.1); color: #6366F1; padding: 0.35rem 0.75rem; border-radius: 1rem; font-size: 0.8rem; font-weight: 600;">
+                            <i class="ph ph-graduation-cap"></i>&nbsp; <span id="profile-dashboard-major">Program
+                                Studi</span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="stats-grid" style="margin-bottom: 2rem;">
+                    <!-- IPK Card -->
+                    <div class="stat-card"
+                        style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(99, 102, 241, 0.12)); border: 1px solid rgba(59, 130, 246, 0.2);">
+                        <div class="stat-icon"
+                            style="background: linear-gradient(135deg, #3b82f6, #6366F1); color: white;">
+                            <i class="ph ph-chart-line"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 style="font-size: 0.85rem; color: var(--text-muted);">IPK Kumulatif</h3>
+                            <p class="stat-value" id="profile-ipk-display" style="color: #3b82f6;">0.00</p>
+                        </div>
+                    </div>
+
+                    <!-- Pending Tasks Card -->
+                    <div class="stat-card"
+                        style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(34, 197, 94, 0.12)); border: 1px solid rgba(16, 185, 129, 0.2);">
+                        <div class="stat-icon"
+                            style="background: linear-gradient(135deg, #10b981, #22c55e); color: white;">
+                            <i class="ph ph-check-square"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 style="font-size: 0.85rem; color: var(--text-muted);">Tugas Aktif</h3>
+                            <p class="stat-value" id="profile-pending-tasks" style="color: #10b981;">0</p>
+                        </div>
+                    </div>
+
+                    <!-- Streak Card -->
+                    <div class="stat-card"
+                        style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(251, 146, 60, 0.12)); border: 1px solid rgba(245, 158, 11, 0.2);">
+                        <div class="stat-icon"
+                            style="background: linear-gradient(135deg, #f59e0b, #fb923c); color: white;">
+                            <i class="ph ph-flame"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 style="font-size: 0.85rem; color: var(--text-muted);">Streak Hari Ini</h3>
+                            <p class="stat-value" id="profile-streak-count" style="color: #f59e0b;">0</p>
+                        </div>
+                    </div>
+
+                    <!-- Focus Sessions Card -->
+                    <div class="stat-card"
+                        style="background: linear-gradient(135deg, rgba(168, 85, 247, 0.08), rgba(139, 92, 246, 0.12)); border: 1px solid rgba(168, 85, 247, 0.2);">
+                        <div class="stat-icon"
+                            style="background: linear-gradient(135deg, #a855f7, #8b5cf6); color: white;">
+                            <i class="ph ph-timer"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 style="font-size: 0.85rem; color: var(--text-muted);">Sesi Fokus</h3>
+                            <p class="stat-value" id="profile-focus-sessions" style="color: #a855f7;">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="card"
+                    style="background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius-md); margin-bottom: 1.5rem;">
+                    <h3
+                        style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="ph ph-warning-circle" style="color: var(--danger);"></i>
+                        <span>Tugas Mendesak (3 Hari ke Depan)</span>
+                    </h3>
+                    <div id="profile-urgent-tasks" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <!-- Populated by JS -->
+                    </div>
+                    <div id="profile-urgent-empty"
+                        style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 1rem;">
+                        <i class="ph ph-check-circle"
+                            style="font-size: 1.5rem; opacity: 0.5; display: block; margin-bottom: 0.5rem;"></i>
+                        Tidak ada tugas mendesak, tetap semangat! ✨
+                    </div>
+                </div>
+
+                <!-- Detailed Stats -->
+                <div class="card"
+                    style="background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius-md); margin-bottom: 1.5rem;">
+                    <h3
+                        style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="ph ph-activity"></i>
+                        <span>Statistik Lengkap</span>
+                    </h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div
+                            style="padding: 1rem; background: var(--bg-main); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;"><i
+                                    class="ph ph-book"></i> Mata Kuliah</p>
+                            <p id="profile-course-count"
+                                style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">0</p>
+                        </div>
+                        <div
+                            style="padding: 1rem; background: var(--bg-main); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;"><i
+                                    class="ph ph-check-circle"></i> Tugas Selesai</p>
+                            <p id="profile-completed-tasks"
+                                style="font-size: 1.5rem; font-weight: 700; color: var(--success);">0</p>
+                        </div>
+                        <div
+                            style="padding: 1rem; background: var(--bg-main); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;"><i
+                                    class="ph ph-clock"></i> Total Fokus</p>
+                            <p id="profile-total-focus-time"
+                                style="font-size: 1.5rem; font-weight: 700; color: #a855f7;">0h</p>
+                        </div>
+                        <div
+                            style="padding: 1rem; background: var(--bg-main); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;"><i
+                                    class="ph ph-calendar"></i> Kehadiran</p>
+                            <p id="profile-attendance-percent"
+                                style="font-size: 1.5rem; font-weight: 700; color: #0284C7;">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 2rem;">
+                    <button class="btn btn-outline full-width" onclick="profileManager.openModal()"
+                        style="border: 1px solid var(--border-color); color: var(--text-main);">
+                        <i class="ph ph-pencil-simple"></i> <span data-i18n="profile_edit">Edit Profil</span>
+                    </button>
+                    <button class="btn btn-outline full-width" onclick="profileManager.openSettingsModal()"
+                        style="border: 1px solid var(--border-color); color: var(--text-main);">
+                        <i class="ph ph-gear"></i> <span data-i18n="profile_settings">Pengaturan</span>
+                    </button>
+                    <button class="btn btn-outline full-width" onclick="profileManager.resetApp()"
+                        style="border: 1px solid var(--danger); color: var(--danger); background: rgba(239, 68, 68, 0.05);">
+                        <i class="ph ph-trash"></i> <span data-i18n="profile_reset_data">Hapus Akun / Reset Data</span>
+                    </button>
+
+                    <div
+                        style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                        <button class="btn btn-outline" onclick="profileManager.exportData()"
+                            style="border: 1px solid var(--primary); color: var(--primary); background: rgba(59, 130, 246, 0.05);">
+                            <i class="ph ph-export"></i> <span data-i18n="profile_export">Backup Data</span>
+                        </button>
+                        <button class="btn btn-outline" onclick="document.getElementById('import-file-input').click()"
+                            style="border: 1px solid var(--success); color: var(--success); background: rgba(16, 185, 129, 0.05);">
+                            <i class="ph ph-download-simple"></i> <span data-i18n="profile_import">Pulihkan</span>
+                        </button>
+                        <input type="file" id="import-file-input" accept=".json" style="display: none;"
+                            onchange="profileManager.importData(event)">
+                    </div>
+                </div>
+            </section>
+
         </main>
 
         <!-- Bottom Navigation -->
@@ -454,17 +636,19 @@
                 <i class="ph ph-calendar-blank"></i>
                 <span data-i18n="nav_schedule">Jadwal</span>
             </button>
-            <button class="nav-item" data-target="view-grades">
-                <i class="ph ph-chart-bar"></i>
+            <button class="nav-item nav-premium-center" data-target="view-grades">
+                <div class="nav-icon-wrapper">
+                    <i class="ph ph-chart-bar"></i>
+                </div>
                 <span data-i18n="nav_grades">Nilai</span>
             </button>
             <button class="nav-item" data-target="view-tasks">
                 <i class="ph ph-check-square"></i>
                 <span data-i18n="nav_tasks">Tugas</span>
             </button>
-            <button class="nav-item" data-target="view-focus">
-                <i class="ph ph-timer"></i>
-                <span data-i18n="nav_focus">Fokus</span>
+            <button class="nav-item" data-target="view-profile-dashboard">
+                <i class="ph ph-user"></i>
+                <span data-i18n="nav_profile">Profil</span>
             </button>
         </nav>
     </div>
@@ -472,13 +656,18 @@
     <!-- Attendance Input Modal -->
     <div class="modal-overlay" id="modal-attendance-input">
         <div class="modal-content">
-            <button class="modal-close" onclick="presensiManager.closeAttendanceModal()"><i class="ph ph-x"></i></button>
+            <button class="modal-close" onclick="presensiManager.closeAttendanceModal()"><i
+                    class="ph ph-x"></i></button>
             <h3 id="attendance-course-name">Presensi Mata Kuliah</h3>
-            <p id="attendance-course-meta" style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">08:00 - 10:00 • Ruang A</p>
-            <p id="attendance-recap-mini" style="font-size: 0.8rem; color: var(--primary); margin-top: 0.5rem; margin-bottom: 1rem; font-weight: 600;">Rekap: 0/16 (0%)</p>
-            
+            <p id="attendance-course-meta" style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">
+                08:00 - 10:00 • Ruang A</p>
+            <p id="attendance-recap-mini"
+                style="font-size: 0.8rem; color: var(--primary); margin-top: 0.5rem; margin-bottom: 1rem; font-weight: 600;">
+                Rekap: 0/16 (0%)</p>
+
             <!-- Edit Mode Indicator -->
-            <div id="attendance-edit-indicator" style="display:none; background: rgba(59, 130, 246, 0.1); border: 1px solid var(--primary); border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 1rem; color: var(--primary); font-size: 0.85rem;">
+            <div id="attendance-edit-indicator"
+                style="display:none; background: rgba(59, 130, 246, 0.1); border: 1px solid var(--primary); border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 1rem; color: var(--primary); font-size: 0.85rem;">
                 <i class="ph ph-pencil-simple"></i> Anda sedang mengedit presensi hari ini
             </div>
 
@@ -488,8 +677,10 @@
                 <div class="form-group">
                     <label>Pertemuan</label>
                     <select id="attendance-meeting-number" required></select>
-                    <small id="attendance-meeting-hint" style="display:none; color: var(--text-muted); margin-top: 0.25rem; font-size: 0.75rem;">
-                        <i class="ph ph-info"></i> Pertemuan dikunci untuk kelas hari ini. Untuk mengubah pertemuan lain, gunakan dashboard rekap.
+                    <small id="attendance-meeting-hint"
+                        style="display:none; color: var(--text-muted); margin-top: 0.25rem; font-size: 0.75rem;">
+                        <i class="ph ph-info"></i> Pertemuan dikunci untuk kelas hari ini. Untuk mengubah pertemuan
+                        lain, gunakan dashboard rekap.
                     </small>
                 </div>
 
@@ -522,11 +713,15 @@
                 </div>
 
                 <div style="display:flex; gap:0.75rem; margin-top: 1.5rem;">
-                    <button type="button" class="btn btn-outline" style="flex:1;" onclick="presensiManager.closeAttendanceModal()">Batal</button>
-                    <button type="button" id="attendance-delete-btn" class="btn btn-outline" style="display:none; flex:0.5; color:var(--danger); border-color:var(--danger);" onclick="presensiManager.deleteCurrentAttendance()">
+                    <button type="button" class="btn btn-outline" style="flex:1;"
+                        onclick="presensiManager.closeAttendanceModal()">Batal</button>
+                    <button type="button" id="attendance-delete-btn" class="btn btn-outline"
+                        style="display:none; flex:0.5; color:var(--danger); border-color:var(--danger);"
+                        onclick="presensiManager.deleteCurrentAttendance()">
                         <i class="ph ph-trash"></i>
                     </button>
-                    <button type="submit" class="btn btn-primary" style="flex:1;" id="attendance-submit-btn">Simpan Presensi</button>
+                    <button type="submit" class="btn btn-primary" style="flex:1;" id="attendance-submit-btn">Simpan
+                        Presensi</button>
                 </div>
             </form>
         </div>
@@ -535,10 +730,14 @@
     <!-- Attendance Course Recap Modal -->
     <div class="modal-overlay" id="modal-attendance-course-recap">
         <div class="modal-content" style="max-height: 85vh; overflow-y: auto;">
-            <button class="modal-close" onclick="presensiManager.closeCourseRecapModal()"><i class="ph ph-x"></i></button>
+            <button class="modal-close" onclick="presensiManager.closeCourseRecapModal()"><i
+                    class="ph ph-x"></i></button>
             <h3 id="attendance-course-recap-title">Rekap Mata Kuliah</h3>
-            <p id="attendance-course-recap-subtitle" style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">-</p>
-            <p id="attendance-course-recap-summary" style="font-size: 0.8rem; color: var(--primary); margin-top: 0.5rem; margin-bottom: 1rem; font-weight: 600;">-</p>
+            <p id="attendance-course-recap-subtitle"
+                style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">-</p>
+            <p id="attendance-course-recap-summary"
+                style="font-size: 0.8rem; color: var(--primary); margin-top: 0.5rem; margin-bottom: 1rem; font-weight: 600;">
+                -</p>
             <div id="attendance-course-recap-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
                 <!-- Populated by JS -->
             </div>
@@ -639,7 +838,8 @@
 
             <!-- Notes Section -->
             <div style="margin-bottom: 1rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                     <h4 style="font-size: 1.1rem;">Catatan Kuliah</h4>
                     <button class="btn btn-outline"
                         onclick="notesManager.openAddModalFromSchedule(document.getElementById('detail-course-id').value, document.getElementById('detail-course-name').innerText)"
@@ -647,7 +847,8 @@
                         <i class="ph ph-notebook"></i> Buat Catatan
                     </button>
                 </div>
-                <div id="detail-course-notes" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 150px; overflow-y: auto;">
+                <div id="detail-course-notes"
+                    style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 150px; overflow-y: auto;">
                     <!-- Notes will be populated here -->
                 </div>
             </div>
@@ -657,18 +858,19 @@
                     Akademik</h4>
                 <div
                     style="background:var(--bg-main); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
-                    <div id="detail-course-grade-info">
+                    <div id="detail-course-grade-info" style="flex: 1;">
                         <span style="font-size:0.85rem; color:var(--text-muted)"
                             data-i18n="schedule_detail_no_grades">Belum ada data nilai terhubung.</span>
                     </div>
-                    <button class="btn btn-outline" onclick="scheduleManager.manageCourseGrade()"
-                        style="padding:0.4rem 0.8rem; font-size:0.8rem;">
-                        <i class="ph ph-exam"></i> <span data-i18n="schedule_detail_input_grade">Input Nilai</span>
+                    <button class="btn-premium-grade" onclick="scheduleManager.manageCourseGrade()"
+                        style="padding:0.4rem 0.8rem; font-size:0.8rem; width: auto;">
+                        <span data-i18n="schedule_detail_input_grade">Input Nilai</span>
                     </button>
                 </div>
             </div>
 
-            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color); display:flex; gap:0.75rem;">
+            <div
+                style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color); display:flex; gap:0.75rem;">
                 <button class="btn btn-outline" onclick="scheduleManager.editCurrentCourse()" style="flex:1;">
                     <i class="ph ph-pencil-simple"></i> <span data-i18n="schedule_detail_edit_course">Edit Jadwal</span>
                 </button>
@@ -835,8 +1037,9 @@
             <p class="welcome-subtitle premium-subtitle" data-i18n="welcome_subtitle">
                 Satu aplikasi, dengan desain elegan untuk bantu kamu fokus pada hal yang paling penting.
             </p>
-            
-            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 1rem; margin-bottom: 0.5rem; font-style: italic; opacity: 0.7;">
+
+            <p
+                style="font-size: 0.75rem; color: var(--text-muted); margin-top: 1rem; margin-bottom: 0.5rem; font-style: italic; opacity: 0.7;">
                 dibuat dengan cinta oleh <span style="font-weight: 500; color: var(--accent);">Farhan Baihaqi</span>
             </p>
 

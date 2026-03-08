@@ -10,6 +10,7 @@ const i18n = {
             'nav_grades': 'Nilai',
             'nav_tasks': 'Tugas',
             'nav_focus': 'Fokus',
+            'nav_profile': 'Profil',
 
             // Home View
             'home_welcome': 'Halo',
@@ -32,6 +33,7 @@ const i18n = {
             'profile_major': 'Program Studi',
             'profile_edit': 'Edit Profil',
             'profile_settings': 'Pengaturan',
+            'profile_reset_data': 'Hapus Akun / Reset Data',
             'profile_reset': 'Reset Aplikasi (Hapus Data)',
             'profile_default_university': 'Fakultas',
             'profile_label_semester': 'Semester {semester}',
@@ -46,6 +48,11 @@ const i18n = {
             'profile_english_dummy_note': '*Dukungan English sekarang sudah aktif penuh.',
             'profile_reset_confirm_1': '⚠️ PERINGATAN ⚠️\nApakah kamu yakin ingin mereset aplikasi? Semua jadwal, nilai, tugas, dan data profil akan DIHAPUS PERMANEN dan tidak dapat dikembalikan!',
             'profile_reset_confirm_2': 'Sekali lagi, apakah kamu SERIUS mau menghapus semuanya?',
+            'profile_export': 'Backup Data',
+            'profile_import': 'Pulihkan (Import)',
+            'profile_import_confirm': 'Peringatan: Data di perangkat ini akan TERHAPUS dan tertimpa oleh data dari file backup. Yakin ingin melanjutkan?',
+            'profile_import_success': 'Data berhasil dipulihkan!',
+            'profile_import_error': 'File backup tidak valid atau rusak.',
 
             // Welcome Screen
             'welcome_title': 'Mulai Perjalanan Akademikmu',
@@ -234,6 +241,7 @@ const i18n = {
             'nav_grades': 'Grades',
             'nav_tasks': 'Tasks',
             'nav_focus': 'Focus',
+            'nav_profile': 'Profile',
 
             // Home View
             'home_welcome': 'Hello',
@@ -256,6 +264,7 @@ const i18n = {
             'profile_major': 'Major / Study Program',
             'profile_edit': 'Edit Profile',
             'profile_settings': 'Settings',
+            'profile_reset_data': 'Delete Account / Reset Data',
             'profile_reset': 'Reset App (Wipe Data)',
             'profile_default_name': 'User Name',
             'profile_default_university': 'Faculty',
@@ -271,6 +280,11 @@ const i18n = {
             'profile_english_dummy_note': '*English support is now fully enabled.',
             'profile_reset_confirm_1': '⚠️ WARNING ⚠️\nAre you sure you want to reset the app? All schedules, grades, tasks, and profile data will be PERMANENTLY DELETED and cannot be restored!',
             'profile_reset_confirm_2': 'One more time, are you REALLY sure you want to delete everything?',
+            'profile_export': 'Backup Data',
+            'profile_import': 'Restore (Import)',
+            'profile_import_confirm': 'Warning: Current data on this device will be COMPLTELY REPLACED by the backup file. Are you sure you want to proceed?',
+            'profile_import_success': 'Data restored successfully!',
+            'profile_import_error': 'Invalid or corrupted backup file.',
 
             // Welcome Screen
             'welcome_title': 'Start Your Academic Journey',

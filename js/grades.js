@@ -242,8 +242,8 @@ const gradesManager = {
                             `;
             }).join('')}
                     </div>
-                    <button class="btn btn-outline full-width mt-4" onclick="gradesManager.openAddCourseModal('${sem.id}')">
-                        <i class="ph ph-plus"></i> ${i18n.t('grades_add_course')}
+                    <button class="btn-premium-grade mt-4" onclick="gradesManager.openAddCourseModal('${sem.id}')">
+                        <i class="ph ph-plus-circle"></i> ${i18n.t('grades_add_course')}
                     </button>
                 </div>
             `;

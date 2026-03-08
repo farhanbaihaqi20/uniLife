@@ -145,6 +145,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof notificationManager !== 'undefined') {
                 notificationManager.checkUpcomingTasks();
             }
+            // Update profile dashboard
+            if (typeof profileManager !== 'undefined') {
+                profileManager.updateDashboardStats();
+                profileManager.renderUrgentTasks();
+            }
             if (typeof scheduleManager !== 'undefined' && document.getElementById('modal-course-detail')?.classList.contains('active')) {
                 const courseId = document.getElementById('course-detail-id')?.value;
                 if (courseId) scheduleManager.renderCourseTasks(courseId);
@@ -185,12 +190,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 gradesManager.grades = Storage.getGrades();
                 gradesManager.renderGradesList();
             }
+            // Update profile dashboard
+            if (typeof profileManager !== 'undefined') {
+                profileManager.updateDashboardStats();
+            }
         }
 
         // Focus sessions changed
         if (!key || key === 'unilife_focus_sessions' || key === 'unilife_focus') {
             if (typeof focusManager !== 'undefined') focusManager.updateStats();
             if (typeof deadlineRadar !== 'undefined') deadlineRadar.renderRadar();
+            // Update profile dashboard
+            if (typeof profileManager !== 'undefined') {
+                profileManager.updateDashboardStats();
+            }
         }
 
         // Profile changed
@@ -227,6 +240,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 presensiManager.renderRecap();
             }
             if (typeof homeManager !== 'undefined') homeManager.renderTodaySchedule();
+            // Update profile dashboard
+            if (typeof profileManager !== 'undefined') {
+                profileManager.getAttendancePercentage();
+            }
         }
     });
 

@@ -176,10 +176,25 @@ const focusManager = {
                 duration: 25, // minutes
                 completed: true
             });
-            Storage.setFocusSessions(this.focusSessions);
+        } else {
+            // Even without task linkage, save the session for streak tracking
+            this.focusSessions.push({
+                id: uuidv4(),
+                taskId: null,
+                date: new Date().toISOString(),
+                duration: 25, // minutes
+                completed: true
+            });
         }
+        Storage.setFocusSessions(this.focusSessions);
 
         this.updateStatsUI();
+        
+        // Update profile dashboard if profileManager is available
+        if (typeof profileManager !== 'undefined' && profileManager.updateDashboardStats) {
+            profileManager.updateDashboardStats();
+        }
+        
         this.renderTaskSelector(); // Refresh in case tasks changed
     },
 

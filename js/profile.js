@@ -91,6 +91,9 @@ const profileManager = {
         if (eSem) eSem.innerText = this.profile.semester ? i18n.tf('profile_label_semester', { semester: this.profile.semester }) : '-';
         if (eMajor) eMajor.innerText = this.profile.major || '-';
 
+        // Update Complex Dashboard
+        this.renderComplexDashboard();
+
         // Also update greeting in Home if homeManager is loaded
         if (typeof homeManager !== 'undefined' && document.getElementById('home-greeting')) {
             const hour = new Date().getHours();
@@ -131,6 +134,250 @@ const profileManager = {
 
             document.getElementById('home-subgreeting').innerHTML = `<i class="ph ph-student"></i> ${i18n.tf('common_semester', { semester: this.profile.semester || '-' })}${univDisplay}`;
         }
+    },
+
+    renderComplexDashboard: function () {
+        const photoUrl = this.profile.photoBase64 || '';
+        const initial = this.profile.nickname ? this.profile.nickname.charAt(0).toUpperCase() : 'U';
+
+        // Update photo in dashboard
+        const dashboardPhoto = document.getElementById('profile-dashboard-photo');
+        if (dashboardPhoto) {
+            if (photoUrl) {
+                dashboardPhoto.innerHTML = '';
+                dashboardPhoto.style.backgroundImage = `url(${photoUrl})`;
+                dashboardPhoto.classList.remove('profile-avatar-initial');
+            } else {
+                dashboardPhoto.innerHTML = initial;
+                dashboardPhoto.style.backgroundImage = 'none';
+                dashboardPhoto.classList.add('profile-avatar-initial');
+            }
+        }
+
+        // Update profile info
+        const dashName = document.getElementById('profile-dashboard-name');
+        const dashUniv = document.getElementById('profile-dashboard-univ');
+        const dashSem = document.getElementById('profile-dashboard-sem');
+        const dashMajor = document.getElementById('profile-dashboard-major');
+
+        if (dashName) dashName.innerText = this.profile.fullName || i18n.t('profile_default_name');
+        if (dashUniv) dashUniv.innerText = this.profile.university || i18n.t('profile_default_university');
+        if (dashSem) dashSem.innerText = this.profile.semester ? `Semester ${this.profile.semester}` : '-';
+        if (dashMajor) dashMajor.innerText = this.profile.major || '-';
+
+        // Calculate and display stats
+        this.updateDashboardStats();
+        this.renderUrgentTasks();
+    },
+
+    updateDashboardStats: function () {
+        // Get IPK
+        if (typeof gradesManager !== 'undefined') {
+            const stats = gradesManager.calculateOverallStats();
+            const ipkEl = document.getElementById('profile-ipk-display');
+            if (ipkEl) ipkEl.innerText = stats.ipk;
+        }
+
+        // Get pending tasks
+        if (typeof tasksManager !== 'undefined') {
+            const allTasks = Storage.getTasks ? Storage.getTasks() : [];
+            const activeSemester = String(this.profile.semester || 1);
+            const pendingTasks = allTasks.filter(t => {
+                const tSem = String(t.semester || 1);
+                return tSem === activeSemester && !t.completed;
+            });
+            const completedTasks = allTasks.filter(t => {
+                const tSem = String(t.semester || 1);
+                return tSem === activeSemester && t.completed;
+            });
+
+            const pendingEl = document.getElementById('profile-pending-tasks');
+            const completedEl = document.getElementById('profile-completed-tasks');
+            if (pendingEl) pendingEl.innerText = pendingTasks.length;
+            if (completedEl) completedEl.innerText = completedTasks.length;
+        }
+
+        // Get focus stats
+        if (typeof focusManager !== 'undefined') {
+            const sessions = focusManager.focusSessions || [];
+            const today = new Date().toDateString();
+
+            // Count today's sessions
+            const todaySessions = sessions.filter(s => new Date(s.date).toDateString() === today);
+            const sessionsEl = document.getElementById('profile-focus-sessions');
+            if (sessionsEl) sessionsEl.innerText = todaySessions.length;
+
+            // Calculate total focus time in hours
+            const totalMinutes = sessions.reduce((sum, s) => sum + (s.duration || 0), 0);
+            const totalHours = (totalMinutes / 60).toFixed(1);
+            const timeEl = document.getElementById('profile-total-focus-time');
+            if (timeEl) timeEl.innerText = `${totalHours}h`;
+
+            // Calculate streak
+            this.calculateStreak();
+        }
+
+        // Get attendance percentage
+        this.getAttendancePercentage();
+
+        // Get course count
+        if (typeof gradesManager !== 'undefined') {
+            const activeSemester = String(this.profile.semester || 1);
+            const currentSem = gradesManager.semesters.find(s => s.name.includes(activeSemester));
+            const courseCount = currentSem ? currentSem.courses.length : 0;
+            const courseEl = document.getElementById('profile-course-count');
+            if (courseEl) courseEl.innerText = courseCount;
+        }
+    },
+
+    calculateStreak: function () {
+        if (typeof focusManager === 'undefined') return;
+
+        const sessions = focusManager.focusSessions || [];
+        if (sessions.length === 0) {
+            const streakEl = document.getElementById('profile-streak-count');
+            if (streakEl) streakEl.innerText = '0';
+            return;
+        }
+
+        // Sort sessions by date (newest first)
+        const sortedDates = [...new Set(sessions.map(s => new Date(s.date).toDateString()))].sort((a, b) => new Date(b) - new Date(a));
+
+        let streak = 0;
+        let today = new Date();
+
+        for (let i = 0; i < sortedDates.length; i++) {
+            const sessionDate = new Date(sortedDates[i]);
+            const expectedDate = new Date(today);
+            expectedDate.setDate(expectedDate.getDate() - i);
+
+            if (sessionDate.toDateString() === expectedDate.toDateString()) {
+                streak++;
+            } else {
+                break;
+            }
+        }
+
+        const streakEl = document.getElementById('profile-streak-count');
+        if (streakEl) streakEl.innerText = streak;
+    },
+
+    getAttendancePercentage: function () {
+        if (typeof presensiManager === 'undefined') {
+            const attendanceEl = document.getElementById('profile-attendance-percent');
+            if (attendanceEl) attendanceEl.innerText = '-';
+            return;
+        }
+
+        const allAttendance = Storage.getAttendanceRecords ? Storage.getAttendanceRecords() : [];
+        const activeSemester = String(this.profile.semester || 1);
+
+        if (allAttendance.length === 0) {
+            const attendanceEl = document.getElementById('profile-attendance-percent');
+            if (attendanceEl) attendanceEl.innerText = '0%';
+            return;
+        }
+
+        let totalMeetings = 0;
+        let attended = 0;
+
+        allAttendance.forEach(course => {
+            if (String(course.semester || 1) === activeSemester) {
+                if (course.records && Array.isArray(course.records)) {
+                    totalMeetings += course.records.length;
+                    attended += course.records.filter(r => r.status === 'hadir').length;
+                }
+            }
+        });
+
+        const percentage = totalMeetings === 0 ? 0 : Math.round((attended / totalMeetings) * 100);
+        const attendanceEl = document.getElementById('profile-attendance-percent');
+        if (attendanceEl) attendanceEl.innerText = `${percentage}%`;
+    },
+
+    renderUrgentTasks: function () {
+        if (typeof tasksManager === 'undefined') return;
+
+        const allTasks = Storage.getTasks ? Storage.getTasks() : [];
+        const activeSemester = String(this.profile.semester || 1);
+
+        // Filter pending tasks from active semester
+        const pendingTasks = allTasks.filter(t => {
+            const tSem = String(t.semester || 1);
+            return tSem === activeSemester && !t.completed;
+        });
+
+        // Get tasks due in next 3 days
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const threeDaysLater = new Date(today);
+        threeDaysLater.setDate(threeDaysLater.getDate() + 3);
+
+        const urgentTasks = pendingTasks.filter(t => {
+            const dueDate = new Date(t.dueDate);
+            dueDate.setHours(0, 0, 0, 0);
+            return dueDate <= threeDaysLater && dueDate >= today;
+        }).sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+
+        const container = document.getElementById('profile-urgent-tasks');
+        const emptyState = document.getElementById('profile-urgent-empty');
+
+        if (!container) return;
+
+        if (urgentTasks.length === 0) {
+            container.style.display = 'none';
+            emptyState.style.display = 'block';
+            return;
+        }
+
+        container.style.display = 'flex';
+        emptyState.style.display = 'none';
+        container.innerHTML = '';
+
+        urgentTasks.forEach(task => {
+            const dueDate = new Date(task.dueDate);
+            const today = new Date();
+            const diff = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+
+            let urgencyColor = '#10b981'; // green
+            let urgencyLabel = 'Tersisa';
+
+            if (diff === 0) {
+                urgencyColor = '#ef4444';
+                urgencyLabel = 'HARI INI!';
+            } else if (diff === 1) {
+                urgencyColor = '#f59e0b';
+                urgencyLabel = 'Besok';
+            }
+
+            const taskCard = document.createElement('div');
+            taskCard.style.cssText = `
+                padding: 1rem;
+                background: var(--bg-main);
+                border-radius: var(--radius-sm);
+                border-left: 4px solid ${urgencyColor};
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            `;
+
+            taskCard.innerHTML = `
+                <div style="flex: 1;">
+                    <h4 style="font-weight: 600; color: var(--text-main); margin-bottom: 0.25rem; font-size: 0.95rem;">${task.title}</h4>
+                    <p style="font-size: 0.8rem; color: var(--text-muted);">
+                        ${task.courseName || 'Course'} • 
+                        <span style="color: ${urgencyColor}; font-weight: 600;">${urgencyLabel} ${diff > 0 ? `(${diff} hari)` : ''}</span>
+                    </p>
+                </div>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <div style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: ${urgencyColor}20; color: ${urgencyColor}; font-weight: 600;">
+                        ${diff}d
+                    </div>
+                </div>
+            `;
+
+            container.appendChild(taskCard);
+        });
     },
 
     setupTrigger: function () {
@@ -357,5 +604,63 @@ const profileManager = {
                 window.location.reload();
             }
         }
+    },
+
+    exportData: function () {
+        const data = {};
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            data[key] = localStorage.getItem(key);
+        }
+
+        const timestamp = new Date().toISOString().split('T')[0];
+        const fileName = `unilife-backup-${timestamp}.json`;
+
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", fileName);
+        document.body.appendChild(downloadAnchorNode); // required for firefox
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    },
+
+    importData: function (event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = JSON.parse(e.target.result);
+
+                // Very basic validation: Check if it looks like our app's data
+                if (!data || typeof data !== 'object') {
+                    throw new Error('Invalid format');
+                }
+
+                if (confirm(i18n.t('profile_import_confirm'))) {
+                    // Clear existing data to ensure a clean state
+                    localStorage.clear();
+
+                    // Import all keys
+                    for (const key in data) {
+                        if (Object.prototype.hasOwnProperty.call(data, key)) {
+                            localStorage.setItem(key, data[key]);
+                        }
+                    }
+
+                    alert(i18n.t('profile_import_success') || 'Data berhasil dipulihkan!');
+                    window.location.reload();
+                }
+            } catch (error) {
+                console.error("Import error:", error);
+                alert(i18n.t('profile_import_error') || 'File backup tidak valid atau rusak.');
+            }
+
+            // Reset input so the exact same file can be triggered again if needed
+            event.target.value = '';
+        };
+        reader.readAsText(file);
     }
 };
