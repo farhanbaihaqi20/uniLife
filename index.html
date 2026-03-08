@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>UniLife Tracker</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Icons (Phosphor Icons for a premium look) -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header (Sticky & Refined) -->
+        <header class="app-header">
+            <div class="header-profile">
+                <!-- Profile Avatar Trigger -->
+                <div id="profile-trigger"
+                    style="width: 42px; height: 42px; border-radius: 50%; background: var(--primary-gradient); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.1rem; cursor: pointer; box-shadow: var(--shadow-sm); overflow: hidden; background-size: cover; background-position: center; border: 2px solid white;">
+                    U
+                </div>
+                <div>
+                    <h1 class="app-subtitle" id="current-date">Senin, 12 Okt</h1>
+                    <p class="app-title">UniLife Tracker</p>
+                </div>
+            </div>
+            <div class="header-actions" style="display:flex; gap:0.5rem; align-items:center;">
+                <button class="icon-btn theme-toggle" title="Toggle Theme"
+                    style="width: 38px; height: 38px; border:none; background:var(--bg-main);">
+                    <i class="ph ph-moon"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+
+            <!-- HOME VIEW -->
+            <section id="view-home" class="view-section active">
+                <div class="welcome-box" style="margin-bottom: 2rem; position: relative;">
+                    <div
+                        style="background: var(--primary-gradient); border-radius: var(--radius-lg); padding: 1.5rem; color: white; box-shadow: var(--shadow-md);">
+                        <h2 style="font-size: 1.6rem; font-weight: 700; margin-bottom: 0.25rem;" id="home-greeting">
+                            Halo, Mahasiswa! 👋</h2>
+                        <p style="opacity: 0.9; font-size: 0.95rem; display:flex; align-items:center; gap:0.5rem;"
+                            id="home-subgreeting"><i class="ph ph-student"></i> Semester 1 &bull; Universitas</p>
+                    </div>
+                </div>
+
+                <div class="quick-actions"
+                    style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem;">
+                    <button class="card"
+                        onclick="document.querySelector('.nav-item[data-target=\'view-schedule\']').click()"
+                        style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; padding:1rem 0.5rem; border:none; background:var(--bg-card); cursor:pointer;">
+                        <div
+                            style="width:40px; height:40px; border-radius:50%; background:var(--primary-light); color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:1.5rem;">
+                            <i class="ph ph-calendar"></i>
+                        </div>
+                        <span data-i18n="home_quick_schedule"
+                            style="font-size:0.75rem; font-weight:600; color:var(--text-main)">Jadwal</span>
+                    </button>
+                    <button class="card"
+                        onclick="document.querySelector('.nav-item[data-target=\'view-tasks\']').click()"
+                        style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; padding:1rem 0.5rem; border:none; background:var(--bg-card); cursor:pointer;">
+                        <div
+                            style="width:40px; height:40px; border-radius:50%; background:rgba(16, 185, 129, 0.1); color:var(--success); display:flex; align-items:center; justify-content:center; font-size:1.5rem;">
+                            <i class="ph ph-check-square-offset"></i>
+                        </div>
+                        <span data-i18n="home_quick_tasks"
+                            style="font-size:0.75rem; font-weight:600; color:var(--text-main)">Tugas</span>
+                    </button>
+                    <button class="card"
+                        onclick="document.querySelector('.nav-item[data-target=\'view-focus\']').click()"
+                        style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; padding:1rem 0.5rem; border:none; background:var(--bg-card); cursor:pointer;">
+                        <div
+                            style="width:40px; height:40px; border-radius:50%; background:rgba(245, 158, 11, 0.1); color:var(--warning); display:flex; align-items:center; justify-content:center; font-size:1.5rem;">
+                            <i class="ph ph-timer"></i>
+                        </div>
+                        <span data-i18n="home_quick_focus"
+                            style="font-size:0.75rem; font-weight:600; color:var(--text-main)">Fokus</span>
+                    </button>
+                </div>
+
+                <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="flex:1; font-size: 1.2rem; font-weight:600;"><i class="ph ph-calendar-star"
+                            style="color:var(--primary)"></i> <span data-i18n="home_today_schedule">Kuliah Hari
+                            Ini</span></h3>
+                </div>
+                <!-- Horizontal scrolling for today's schedules -> a more premium feel -->
+                <div id="home-schedule-list"
+                    style="display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem; margin-bottom: 1.5rem; scrollbar-width: none;">
+                    <!-- Populated by JS -->
+                </div>
+
+                <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="flex:1; font-size: 1.2rem; font-weight:600;"><i class="ph ph-radar"
+                            style="color:var(--danger)"></i> <span data-i18n="radar_title">Radar Deadline</span></h3>
+                </div>
+                <div id="deadline-radar" style="margin-bottom: 2rem;">
+                    <!-- Populated by JS -->
+                </div>
+
+                <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="flex:1; font-size: 1.2rem; font-weight:600;"><i class="ph ph-warning-circle"
+                            style="color:var(--danger)"></i> <span data-i18n="home_urgent_tasks">Tugas Mendesak</span>
+                    </h3>
+                    <a href="#" onclick="document.querySelector('.nav-item[data-target=\'view-tasks\']').click()"
+                        style="font-size:0.875rem; color:var(--primary); text-decoration:none; font-weight:500;"
+                        data-i18n="home_see_all">Lihat
+                        Semua</a>
+                </div>
+                <div id="home-tasks-list" style="margin-bottom: 2rem;">
+                    <!-- Populated by JS -->
+                </div>
+
+                <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="flex:1; font-size: 1.2rem; font-weight:600;"><i class="ph ph-push-pin"
+                            style="color:var(--warning)"></i> <span data-i18n="home_quick_reminder">Pengingat Cepat</span></h3>
+                    <button class="icon-btn" onclick="homeManager.addReminder()"
+                        style="width:32px;height:32px;background:var(--bg-card);color:var(--primary);border:1px solid var(--border-color);">
+                        <i class="ph ph-plus"></i>
+                    </button>
+                </div>
+                <div id="home-reminders-list"
+                    style="display:grid; grid-template-columns: 1fr; gap:0.5rem; margin-bottom: 1rem;">
+                    <!-- Populated by JS -->
+                </div>
+
+                <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; margin-top: 2rem;">
+                    <h3 style="flex:1; font-size: 1.2rem; font-weight:600;"><i class="ph ph-inbox"
+                            style="color:var(--primary)"></i> <span data-i18n="inbox_section">Inbox Cepat</span></h3>
+                </div>
+                <div id="inbox-list" style="display: none;">
+                    <!-- Populated by JS -->
+                </div>
+            </section>
+
+            <!-- SCHEDULE VIEW -->
+            <section id="view-schedule" class="view-section">
+                <div class="section-header">
+                    <h2 data-i18n="schedule_title">Jadwal Kuliah</h2>
+                    <button class="btn btn-primary" onclick="scheduleManager.openAddModal()">
+                        <i class="ph ph-plus"></i> <span data-i18n="schedule_add">Tambah</span>
+                    </button>
+                </div>
+
+                <!-- Day Tabs for Schedule -->
+                <div class="day-tabs">
+                    <!-- Javascript will populate this -->
+                </div>
+
+                <div class="schedule-list" id="schedule-list">
+                    <!-- Cards will be populated here -->
+                </div>
+            </section>
+
+            <!-- GRADES VIEW -->
+            <section id="view-grades" class="view-section">
+                <div class="section-header">
+                    <h2 data-i18n="grades_title">Perkembangan Akademik</h2>
+                </div>
+
+                <!-- Academic Summary Charts -->
+                <div
+                    style="background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius-md); box-shadow: var(--shadow-sm); margin-bottom: 1.5rem;">
+                    <h3 style="font-size: 1.1rem; margin-bottom: 1rem;"><span data-i18n="grades_ipk_cumulative">IPK Kumulatif:</span> <span id="ipk-display"
+                            style="color:var(--primary); font-size:1.5rem;">0.00</span></h3>
+                    <div style="height: 250px; position: relative;">
+                        <canvas id="ipkChart"></canvas>
+                    </div>
+                </div>
+
+                <div
+                    style="background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius-md); box-shadow: var(--shadow-sm); margin-bottom: 1.5rem;">
+                    <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem; margin-top:0;" data-i18n="grades_course_chart">Nilai Akhir Mata Kuliah</h3>
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;" data-i18n="grades_course_compare_note">Perbandingan skor
+                        akhir dari semester terisi paling baru.</div>
+                    <div style="height: 250px; position: relative;">
+                        <canvas id="courseChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="section-header" style="justify-content: space-between; align-items: center; display: flex;">
+                    <h3 data-i18n="grades_saved_semesters">Semester Tersimpan</h3>
+                    <button class="btn btn-primary" onclick="gradesManager.addSemester()"><i class="ph ph-plus"></i>
+                        <span data-i18n="grades_add_semester">Semester</span></button>
+                </div>
+
+                <div id="semesters-container">
+                    <!-- Populated by JS -->
+                </div>
+            </section>
+
+            <!-- TASKS VIEW -->
+            <section id="view-tasks" class="view-section">
+                <div class="section-header">
+                    <h2 data-i18n="tasks_title">Tugas Kuliah</h2>
+                    <button class="btn btn-primary" onclick="tasksManager.openAddModal()">
+                        <i class="ph ph-plus"></i> <span data-i18n="tasks_add">Tambah</span>
+                    </button>
+                </div>
+
+                <div class="task-filters">
+                    <button class="filter-btn active" data-filter="pending"
+                        data-i18n="tasks_filter_active">Aktif</button>
+                    <button class="filter-btn" data-filter="completed" data-i18n="tasks_filter_done">Selesai</button>
+                </div>
+
+                <div class="tasks-list" id="tasks-list">
+                    <!-- Task cards -->
+                </div>
+            </section>
+
+            <!-- FOCUS VIEW -->
+            <section id="view-focus" class="view-section">
+                <div class="section-header" style="justify-content: center;">
+                    <h2 data-i18n="focus_title">Fokus Belajar</h2>
+                </div>
+
+                <div class="pomodoro-container card" style="text-align:center; padding: 2rem 1rem;">
+                    <div id="pomodoro-status" data-i18n="focus_mode_work"
+                        style="font-weight: 600; color: var(--primary); margin-bottom: 1rem; letter-spacing: 2px; text-transform: uppercase;">
+                        Waktu Kerja</div>
+                    <div id="pomodoro-timer"
+                        style="font-size: 4.5rem; font-weight: 700; line-height: 1; margin-bottom: 2rem; color: var(--text-main); font-variant-numeric: tabular-nums;">
+                        25:00
+                    </div>
+
+                    <div style="display:flex; gap: 1rem; justify-content: center; margin-bottom: 2rem;">
+                        <button class="btn btn-outline" id="btn-focus-work" onclick="focusManager.setMode('work')"
+                            style="flex:1" data-i18n="focus_mode_work">Kerja</button>
+                        <button class="btn btn-outline" id="btn-focus-break" onclick="focusManager.setMode('break')"
+                            style="flex:1" data-i18n="focus_mode_break">Istirahat</button>
+                    </div>
+
+                    <div style="margin-bottom: 2rem;">
+                        <label style="display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; font-weight: 500;" data-i18n="focus_select_task">Pilih Tugas (Opsional)</label>
+                        <div id="focus-task-selector">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content: center; gap: 1rem;">
+                        <button class="icon-btn" id="btn-focus-toggle" onclick="focusManager.toggleTimer()"
+                            style="width:60px; height:60px; font-size: 2rem; background: var(--primary); color: white; border:none; box-shadow: 0 4px 15px rgba(59,130,246,0.4)">
+                            <i class="ph ph-play"></i>
+                        </button>
+                        <button class="icon-btn" onclick="focusManager.resetTimer()"
+                            style="width:60px; height:60px; font-size: 1.5rem;">
+                            <i class="ph ph-arrows-counter-clockwise"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="section-header mt-4">
+                    <h3 data-i18n="focus_stats_title">Statistik Hari Ini</h3>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="ph ph-brain"></i></div>
+                        <div class="stat-info">
+                            <h3 data-i18n="focus_stats_sessions">Sesi Fokus</h3>
+                            <p class="stat-value" id="stats-sessions">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="ph ph-clock"></i></div>
+                        <div class="stat-info">
+                            <h3 data-i18n="focus_stats_minutes">Menit Total</h3>
+                            <p class="stat-value" id="stats-minutes">0</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PROFILE DASHBOARD VIEW -->
+            <section id="view-profile" class="view-section">
+                <div class="section-header"
+                    style="justify-content: center; flex-direction: column; align-items: center; padding-top: 1rem;">
+                    <div id="prof-dash-photo"
+                        style="width: 100px; height: 100px; border-radius: 50%; background: var(--primary-gradient); color: white; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 700; box-shadow: var(--shadow-md); overflow: hidden; background-size: cover; background-position: center; border: 4px solid var(--bg-card); margin-bottom: 1rem;">
+                        U
+                    </div>
+                    <h2 id="prof-dash-name" style="font-size: 1.5rem; font-weight: 700; color: var(--text-main);">Nama
+                        Pengguna</h2>
+                    <p id="prof-dash-univ" style="color: var(--text-muted); font-size: 0.9rem;">Universitas</p>
+                </div>
+
+                <div class="card mt-4"
+                    style="background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius-md);">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1rem;">
+                        <span style="color: var(--text-muted); font-weight: 500;"><i class="ph ph-books"></i> <span
+                                data-i18n="profile_active_semester">Semester
+                                Aktif</span></span>
+                        <span id="prof-dash-sem"
+                            style="font-weight: 700; color: var(--primary); font-size: 1.1rem;">-</span>
+                    </div>
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1rem;">
+                        <span style="color: var(--text-muted); font-weight: 500;"><i class="ph ph-graduation-cap"></i>
+                            <span data-i18n="profile_major">Program Studi</span></span>
+                        <span id="prof-dash-major"
+                            style="font-weight: 600; color: var(--text-main); text-align: right;">-</span>
+                    </div>
+                    <button class="btn btn-outline full-width" onclick="profileManager.openModal()"
+                        style="margin-top: 0.5rem; border: 1px solid var(--border-color); color: var(--text-main);">
+                        <i class="ph ph-pencil-simple"></i> <span data-i18n="profile_edit">Edit Profil</span>
+                    </button>
+                </div>
+
+                <div class="card mt-4" style="padding: 1rem;">
+                    <button class="btn btn-outline full-width" onclick="profileManager.openSettingsModal()"
+                        style="border: none; justify-content: space-between; padding: 0.75rem 0.5rem; border-radius: 0;">
+                        <div
+                            style="display:flex; align-items:center; gap:0.5rem; color: var(--text-main); font-weight:500;">
+                            <div
+                                style="width:36px; height:36px; border-radius:50%; background:var(--bg-main); display:flex; align-items:center; justify-content:center; color:var(--primary);">
+                                <i class="ph ph-gear"></i>
+                            </div>
+                            <span data-i18n="profile_settings">Pengaturan</span>
+                        </div>
+                        <i class="ph ph-caret-right" style="color: var(--text-muted);"></i>
+                    </button>
+
+                    <hr style="border: none; border-top: 1px solid var(--border-color); margin: 0.5rem 0;">
+
+                    <button class="btn btn-outline full-width" onclick="profileManager.resetApp()"
+                        style="border: none; justify-content: space-between; padding: 0.75rem 0.5rem; border-radius: 0;">
+                        <div
+                            style="display:flex; align-items:center; gap:0.5rem; color: var(--danger); font-weight:500;">
+                            <div
+                                style="width:36px; height:36px; border-radius:50%; background:var(--danger-light); display:flex; align-items:center; justify-content:center;">
+                                <i class="ph ph-warning-circle"></i>
+                            </div>
+                            <span data-i18n="profile_reset">Reset Aplikasi (Hapus Data)</span>
+                        </div>
+                        <i class="ph ph-caret-right" style="color: var(--danger); opacity:0.5;"></i>
+                    </button>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" data-target="view-home">
+                <i class="ph ph-house"></i>
+                <span data-i18n="nav_home">Beranda</span>
+            </button>
+            <button class="nav-item" data-target="view-schedule">
+                <i class="ph ph-calendar-blank"></i>
+                <span data-i18n="nav_schedule">Jadwal</span>
+            </button>
+            <button class="nav-item" data-target="view-grades">
+                <i class="ph ph-chart-bar"></i>
+                <span data-i18n="nav_grades">Nilai</span>
+            </button>
+            <button class="nav-item" data-target="view-tasks">
+                <i class="ph ph-check-square"></i>
+                <span data-i18n="nav_tasks">Tugas</span>
+            </button>
+            <button class="nav-item" data-target="view-focus">
+                <i class="ph ph-timer"></i>
+                <span data-i18n="nav_focus">Fokus</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Modals -->
+    <!-- Add Schedule Modal -->
+    <div class="modal-overlay" id="modal-schedule">
+        <div class="modal-content">
+            <button class="modal-close" onclick="scheduleManager.closeModal()"><i class="ph ph-x"></i></button>
+            <h3 data-i18n="schedule_add_modal_title">Tambah Jadwal</h3>
+            <form id="form-schedule">
+                <div class="form-group">
+                    <label data-i18n="schedule_course_name">Nama Mata Kuliah</label>
+                    <input type="text" id="sch-name" required placeholder="Contoh: Pemrograman Web" data-i18n-placeholder="schedule_course_placeholder">
+                </div>
+                <div class="form-group row">
+                    <div class="col">
+                        <label data-i18n="schedule_day">Hari</label>
+                        <select id="sch-day" required>
+                            <option value="1" data-i18n="schedule_day_1">Senin</option>
+                            <option value="2" data-i18n="schedule_day_2">Selasa</option>
+                            <option value="3" data-i18n="schedule_day_3">Rabu</option>
+                            <option value="4" data-i18n="schedule_day_4">Kamis</option>
+                            <option value="5" data-i18n="schedule_day_5">Jumat</option>
+                            <option value="6" data-i18n="schedule_day_6">Sabtu</option>
+                        </select>
+                    </div>
+                    <div class="col">
+                        <label data-i18n="schedule_sks">SKS</label>
+                        <input type="number" id="sch-sks" required min="1" max="6" value="3">
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col">
+                        <label data-i18n="schedule_start">Mulai</label>
+                        <input type="time" id="sch-start" required>
+                    </div>
+                    <div class="col">
+                        <label data-i18n="schedule_end">Selesai</label>
+                        <input type="time" id="sch-end" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="schedule_room">Ruangan</label>
+                    <input type="text" id="sch-room" placeholder="Contoh: Lab Komputer A" data-i18n-placeholder="schedule_room_placeholder">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="schedule_lecturer">Dosen Pengampu</label>
+                    <input type="text" id="sch-lecturer" placeholder="Nama Dosen" data-i18n-placeholder="schedule_lecturer_placeholder">
+                </div>
+                <button type="submit" class="btn btn-primary full-width mt-4" data-i18n="schedule_save">Simpan Jadwal</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Course Detail Modal (for Task Integration) -->
+    <div class="modal-overlay" id="modal-course-detail">
+        <div class="modal-content" style="height: 80vh; display: flex; flex-direction: column;">
+            <button class="modal-close" onclick="scheduleManager.closeCourseDetailModal()"><i
+                    class="ph ph-x"></i></button>
+            <div style="margin-bottom: 1.5rem;">
+                <h3 id="detail-course-name" style="font-size: 1.5rem; margin-bottom: 0.25rem;">Nama Matkul</h3>
+                <p id="detail-course-meta" style="color: var(--text-muted); font-size: 0.9rem;"><i
+                        class="ph ph-clock"></i> 08:00 - 10:00 &bull; Ruang A</p>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h4 style="font-size: 1.1rem;" data-i18n="schedule_detail_tasks_title">Tugas Matkul Ini</h4>
+                <button class="btn btn-primary"
+                    onclick="tasksManager.openAddModal(document.getElementById('detail-course-id').value)"
+                    style="padding: 0.5rem 1rem; font-size: 0.8rem;">
+                    <i class="ph ph-plus"></i> <span data-i18n="schedule_detail_add_task">Tambah Tugas</span>
+                </button>
+            </div>
+
+            <input type="hidden" id="detail-course-id">
+
+            <!-- List of tasks linked specifically to this course -->
+            <div id="detail-course-tasks"
+                style="flex:1; overflow-y: auto; display:flex; flex-direction:column; gap:0.5rem; margin-bottom:1rem;">
+                <!-- Populated by JS -->
+            </div>
+
+            <div style="border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                <h4 style="font-size: 1.1rem; margin-bottom:0.75rem;" data-i18n="schedule_detail_grades_title">Nilai Akademik</h4>
+                <div
+                    style="background:var(--bg-main); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+                    <div id="detail-course-grade-info">
+                        <span style="font-size:0.85rem; color:var(--text-muted)" data-i18n="schedule_detail_no_grades">Belum ada data nilai terhubung.</span>
+                    </div>
+                    <button class="btn btn-outline" onclick="scheduleManager.manageCourseGrade()"
+                        style="padding:0.4rem 0.8rem; font-size:0.8rem;">
+                        <i class="ph ph-exam"></i> <span data-i18n="schedule_detail_input_grade">Input Nilai</span>
+                    </button>
+                </div>
+            </div>
+
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                <button class="btn btn-outline full-width" onclick="scheduleManager.deleteCurrentCourseDetail()"
+                    style="color:var(--danger); border-color:var(--danger);">
+                    <i class="ph ph-trash"></i> <span data-i18n="schedule_detail_delete_course">Hapus Jadwal Matkul Ini</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div class="modal-overlay" id="modal-profile">
+        <div class="modal-content">
+            <button class="modal-close" onclick="profileManager.closeModal()"><i class="ph ph-x"></i></button>
+            <h3 data-i18n="profile_edit">Profil Mahasiswa</h3>
+
+            <div
+                style="display:flex; justify-content:center; align-items:center; flex-direction:column; gap:1rem; margin-top:1.5rem; margin-bottom: 1.5rem;">
+                <div id="prof-photo-preview"
+                    style="width: 100px; height: 100px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 700; box-shadow: var(--shadow-sm); overflow: hidden; background-size: cover; background-position: center; border: 3px solid var(--bg-card);">
+                    <i class="ph ph-user"></i>
+                </div>
+                <div>
+                    <input type="file" id="prof-photo-input" accept="image/*" style="display: none;"
+                        onchange="profileManager.handlePhotoUpload(event)">
+                    <button type="button" class="btn btn-outline"
+                        onclick="document.getElementById('prof-photo-input').click()"
+                        style="padding: 0.5rem 1rem; font-size: 0.8rem; border-radius: 20px;">
+                        <i class="ph ph-camera"></i> <span data-i18n="profile_edit_photo">Ubah Foto</span>
+                    </button>
+                </div>
+            </div>
+
+            <form id="form-profile" onsubmit="profileManager.saveProfile(event)">
+                <div class="form-group">
+                    <label data-i18n="profile_full_name">Nama Lengkap</label>
+                    <input type="text" id="prof-full" required>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="profile_nickname">Nama Panggilan</label>
+                    <input type="text" id="prof-nick" required>
+                </div>
+                <div class="form-group row">
+                    <div class="col">
+                        <label data-i18n="profile_university">Universitas</label>
+                        <input type="text" id="prof-univ" required>
+                    </div>
+                    <div class="col">
+                        <label data-i18n="profile_level_semester">Level/Semester</label>
+                        <input type="text" id="prof-sem" required placeholder="Cth: 1" data-i18n-placeholder="profile_level_placeholder">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="profile_major_department">Program Studi / Jurusan</label>
+                    <input type="text" id="prof-major" required>
+                </div>
+                <button type="submit" class="btn btn-primary full-width mt-4" data-i18n="modal_save_profile">Simpan
+                    Profil</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="modal-settings">
+        <div class="modal-content" style="max-height: 80vh; overflow-y: auto;">
+            <button class="modal-close" onclick="profileManager.closeSettingsModal()"><i class="ph ph-x"></i></button>
+            <h3 style="margin-bottom: 1.5rem;" data-i18n="settings_title">Pengaturan Aplikasi</h3>
+
+            <div class="card" style="padding: 1.25rem;">
+                <h4 data-i18n="settings_lang_title"
+                    style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                    Bahasa / Language</h4>
+
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <label
+                        style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 0.5rem 0;">
+                        <span style="font-weight: 500; display:flex; align-items:center; gap:0.5rem;"><i
+                            class="ph ph-flag"></i> <span data-i18n="profile_lang_indonesian">Bahasa Indonesia</span></span>
+                        <input type="radio" name="lang_setting" value="id" checked
+                            style="width:18px; height:18px; accent-color:var(--primary);">
+                    </label>
+                    <label
+                        style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 0.5rem 0; border-top: 1px solid var(--border-color);">
+                        <span style="font-weight: 500; display:flex; align-items:center; gap:0.5rem;"><i
+                                class="ph ph-globe-hemisphere-west"></i> English</span>
+                        <input type="radio" name="lang_setting" value="en"
+                            style="width:18px; height:18px; accent-color:var(--primary);">
+                    </label>
+                </div>
+
+                <button class="btn btn-primary full-width mt-4" onclick="profileManager.saveSettings()"
+                    data-i18n="settings_save">Simpan
+                    Pengaturan</button>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 1rem; text-align: center;" data-i18n="profile_english_dummy_note">*English
+                    support is just a dummy toggle for now.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Semester Switch Loader -->
+    <div id="semester-loader"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:var(--bg-main); z-index:9999; flex-direction:column; justify-content:center; align-items:center; opacity:0; transition:opacity 0.3s ease;">
+        <i class="ph ph-spinner" style="font-size:3rem; color:var(--primary); animation:spin 1s linear infinite;"></i>
+        <h3 id="semester-loader-text" style="margin-top:1rem; color:var(--text-main);" data-i18n="loader_switching_semester">Mengalihkan ke Semester...</h3>
+        <style>
+            @keyframes spin {
+                100% {
+                    transform: rotate(360deg);
+                }
+            }
+        </style>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/storage.js"></script>
+    <script src="js/i18n.js"></script>
+    <script src="js/inbox.js"></script>
+    <script src="js/radar.js"></script>
+    <script src="js/gradeGoals.js"></script>
+    <script src="js/calendarExport.js"></script>
+    <script src="js/profile.js"></script>
+    <script src="js/home.js"></script>
+    <script src="js/focus.js"></script>
+    <script src="js/schedule.js"></script>
+    <script src="js/grades.js"></script>
+    <script src="js/tasks.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>
