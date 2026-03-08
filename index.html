@@ -56,12 +56,12 @@
                         <h2 style="font-size: 1.6rem; font-weight: 700; margin-bottom: 0.25rem;" id="home-greeting">
                             Halo, Mahasiswa! 👋</h2>
                         <p style="opacity: 0.9; font-size: 0.95rem; display:flex; align-items:center; gap:0.5rem;"
-                            id="home-subgreeting"><i class="ph ph-student"></i> Semester 1 &bull; Universitas</p>
+                            id="home-subgreeting"><i class="ph ph-student"></i> Semester 1 &bull; Fakultas</p>
                     </div>
                 </div>
 
                 <div class="quick-actions"
-                    style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-bottom: 2rem;">
+                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 0.75rem; margin-bottom: 2rem;">
                     <button class="card"
                         onclick="document.querySelector('.nav-item[data-target=\'view-schedule\']').click()"
                         style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; padding:1rem 0.25rem; border:none; background:var(--bg-card); cursor:pointer;">
@@ -99,6 +99,14 @@
                             <i class="ph ph-notebook"></i>
                         </div>
                         <span style="font-size:0.75rem; font-weight:600; color:var(--text-main)">Catatan</span>
+                    </button>
+                    <button class="card" onclick="presensiManager.openDashboard()"
+                        style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; padding:1rem 0.25rem; border:none; background:var(--bg-card); cursor:pointer;">
+                        <div
+                            style="width:40px; height:40px; border-radius:50%; background:rgba(14, 165, 233, 0.12); color:#0284C7; display:flex; align-items:center; justify-content:center; font-size:1.5rem;">
+                            <i class="ph ph-check-circle"></i>
+                        </div>
+                        <span style="font-size:0.75rem; font-weight:600; color:var(--text-main)">Presensi</span>
                     </button>
                 </div>
 
@@ -304,13 +312,67 @@
                     </button>
                 </div>
 
+                <!-- Search & Filter Bar -->
+                <div style="background: var(--bg-card); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color);">
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+                        <div style="flex: 1; min-width: 200px; position: relative;">
+                            <i class="ph ph-magnifying-glass" style="position: absolute; left: 0.875rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 1.1rem;"></i>
+                            <input type="text" id="notes-search-input" placeholder="Cari catatan..." 
+                                style="width: 100%; padding: 0.625rem 0.875rem 0.625rem 2.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-main); color: var(--text-main); font-size: 0.9rem;"
+                                oninput="notesManager.handleSearch(this.value)">
+                        </div>
+                        <select id="notes-sort-select" onchange="notesManager.handleSortChange(this.value)"
+                            style="padding: 0.625rem 0.875rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-main); color: var(--text-main); font-size: 0.9rem; cursor: pointer;">
+                            <option value="newest">Terbaru</option>
+                            <option value="oldest">Terlama</option>
+                            <option value="a-z">A - Z</option>
+                            <option value="z-a">Z - A</option>
+                        </select>
+                    </div>
+                </div>
+
                 <!-- Category Tabs -->
                 <div class="day-tabs" id="notes-category-tabs">
                     <!-- Populated by JS -->
                 </div>
 
                 <div id="notes-dashboard-list"
-                    style="display: grid; grid-template-columns: 1fr; gap: 0.75rem; margin-bottom: 2rem;">
+                    style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                    <!-- Populated by JS -->
+                </div>
+            </section>
+
+            <!-- ATTENDANCE VIEW -->
+            <section id="view-attendance" class="view-section">
+                <div class="section-header">
+                    <h2>Rekap Presensi</h2>
+                </div>
+
+                <div class="card" style="padding: 1rem; margin-bottom: 1rem; background: linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(59, 130, 246, 0.12));">
+                    <h3 style="font-size: 1rem; margin-bottom: 0.35rem;"><i class="ph ph-info"></i> Aturan Kehadiran</h3>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">
+                        Total pertemuan standar: <b>16 kali</b>. Minimal kehadiran: <b>75%</b> (setara minimal <b>12 pertemuan</b>).
+                    </p>
+                </div>
+
+                <div id="attendance-global-summary" class="stats-grid" style="margin-bottom: 1rem;">
+                    <!-- Populated by JS -->
+                </div>
+
+                <div class="card" style="padding: 1rem; margin-bottom: 1rem;">
+                    <h3 style="font-size: 1rem; margin-bottom: 0.65rem;"><i class="ph ph-warning-circle" style="color: var(--danger);"></i> Belum Memenuhi 75%</h3>
+                    <div id="attendance-under-target-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <div class="attendance-filters" style="display:flex; gap:0.5rem; margin-bottom: 1rem; background: var(--bg-card); padding: 0.25rem; border:1px solid var(--border-color); border-radius: var(--radius-sm);">
+                    <button class="attendance-filter-btn active" data-filter="all" onclick="presensiManager.setRecapFilter('all')">Semua</button>
+                    <button class="attendance-filter-btn" data-filter="under" onclick="presensiManager.setRecapFilter('under')">Belum 75%</button>
+                    <button class="attendance-filter-btn" data-filter="met" onclick="presensiManager.setRecapFilter('met')">Sudah 75%</button>
+                </div>
+
+                <div id="attendance-recap-list" style="margin-bottom: 2rem;">
                     <!-- Populated by JS -->
                 </div>
             </section>
@@ -324,7 +386,7 @@
                     </div>
                     <h2 id="prof-dash-name" style="font-size: 1.5rem; font-weight: 700; color: var(--text-main);">Nama
                         Pengguna</h2>
-                    <p id="prof-dash-univ" style="color: var(--text-muted); font-size: 0.9rem;">Universitas</p>
+                    <p id="prof-dash-univ" style="color: var(--text-muted); font-size: 0.9rem;">Fakultas</p>
                 </div>
 
                 <div class="card mt-4"
@@ -407,6 +469,82 @@
         </nav>
     </div>
 
+    <!-- Attendance Input Modal -->
+    <div class="modal-overlay" id="modal-attendance-input">
+        <div class="modal-content">
+            <button class="modal-close" onclick="presensiManager.closeAttendanceModal()"><i class="ph ph-x"></i></button>
+            <h3 id="attendance-course-name">Presensi Mata Kuliah</h3>
+            <p id="attendance-course-meta" style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">08:00 - 10:00 • Ruang A</p>
+            <p id="attendance-recap-mini" style="font-size: 0.8rem; color: var(--primary); margin-top: 0.5rem; margin-bottom: 1rem; font-weight: 600;">Rekap: 0/16 (0%)</p>
+            
+            <!-- Edit Mode Indicator -->
+            <div id="attendance-edit-indicator" style="display:none; background: rgba(59, 130, 246, 0.1); border: 1px solid var(--primary); border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 1rem; color: var(--primary); font-size: 0.85rem;">
+                <i class="ph ph-pencil-simple"></i> Anda sedang mengedit presensi hari ini
+            </div>
+
+            <form id="form-attendance-input">
+                <input type="hidden" id="attendance-course-id">
+
+                <div class="form-group">
+                    <label>Pertemuan</label>
+                    <select id="attendance-meeting-number" required></select>
+                    <small id="attendance-meeting-hint" style="display:none; color: var(--text-muted); margin-top: 0.25rem; font-size: 0.75rem;">
+                        <i class="ph ph-info"></i> Pertemuan dikunci untuk kelas hari ini. Untuk mengubah pertemuan lain, gunakan dashboard rekap.
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label>Status Presensi</label>
+                    <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+                        <label class="attendance-option-chip">
+                            <input type="radio" name="attendance-status" value="hadir" checked>
+                            <span>Hadir</span>
+                        </label>
+                        <label class="attendance-option-chip">
+                            <input type="radio" name="attendance-status" value="izin">
+                            <span>Izin</span>
+                        </label>
+                        <label class="attendance-option-chip">
+                            <input type="radio" name="attendance-status" value="tidak_hadir">
+                            <span>Tidak Hadir</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group" id="attendance-reason-wrap" style="display:none;">
+                    <label>Alasan Izin</label>
+                    <input type="text" id="attendance-reason" placeholder="Contoh: Sakit, urusan keluarga, dll.">
+                </div>
+
+                <div class="form-group" id="attendance-material-wrap" style="display:block;">
+                    <label>Judul Materi (Opsional)</label>
+                    <input type="text" id="attendance-material-title" placeholder="Contoh: Normalisasi Database">
+                </div>
+
+                <div style="display:flex; gap:0.75rem; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-outline" style="flex:1;" onclick="presensiManager.closeAttendanceModal()">Batal</button>
+                    <button type="button" id="attendance-delete-btn" class="btn btn-outline" style="display:none; flex:0.5; color:var(--danger); border-color:var(--danger);" onclick="presensiManager.deleteCurrentAttendance()">
+                        <i class="ph ph-trash"></i>
+                    </button>
+                    <button type="submit" class="btn btn-primary" style="flex:1;" id="attendance-submit-btn">Simpan Presensi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Attendance Course Recap Modal -->
+    <div class="modal-overlay" id="modal-attendance-course-recap">
+        <div class="modal-content" style="max-height: 85vh; overflow-y: auto;">
+            <button class="modal-close" onclick="presensiManager.closeCourseRecapModal()"><i class="ph ph-x"></i></button>
+            <h3 id="attendance-course-recap-title">Rekap Mata Kuliah</h3>
+            <p id="attendance-course-recap-subtitle" style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">-</p>
+            <p id="attendance-course-recap-summary" style="font-size: 0.8rem; color: var(--primary); margin-top: 0.5rem; margin-bottom: 1rem; font-weight: 600;">-</p>
+            <div id="attendance-course-recap-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
     <!-- Modals -->
     <!-- Add Schedule Modal -->
     <div class="modal-overlay" id="modal-schedule">
@@ -414,6 +552,8 @@
             <button class="modal-close" onclick="scheduleManager.closeModal()"><i class="ph ph-x"></i></button>
             <h3 data-i18n="schedule_add_modal_title">Tambah Jadwal</h3>
             <form id="form-schedule">
+                <input type="hidden" id="sch-id">
+                <input type="hidden" id="sch-code">
                 <div class="form-group">
                     <label data-i18n="schedule_course_name">Nama Mata Kuliah</label>
                     <input type="text" id="sch-name" required placeholder="Contoh: Pemrograman Web"
@@ -475,11 +615,18 @@
 
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <h4 style="font-size: 1.1rem;" data-i18n="schedule_detail_tasks_title">Tugas Matkul Ini</h4>
-                <button class="btn btn-primary"
-                    onclick="tasksManager.openAddModal(document.getElementById('detail-course-id').value)"
-                    style="padding: 0.5rem 1rem; font-size: 0.8rem;">
-                    <i class="ph ph-plus"></i> <span data-i18n="schedule_detail_add_task">Tambah Tugas</span>
-                </button>
+                <div style="display:flex; gap:0.5rem;">
+                    <button class="btn btn-outline"
+                        onclick="presensiManager.openAttendanceModal(document.getElementById('detail-course-id').value)"
+                        style="padding: 0.5rem 0.8rem; font-size: 0.8rem; border-color: #0284C7; color: #0284C7;">
+                        <i class="ph ph-check-circle"></i> Presensi
+                    </button>
+                    <button class="btn btn-primary"
+                        onclick="tasksManager.openAddModal(document.getElementById('detail-course-id').value)"
+                        style="padding: 0.5rem 1rem; font-size: 0.8rem;">
+                        <i class="ph ph-plus"></i> <span data-i18n="schedule_detail_add_task">Tambah Tugas</span>
+                    </button>
+                </div>
             </div>
 
             <input type="hidden" id="detail-course-id">
@@ -488,6 +635,21 @@
             <div id="detail-course-tasks"
                 style="flex:1; overflow-y: auto; display:flex; flex-direction:column; gap:0.5rem; margin-bottom:1rem;">
                 <!-- Populated by JS -->
+            </div>
+
+            <!-- Notes Section -->
+            <div style="margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <h4 style="font-size: 1.1rem;">Catatan Kuliah</h4>
+                    <button class="btn btn-outline"
+                        onclick="notesManager.openAddModalFromSchedule(document.getElementById('detail-course-id').value, document.getElementById('detail-course-name').innerText)"
+                        style="padding: 0.5rem 1rem; font-size: 0.8rem; background: linear-gradient(135deg, rgba(147, 51, 234, 0.1), rgba(59, 130, 246, 0.1)); border-color: var(--primary);">
+                        <i class="ph ph-notebook"></i> Buat Catatan
+                    </button>
+                </div>
+                <div id="detail-course-notes" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 150px; overflow-y: auto;">
+                    <!-- Notes will be populated here -->
+                </div>
             </div>
 
             <div style="border-top: 1px solid var(--border-color); padding-top: 1rem;">
@@ -506,11 +668,13 @@
                 </div>
             </div>
 
-            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
-                <button class="btn btn-outline full-width" onclick="scheduleManager.deleteCurrentCourseDetail()"
-                    style="color:var(--danger); border-color:var(--danger);">
-                    <i class="ph ph-trash"></i> <span data-i18n="schedule_detail_delete_course">Hapus Jadwal Matkul
-                        Ini</span>
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color); display:flex; gap:0.75rem;">
+                <button class="btn btn-outline" onclick="scheduleManager.editCurrentCourse()" style="flex:1;">
+                    <i class="ph ph-pencil-simple"></i> <span data-i18n="schedule_detail_edit_course">Edit Jadwal</span>
+                </button>
+                <button class="btn btn-outline" onclick="scheduleManager.deleteCurrentCourseDetail()"
+                    style="flex:1; color:var(--danger); border-color:var(--danger);">
+                    <i class="ph ph-trash"></i> <span data-i18n="schedule_detail_delete_course">Hapus</span>
                 </button>
             </div>
         </div>
@@ -555,8 +719,8 @@
                 </div>
                 <div class="form-group row">
                     <div class="col">
-                        <label data-i18n="profile_university">Universitas</label>
-                        <input type="text" id="prof-univ" required>
+                        <label data-i18n="profile_university">Fakultas</label>
+                        <input type="text" id="prof-univ" required placeholder="Cth: Teknik, MIPA, dll">
                     </div>
                     <div class="col">
                         <label data-i18n="profile_level_semester">Level/Semester</label>
@@ -566,7 +730,7 @@
                 </div>
                 <div class="form-group">
                     <label data-i18n="profile_major_department">Program Studi / Jurusan</label>
-                    <input type="text" id="prof-major" required>
+                    <input type="text" id="prof-major" required placeholder="Cth: Teknik Informatika">
                 </div>
                 <button type="submit" class="btn btn-primary full-width mt-4" data-i18n="modal_save_profile">Simpan
                     Profil</button>
@@ -659,58 +823,32 @@
 
     <!-- Welcome Modal (First Time User) -->
     <div class="welcome-modal" id="welcome-modal">
-        <div class="welcome-content">
-            <div class="welcome-icon">
-                <i class="ph ph-hand-waving"></i>
+        <div class="welcome-content premium-welcome">
+            <div class="premium-welcome-glow"></div>
+            <div class="premium-welcome-icon-wrapper">
+                <i class="ph-fill ph-sparkle premium-sparkle"></i>
+                <div class="premium-welcome-icon">
+                    <i class="ph ph-graduation-cap"></i>
+                </div>
             </div>
-            <h1 class="welcome-title" data-i18n="welcome_title">Selamat Datang di UniLife!</h1>
-            <p class="welcome-subtitle" data-i18n="welcome_subtitle">
-                Platform lengkap untuk mengelola kehidupan akademik Anda dengan lebih terorganisir dan produktif.
+            <h1 class="welcome-title premium-title" data-i18n="welcome_title">Mulai Perjalanan Akademikmu</h1>
+            <p class="welcome-subtitle premium-subtitle" data-i18n="welcome_subtitle">
+                Satu aplikasi, dengan desain elegan untuk bantu kamu fokus pada hal yang paling penting.
+            </p>
+            
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 1rem; margin-bottom: 0.5rem; font-style: italic; opacity: 0.7;">
+                dibuat dengan cinta oleh <span style="font-weight: 500; color: var(--accent);">Farhan Baihaqi</span>
             </p>
 
-            <div class="welcome-features">
-                <div class="welcome-feature">
-                    <div class="welcome-feature-icon" style="background: var(--primary-light); color: var(--primary);">
-                        <i class="ph ph-calendar"></i>
-                    </div>
-                    <div class="welcome-feature-text">
-                        <div class="welcome-feature-title" data-i18n="welcome_feature1_title">Jadwal Kuliah</div>
-                        <div class="welcome-feature-desc" data-i18n="welcome_feature1_desc">Atur jadwal kuliah mingguan
-                            Anda</div>
-                    </div>
+            <button class="btn btn-primary full-width premium-btn" onclick="profileManager.startProfileSetup()">
+                <div class="premium-btn-content">
+                    <span data-i18n="welcome_get_started">Atur Profil Sekarang</span>
+                    <i class="ph-bold ph-arrow-right"></i>
                 </div>
-                <div class="welcome-feature">
-                    <div class="welcome-feature-icon" style="background: var(--success-light); color: var(--success);">
-                        <i class="ph ph-check-square"></i>
-                    </div>
-                    <div class="welcome-feature-text">
-                        <div class="welcome-feature-title" data-i18n="welcome_feature2_title">Manajemen Tugas</div>
-                        <div class="welcome-feature-desc" data-i18n="welcome_feature2_desc">Track dan selesaikan tugas
-                            tepat waktu</div>
-                    </div>
-                </div>
-                <div class="welcome-feature">
-                    <div class="welcome-feature-icon"
-                        style="background: rgba(245, 158, 11, 0.1); color: var(--warning);">
-                        <i class="ph ph-chart-bar"></i>
-                    </div>
-                    <div class="welcome-feature-text">
-                        <div class="welcome-feature-title" data-i18n="welcome_feature3_title">Tracking Nilai</div>
-                        <div class="welcome-feature-desc" data-i18n="welcome_feature3_desc">Monitor progress akademik
-                            Anda</div>
-                    </div>
-                </div>
-            </div>
-
-            <button class="btn btn-primary full-width" onclick="profileManager.startProfileSetup()"
-                style="padding: 1rem; font-size: 1rem;">
-                <span data-i18n="welcome_get_started">Mulai Sekarang</span>
-                <i class="ph ph-arrow-right"></i>
             </button>
 
-            <button class="btn btn-outline full-width" onclick="profileManager.skipWelcome()"
-                style="padding: 0.75rem; margin-top: 0.75rem; border: none; color: var(--text-muted);">
-                <span data-i18n="welcome_skip">Lewati</span>
+            <button class="btn btn-outline full-width premium-skip" onclick="profileManager.skipWelcome()">
+                <span data-i18n="welcome_skip">Nanti saja</span>
             </button>
         </div>
     </div>
@@ -720,6 +858,7 @@
     <script src="js/i18n.js"></script>
     <script src="js/inbox.js"></script>
     <script src="js/notes.js"></script>
+    <script src="js/presensi.js"></script>
     <script src="js/radar.js"></script>
     <script src="js/gradeGoals.js"></script>
     <script src="js/calendarExport.js"></script>

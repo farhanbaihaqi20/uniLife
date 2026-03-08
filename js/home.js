@@ -40,13 +40,33 @@ const homeManager = {
         const now = new Date();
         const currentTime = now.getHours() * 60 + now.getMinutes();
 
-        todaySchedules.forEach(sch => {
+        todaySchedules.forEach((sch, index) => {
             const [startH, startM] = sch.start.split(':').map(Number);
             const [endH, endM] = sch.end.split(':').map(Number);
-            const isNow = (currentTime >= (startH * 60 + startM) && currentTime <= (endH * 60 + endM));
+            const startMins = startH * 60 + startM;
+            const endMins = endH * 60 + endM;
+            const isNow = (currentTime >= startMins && currentTime <= endMins);
+
+            // Check if already attended today
+            let hasAttendedToday = false;
+            if (typeof presensiManager !== 'undefined') {
+                const todayRecord = presensiManager.getTodayRecordForSchedule(sch.id);
+                hasAttendedToday = !!todayRecord;
+            }
+
+            let statusClass = 'home-schedule-status-upcoming';
+            let statusText = 'Akan datang';
+            if (isNow) {
+                statusClass = 'home-schedule-status-now pulse';
+                statusText = 'Sedang berlangsung';
+            } else if (currentTime > endMins) {
+                statusClass = 'home-schedule-status-done';
+                statusText = 'Selesai';
+            }
 
             const card = document.createElement('div');
-            card.className = `schedule-card ${isNow ? 'is-now' : ''}`;
+            card.className = `schedule-card fade-in ${isNow ? 'is-now' : ''}`;
+            card.style.animationDelay = `${index * 0.05}s`;
             card.style.background = 'var(--bg-card)';
             card.style.padding = '1rem';
             card.style.borderRadius = 'var(--radius-sm)';
@@ -55,6 +75,11 @@ const homeManager = {
             card.style.flexShrink = '0';
             card.style.cursor = 'pointer';
             card.onclick = () => {
+                if (isNow && typeof presensiManager !== 'undefined') {
+                    presensiManager.openAttendanceModal(sch.id, true); // true = from today's class
+                    return;
+                }
+
                 document.querySelector('.nav-item[data-target=\'view-schedule\']').click();
                 setTimeout(() => {
                     if (typeof scheduleManager !== 'undefined') scheduleManager.openCourseDetailModal(sch.id);
@@ -62,11 +87,29 @@ const homeManager = {
             };
 
             card.innerHTML = `
-                <div style="font-weight:600; font-size:1.1rem; margin-bottom:0.5rem; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${sch.name}</div>
+                <div style="display:flex; justify-content:space-between; gap:0.5rem; align-items:flex-start; margin-bottom:0.45rem;">
+                    <div style="font-weight:600; font-size:1.05rem; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:145px;">${sch.name}</div>
+                    <span class="home-schedule-status ${statusClass}">${statusText}</span>
+                </div>
                 <div style="font-size:0.85rem; color:var(--text-muted); display:flex; flex-direction:column; gap:0.25rem;">
                     <span><i class="ph ph-clock"></i> ${sch.start} - ${sch.end}</span>
                     <span><i class="ph ph-map-pin"></i> ${sch.room}</span>
                 </div>
+                ${isNow ? `
+                    ${hasAttendedToday ? `
+                        <div style="margin-top:0.65rem; padding:0.5rem; background:rgba(16, 185, 129, 0.1); border-radius:var(--radius-sm); font-size:0.8rem; color:var(--success); font-weight:600; display:flex; align-items:center; gap:0.35rem;">
+                            <i class="ph ph-check-circle" style="font-size:1rem;"></i> Sudah presensi hari ini
+                        </div>
+                    ` : `
+                        <div style="margin-top:0.65rem; font-size:0.78rem; color:var(--warning); font-weight:600; display:flex; align-items:center; gap:0.25rem;">
+                            <i class="ph ph-hand-tap"></i> Tap kartu ini untuk isi presensi
+                        </div>
+                    `}
+                ` : (hasAttendedToday ? `
+                    <div style="margin-top:0.65rem; font-size:0.75rem; color:var(--success); display:flex; align-items:center; gap:0.35rem; font-weight:600;">
+                        <i class="ph ph-check-circle"></i> Sudah presensi
+                    </div>
+                ` : ``)}
             `;
             container.appendChild(card);
         });
@@ -98,12 +141,14 @@ const homeManager = {
 
         const today = new Date().toISOString().split('T')[0];
 
-        topTasks.forEach(task => {
+        topTasks.forEach((task, index) => {
             let dueColor = 'var(--text-muted)';
             if (task.dueDate < today) dueColor = 'var(--danger)';
             else if (task.dueDate === today) dueColor = 'var(--warning)';
 
             const card = document.createElement('div');
+            card.className = 'fade-in';
+            card.style.animationDelay = `${index * 0.05}s`;
             card.style.background = 'var(--bg-card)';
             card.style.padding = '1rem';
             card.style.borderRadius = 'var(--radius-sm)';

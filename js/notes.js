@@ -1,6 +1,8 @@
 const notesManager = {
     notes: [],
     filter: 'all',
+    sortBy: 'newest',
+    searchQuery: '',
 
     init: function () {
         this.notes = Storage.getNotes() || [];
@@ -54,25 +56,60 @@ const notesManager = {
         this.renderNotesDashboard();
     },
 
+    handleSearch: function (query) {
+        this.searchQuery = query.toLowerCase();
+        this.renderNotesDashboard();
+    },
+
+    handleSortChange: function (sortValue) {
+        this.sortBy = sortValue;
+        this.renderNotesDashboard();
+    },
+
     renderNotesDashboard: function () {
         const container = document.getElementById('notes-dashboard-list');
         if (!container) return;
         container.innerHTML = '';
 
         let filteredNotes = this.notes;
+        
+        // Filter by category
         if (this.filter !== 'all') {
-            filteredNotes = this.notes.filter(n => n.category === this.filter);
+            filteredNotes = filteredNotes.filter(n => n.category === this.filter);
         }
 
-        // Sort latest first manually (to avoid mutating original order destructively)
-        const sortedNotes = [...filteredNotes].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+        // Filter by search query
+        if (this.searchQuery) {
+            filteredNotes = filteredNotes.filter(n => 
+                n.title.toLowerCase().includes(this.searchQuery) || 
+                n.content.toLowerCase().includes(this.searchQuery) ||
+                (n.courseName && n.courseName.toLowerCase().includes(this.searchQuery))
+            );
+        }
+
+        // Sort notes
+        let sortedNotes = [...filteredNotes];
+        switch(this.sortBy) {
+            case 'newest':
+                sortedNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+                break;
+            case 'oldest':
+                sortedNotes.sort((a, b) => new Date(a.updatedAt) - new Date(b.updatedAt));
+                break;
+            case 'a-z':
+                sortedNotes.sort((a, b) => a.title.localeCompare(b.title));
+                break;
+            case 'z-a':
+                sortedNotes.sort((a, b) => b.title.localeCompare(a.title));
+                break;
+        }
 
         if (sortedNotes.length === 0) {
             container.innerHTML = `
-                <div style="text-align:center; padding:4rem 1rem; color:var(--text-muted); background:var(--bg-card); border-radius:var(--radius-md); border:1px dashed var(--border-color);">
+                <div style="grid-column: 1/-1; text-align:center; padding:4rem 1rem; color:var(--text-muted); background:var(--bg-card); border-radius:var(--radius-md); border:1px dashed var(--border-color);">
                     <i class="ph ph-notebook" style="font-size:3.5rem; opacity:0.3; margin-bottom:1rem; display:block;"></i>
-                    <p style="font-size:1rem; font-weight:500;">Belum ada catatan di kategori ini.</p>
-                    <button class="btn btn-outline mt-4" onclick="notesManager.openAddModal()"><i class="ph ph-plus"></i> Tambah Catatan Pertama</button>
+                    <p style="font-size:1rem; font-weight:500;">${this.searchQuery ? 'Tidak ada catatan yang cocok dengan pencarian.' : 'Belum ada catatan di kategori ini.'}</p>
+                    ${!this.searchQuery ? '<button class="btn btn-outline mt-4" onclick="notesManager.openAddModal()"><i class="ph ph-plus"></i> Tambah Catatan Pertama</button>' : ''}
                 </div>
             `;
             return;
@@ -80,40 +117,76 @@ const notesManager = {
 
         sortedNotes.forEach(note => {
             const categoryColors = {
-                'general': { bg: 'rgba(100, 116, 139, 0.05)', border: 'var(--text-muted)', icon: 'note', label: 'Umum' },
-                'lecture': { bg: 'rgba(59, 130, 246, 0.05)', border: 'var(--primary)', icon: 'book-open', label: 'Materi Kuliah' },
-                'assignment': { bg: 'rgba(16, 185, 129, 0.05)', border: 'var(--success)', icon: 'pencil-line', label: 'Tugas/PR' },
-                'exam': { bg: 'rgba(239, 68, 68, 0.05)', border: 'var(--danger)', icon: 'exam', label: 'Persiapan Ujian' }
+                'general': { bg: 'linear-gradient(135deg, rgba(100, 116, 139, 0.05), rgba(71, 85, 105, 0.08))', border: '#64748b', borderLight: 'rgba(100, 116, 139, 0.2)', icon: 'note', label: 'Umum', glow: 'rgba(100, 116, 139, 0.1)' },
+                'lecture': { bg: 'linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(37, 99, 235, 0.12))', border: '#3b82f6', borderLight: 'rgba(59, 130, 246, 0.2)', icon: 'book-open', label: 'Materi Kuliah', glow: 'rgba(59, 130, 246, 0.15)' },
+                'assignment': { bg: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(5, 150, 105, 0.12))', border: '#10b981', borderLight: 'rgba(16, 185, 129, 0.2)', icon: 'pencil-line', label: 'Tugas/PR', glow: 'rgba(16, 185, 129, 0.15)' },
+                'exam': { bg: 'linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(220, 38, 38, 0.12))', border: '#ef4444', borderLight: 'rgba(239, 68, 68, 0.2)', icon: 'exam', label: 'Persiapan Ujian', glow: 'rgba(239, 68, 68, 0.15)' }
             };
 
             const style = categoryColors[note.category] || categoryColors['general'];
             const updatedDate = new Date(note.updatedAt);
             const timeStr = updatedDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
+            // Truncate content for preview
+            const contentPreview = note.content.length > 120 ? note.content.substring(0, 120) + '...' : note.content;
+
             const el = document.createElement('div');
-            el.className = 'card';
+            el.className = 'card note-card-premium';
             el.style.background = style.bg;
-            el.style.borderLeft = `4px solid ${style.border}`;
+            el.style.borderLeft = `3px solid ${style.border}`;
             el.style.padding = '1.25rem';
             el.style.position = 'relative';
+            el.style.cursor = 'pointer';
+            el.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+            el.style.overflow = 'hidden';
+            
+            // Click to edit
+            el.onclick = (e) => {
+                if (!e.target.closest('button')) {
+                    this.editNote(note.id);
+                }
+            };
+
+            // Hover effects
+            el.onmouseenter = function() {
+                this.style.transform = 'translateY(-4px)';
+                this.style.boxShadow = `0 12px 24px -8px ${style.glow}, var(--shadow-md)`;
+                this.style.borderLeftWidth = '4px';
+            };
+            el.onmouseleave = function() {
+                this.style.transform = 'translateY(0)';
+                this.style.boxShadow = 'var(--shadow-sm)';
+                this.style.borderLeftWidth = '3px';
+            };
 
             el.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem;">
-                    <div style="display:flex; align-items:center; gap:0.5rem;">
-                        <i class="ph ph-${style.icon}" style="color:${style.border}; font-size:1.1rem;"></i>
-                        <span style="font-size:0.75rem; color:${style.border}; text-transform:uppercase; font-weight:700; letter-spacing:0.02em;">${style.label}</span>
+                <div style="position: absolute; top: -20px; right: -20px; width: 80px; height: 80px; background: ${style.border}; opacity: 0.03; border-radius: 50%;"></div>
+                
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem; position: relative; z-index: 1;">
+                    <div style="display:flex; align-items:center; gap:0.5rem; background: ${style.borderLight}; padding: 0.25rem 0.625rem; border-radius: 1rem;">
+                        <i class="ph-fill ph-${style.icon}" style="color:${style.border}; font-size:0.9rem;"></i>
+                        <span style="font-size:0.7rem; color:${style.border}; text-transform:uppercase; font-weight:700; letter-spacing:0.03em;">${style.label}</span>
                     </div>
+                    ${note.courseName ? `
+                        <div style="background: linear-gradient(135deg, rgba(147, 51, 234, 0.15), rgba(79, 70, 229, 0.15)); padding: 0.25rem 0.625rem; border-radius: 1rem; border: 1px solid rgba(147, 51, 234, 0.3);">
+                            <span style="font-size:0.7rem; color: #9333ea; font-weight:600;"><i class="ph ph-graduation-cap"></i> ${note.courseName}</span>
+                        </div>
+                    ` : ''}
                 </div>
-                <div style="font-weight:700; font-size:1.15rem; margin-bottom:0.5rem; color:var(--text-main); line-height:1.3;">${note.title}</div>
-                <div style="font-size:0.9rem; color:var(--text-muted); line-height:1.5; margin-bottom:1rem; white-space:pre-wrap;">${note.content}</div>
-                <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-color); padding-top:0.75rem; margin-top:0.5rem;">
-                    <span style="font-size:0.7rem; color:var(--text-muted);"><i class="ph ph-clock"></i> Diperbarui: ${timeStr}</span>
-                    <div style="display:flex; gap:0.5rem;">
-                        <button class="icon-btn" onclick="notesManager.editNote('${note.id}')" style="width:32px; height:32px; border:none; box-shadow:none; color:var(--primary); background:rgba(59,130,246,0.1);">
-                            <i class="ph ph-pencil-simple"></i>
+                
+                <div style="position: relative; z-index: 1;">
+                    <div style="font-weight:700; font-size:1.15rem; margin-bottom:0.5rem; color:var(--text-main); line-height:1.3;">${note.title}</div>
+                    <div style="font-size:0.875rem; color:var(--text-muted); line-height:1.6; margin-bottom:1rem;">${contentPreview}</div>
+                </div>
+                
+                <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid ${style.borderLight}; padding-top:0.75rem; position: relative; z-index: 1;">
+                    <span style="font-size:0.7rem; color:var(--text-muted); display: flex; align-items: center; gap: 0.25rem;"><i class="ph ph-clock"></i> ${timeStr}</span>
+                    <div style="display:flex; gap:0.5rem;" onclick="event.stopPropagation();">
+                        <button class="icon-btn" onclick="notesManager.editNote('${note.id}')" style="width:32px; height:32px; border:none; box-shadow:none; color:${style.border}; background:${style.borderLight}; transition: all 0.2s;">
+                            <i class="ph-bold ph-pencil-simple"></i>
                         </button>
-                        <button class="icon-btn" onclick="notesManager.deleteNote('${note.id}')" style="width:32px; height:32px; border:none; box-shadow:none; color:var(--danger); background:rgba(239,68,68,0.1);">
-                            <i class="ph ph-trash"></i>
+                        <button class="icon-btn" onclick="notesManager.deleteNote('${note.id}')" style="width:32px; height:32px; border:none; box-shadow:none; color:var(--danger); background:rgba(239,68,68,0.1); transition: all 0.2s;">
+                            <i class="ph-bold ph-trash"></i>
                         </button>
                     </div>
                 </div>
@@ -122,14 +195,27 @@ const notesManager = {
         });
     },
 
-    openAddModal: function () {
+    openAddModal: function (scheduleId = null, courseName = null) {
         const modal = document.getElementById('modal-note-add');
         if (modal) {
             document.getElementById('note-id-input').value = '';
-            document.getElementById('modal-note-title').innerText = 'Catatan Baru';
+            document.getElementById('note-schedule-id-input').value = scheduleId || '';
+            document.getElementById('note-course-name-input').value = courseName || '';
+            document.getElementById('modal-note-title').innerText = courseName ? `Catatan: ${courseName}` : 'Catatan Baru';
+            
+            // Pre-select category to lecture if from schedule
+            if (scheduleId && courseName) {
+                document.getElementById('note-category-input').value = 'lecture';
+            }
+            
             modal.classList.add('active');
             setTimeout(() => document.getElementById('note-title-input').focus(), 100);
         }
+    },
+
+    // Shortcut untuk buka dari jadwal
+    openAddModalFromSchedule: function (scheduleId, courseName) {
+        this.openAddModal(scheduleId, courseName);
     },
 
     closeAddModal: function () {
@@ -137,6 +223,8 @@ const notesManager = {
         if (modal) modal.classList.remove('active');
         document.getElementById('note-form').reset();
         document.getElementById('note-id-input').value = '';
+        document.getElementById('note-schedule-id-input').value = '';
+        document.getElementById('note-course-name-input').value = '';
     },
 
     editNote: function (id) {
@@ -147,6 +235,8 @@ const notesManager = {
         document.getElementById('note-title-input').value = note.title;
         document.getElementById('note-category-input').value = note.category;
         document.getElementById('note-content-input').value = note.content;
+        document.getElementById('note-schedule-id-input').value = note.scheduleId || '';
+        document.getElementById('note-course-name-input').value = note.courseName || '';
 
         document.getElementById('modal-note-title').innerText = 'Edit Catatan';
         document.getElementById('modal-note-add').classList.add('active');
@@ -165,6 +255,8 @@ const notesManager = {
         e.preventDefault();
 
         const idToEdit = document.getElementById('note-id-input').value;
+        const scheduleId = document.getElementById('note-schedule-id-input').value || null;
+        const courseName = document.getElementById('note-course-name-input').value || null;
         const now = new Date().toISOString();
 
         if (idToEdit) {
@@ -174,6 +266,8 @@ const notesManager = {
                 this.notes[index].title = document.getElementById('note-title-input').value.trim();
                 this.notes[index].content = document.getElementById('note-content-input').value.trim();
                 this.notes[index].category = document.getElementById('note-category-input').value || 'general';
+                this.notes[index].scheduleId = scheduleId;
+                this.notes[index].courseName = courseName;
                 this.notes[index].updatedAt = now;
             }
         } else {
@@ -183,6 +277,8 @@ const notesManager = {
                 title: document.getElementById('note-title-input').value.trim(),
                 content: document.getElementById('note-content-input').value.trim(),
                 category: document.getElementById('note-category-input').value || 'general',
+                scheduleId: scheduleId,
+                courseName: courseName,
                 createdAt: now,
                 updatedAt: now
             };
@@ -228,6 +324,8 @@ const notesManager = {
                     <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">Catat materi kuliah atau hal penting</p>
                     <form id="note-form" onsubmit="notesManager.saveNote(event)">
                         <input type="hidden" id="note-id-input">
+                        <input type="hidden" id="note-schedule-id-input">
+                        <input type="hidden" id="note-course-name-input">
                         <div class="form-group">
                             <label>Judul Catatan</label>
                             <input type="text" id="note-title-input" required placeholder="Misal: Catatan Algoritma - Sorting">

@@ -37,7 +37,7 @@ const Storage = {
     getProfile: () => Storage.get('unilife_profile', {
         fullName: 'Mahasiswa Baru',
         nickname: 'Mahasiswa',
-        university: 'Universitas',
+        university: 'Fakultas',
         major: 'Jurusan',
         semester: '1',
         photoBase64: null
@@ -68,5 +68,9 @@ const Storage = {
 
     // Notifications (system notifications)
     getNotifications: () => Storage.get('unilife_notifications', []), // Array of { id, type, title, message, timestamp, isRead, sourceId, action }
-    setNotifications: (data) => Storage.set('unilife_notifications', data)
+    setNotifications: (data) => Storage.set('unilife_notifications', data),
+
+    // Attendance (presensi per mata kuliah)
+    getAttendanceRecords: () => Storage.get('unilife_attendance_records', []), // Array of { id, scheduleId, semester, meetingNumber, status, reason, timestamp }
+    setAttendanceRecords: (data) => Storage.set('unilife_attendance_records', data)
 };

@@ -112,6 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
         notesManager.init();
         notesManager.injectModal();
     }
+    if (typeof presensiManager !== 'undefined') presensiManager.init();
     if (typeof inboxManager !== 'undefined') {
         inboxManager.init();
         inboxManager.injectModal();
@@ -217,6 +218,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 notesManager.renderNotesDashboard();
                 notesManager.renderCategoryTabs();
             }
+        }
+
+        // Attendance changed
+        if (!key || key === 'unilife_attendance_records') {
+            if (typeof presensiManager !== 'undefined') {
+                presensiManager.records = Storage.getAttendanceRecords() || [];
+                presensiManager.renderRecap();
+            }
+            if (typeof homeManager !== 'undefined') homeManager.renderTodaySchedule();
         }
     });
 

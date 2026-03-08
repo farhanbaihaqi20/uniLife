@@ -28,10 +28,10 @@ const profileManager = {
         if (welcomeModal) {
             welcomeModal.classList.remove('active');
         }
-        
+
         // Mark as not first time anymore
         Storage.set('unilife_first_time', false);
-        
+
         // Open profile edit modal
         setTimeout(() => {
             this.openModal();
@@ -44,7 +44,7 @@ const profileManager = {
         if (welcomeModal) {
             welcomeModal.classList.remove('active');
         }
-        
+
         // Mark as not first time anymore
         Storage.set('unilife_first_time', false);
     },
@@ -95,20 +95,41 @@ const profileManager = {
         if (typeof homeManager !== 'undefined' && document.getElementById('home-greeting')) {
             const hour = new Date().getHours();
             let greeting = i18n.t('home_welcome');
-            if (i18n.currentLang === 'en') {
-                if (hour < 11) greeting = 'Good Morning';
-                else if (hour < 15) greeting = 'Good Afternoon';
-                else if (hour < 19) greeting = 'Good Evening';
-                else greeting = 'Good Night';
+            let isEn = i18n.currentLang === 'en';
+
+            // Random dynamic greetings
+            const morningGreetingsID = ["Semangat Pagi", "Pagi yang Cerah", "Halo, Selamat Pagi", "Waktunya Produktif"];
+            const afternoonGreetingsID = ["Selamat Siang", "Siang, Tetap Fokus", "Fokus Yuk Siang Ini", "Semangat Siang"];
+            const eveningGreetingsID = ["Selamat Sore", "Sore yang Tenang", "Tetap Semangat Sore Ini", "Halo, Selamat Sore"];
+            const nightGreetingsID = ["Selamat Malam", "Malam, Jangan Lupa Istirahat", "Evaluasi Harimu", "Selamat Beristirahat"];
+
+            const morningGreetingsEN = ["Good Morning", "Bright Morning", "Hello, Good Morning", "Time to be Productive"];
+            const afternoonGreetingsEN = ["Good Afternoon", "Afternoon, Stay Focused", "Let's Focus", "Good Afternoon"];
+            const eveningGreetingsEN = ["Good Evening", "Calm Evening", "Keep the Spirit", "Hello, Good Evening"];
+            const nightGreetingsEN = ["Good Night", "Night, Don't Forget to Rest", "Reflect on Your Day", "Have a Good Rest"];
+
+            const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+            if (isEn) {
+                if (hour < 11) greeting = getRandom(morningGreetingsEN);
+                else if (hour < 15) greeting = getRandom(afternoonGreetingsEN);
+                else if (hour < 19) greeting = getRandom(eveningGreetingsEN);
+                else greeting = getRandom(nightGreetingsEN);
             } else {
-                if (hour < 11) greeting = 'Selamat Pagi';
-                else if (hour < 15) greeting = 'Selamat Siang';
-                else if (hour < 19) greeting = 'Selamat Sore';
-                else greeting = 'Selamat Malam';
+                if (hour < 11) greeting = getRandom(morningGreetingsID);
+                else if (hour < 15) greeting = getRandom(afternoonGreetingsID);
+                else if (hour < 19) greeting = getRandom(eveningGreetingsID);
+                else greeting = getRandom(nightGreetingsID);
             }
 
-            document.getElementById('home-greeting').innerText = `${greeting}, ${this.profile.nickname || (i18n.currentLang === 'en' ? 'Student' : 'Mahasiswa')}! 👋`;
-            document.getElementById('home-subgreeting').innerText = `${i18n.tf('common_semester', { semester: this.profile.semester || '-' })} • ${this.profile.university || i18n.t('profile_default_university')}`;
+            document.getElementById('home-greeting').innerText = `${greeting}, ${this.profile.nickname || (isEn ? 'Student' : 'Mahasiswa')}! 👋`;
+
+            // Handle optional university/faculty display
+            const defaultUniv = i18n.t('profile_default_university');
+            const univText = this.profile.university ? this.profile.university : defaultUniv;
+            const univDisplay = univText ? ` • ${univText}` : '';
+
+            document.getElementById('home-subgreeting').innerHTML = `<i class="ph ph-student"></i> ${i18n.tf('common_semester', { semester: this.profile.semester || '-' })}${univDisplay}`;
         }
     },
 
@@ -132,12 +153,12 @@ const profileManager = {
         langRadios.forEach(r => {
             if (r.value === (settings.language || 'id')) r.checked = true;
         });
-        
+
         const themeRadios = document.getElementsByName('theme_setting');
         themeRadios.forEach(r => {
             if (r.value === (settings.theme || 'system')) r.checked = true;
         });
-        
+
         document.getElementById('modal-settings').classList.add('active');
     },
 

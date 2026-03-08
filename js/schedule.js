@@ -133,10 +133,14 @@ const scheduleManager = {
         form.addEventListener('submit', (e) => {
             e.preventDefault();
 
-            const newSchedule = {
-                id: uuidv4(),
+            const scheduleId = document.getElementById('sch-id').value;
+            const isEditMode = !!scheduleId;
+
+            const scheduleData = {
+                id: isEditMode ? scheduleId : uuidv4(),
                 semester: typeof profileManager !== 'undefined' ? (profileManager.profile.semester || 1) : 1,
                 name: document.getElementById('sch-name').value,
+                code: document.getElementById('sch-code').value,
                 day: parseInt(document.getElementById('sch-day').value),
                 sks: parseInt(document.getElementById('sch-sks').value),
                 start: document.getElementById('sch-start').value,
@@ -145,56 +149,106 @@ const scheduleManager = {
                 lecturer: document.getElementById('sch-lecturer').value,
             };
 
-            this.schedules.push(newSchedule);
-            Storage.setSchedules(this.schedules);
+            if (isEditMode) {
+                // Edit existing schedule
+                const index = this.schedules.findIndex(s => s.id === scheduleId);
+                if (index > -1) {
+                    this.schedules[index] = scheduleData;
 
-            // Auto-create course in grades with placeholder grade
-            if (typeof gradesManager !== 'undefined') {
-                const currentSemester = newSchedule.semester;
-                const semesterName = `Semester ${currentSemester}`;
-                
-                // Find or create semester
-                let semester = gradesManager.semesters.find(s => s.name.toLowerCase() === semesterName.toLowerCase());
-                if (!semester) {
-                    semester = {
-                        id: uuidv4(),
-                        name: semesterName,
-                        courses: []
-                    };
-                    gradesManager.semesters.push(semester);
+                    // Update linked grade course name if needed
+                    if (typeof gradesManager !== 'undefined') {
+                        gradesManager.semesters.forEach(sem => {
+                            const linkedCourse = sem.courses.find(c => c.linkedScheduleId === scheduleId);
+                            if (linkedCourse) {
+                                linkedCourse.name = scheduleData.name;
+                                linkedCourse.sks = scheduleData.sks;
+                            }
+                        });
+                        Storage.setGrades(gradesManager.semesters);
+                        gradesManager.renderStats();
+                        gradesManager.renderSemesters();
+                    }
                 }
+            } else {
+                // Add new schedule
+                this.schedules.push(scheduleData);
 
-                // Check if course already exists
-                const courseExists = semester.courses.some(c => c.linkedScheduleId === newSchedule.id);
-                if (!courseExists) {
-                    // Add course with placeholder values
-                    semester.courses.push({
-                        id: uuidv4(),
-                        name: newSchedule.name,
-                        sks: newSchedule.sks,
-                        finalScore: 0,
-                        grade: 'E',
-                        linkedScheduleId: newSchedule.id
-                    });
+                // Auto-create course in grades
+                if (typeof gradesManager !== 'undefined') {
+                    const currentSemester = scheduleData.semester;
+                    const semesterName = `Semester ${currentSemester}`;
+
+                    // Find or create semester
+                    let semester = gradesManager.semesters.find(s => s.name.toLowerCase() === semesterName.toLowerCase());
+                    if (!semester) {
+                        semester = {
+                            id: uuidv4(),
+                            name: semesterName,
+                            courses: []
+                        };
+                        gradesManager.semesters.push(semester);
+                    }
+
+                    // Check if course already exists
+                    const courseExists = semester.courses.some(c => c.linkedScheduleId === scheduleData.id);
+                    if (!courseExists) {
+                        semester.courses.push({
+                            id: uuidv4(),
+                            name: scheduleData.name,
+                            sks: scheduleData.sks,
+                            finalScore: 0,
+                            grade: 'E',
+                            linkedScheduleId: scheduleData.id
+                        });
+                    }
+
+                    Storage.setGrades(gradesManager.semesters);
+                    gradesManager.renderStats();
+                    gradesManager.renderSemesters();
                 }
-
-                Storage.setGrades(gradesManager.semesters);
-                gradesManager.renderStats();
-                gradesManager.renderSemesters();
             }
 
+            Storage.setSchedules(this.schedules);
             this.closeModal();
-            this.currentActiveTab = newSchedule.day; // Switch to the day just added
+            this.currentActiveTab = scheduleData.day;
             this.renderTabs();
             this.renderScheduleList();
             form.reset();
         });
     },
 
-    openAddModal: function () {
-        document.getElementById('modal-schedule').classList.add('active');
-        // Preset day to current active tab
-        document.getElementById('sch-day').value = this.currentActiveTab;
+    openAddModal: function (editId = null) {
+        const modal = document.getElementById('modal-schedule');
+        const form = document.getElementById('form-schedule');
+        const modalTitle = modal.querySelector('h3');
+
+        form.reset();
+
+        if (editId) {
+            // Edit mode
+            const schedule = this.schedules.find(s => s.id === editId);
+            if (!schedule) return;
+
+            modalTitle.removeAttribute('data-i18n'); // Remove earlier data-i18n if any
+            modalTitle.innerText = i18n.t('schedule_edit_modal_title') || 'Edit Jadwal Mata Kuliah';
+            document.getElementById('sch-id').value = schedule.id;
+            document.getElementById('sch-name').value = schedule.name;
+            document.getElementById('sch-code').value = schedule.code || '';
+            document.getElementById('sch-sks').value = schedule.sks || 3;
+            document.getElementById('sch-day').value = schedule.day;
+            document.getElementById('sch-start').value = schedule.start;
+            document.getElementById('sch-end').value = schedule.end;
+            document.getElementById('sch-room').value = schedule.room || '';
+            document.getElementById('sch-lecturer').value = schedule.lecturer || '';
+        } else {
+            // Add mode
+            modalTitle.innerText = i18n.t('schedule_add_modal_title') || 'Tambah Jadwal Mata Kuliah';
+            document.getElementById('sch-id').value = '';
+            // Preset day to current active tab
+            document.getElementById('sch-day').value = this.currentActiveTab;
+        }
+
+        modal.classList.add('active');
     },
 
     closeModal: function () {
@@ -241,6 +295,26 @@ const scheduleManager = {
             });
         }
 
+        // Render notes for this schedule
+        const notesContainer = document.getElementById('detail-course-notes');
+        notesContainer.innerHTML = '';
+        if (typeof notesManager !== 'undefined') {
+            const courseNotes = notesManager.notes.filter(n => n.scheduleId === courseId);
+            if (courseNotes.length === 0) {
+                notesContainer.innerHTML = `<div style="font-size:0.875rem; color:var(--text-muted); text-align:center; padding:1rem;">Belum ada catatan untuk matkul ini.</div>`;
+            } else {
+                courseNotes.forEach(note => {
+                    const preview = note.content.length > 80 ? note.content.substring(0, 80) + '...' : note.content;
+                    notesContainer.innerHTML += `
+                        <div style="background:var(--bg-main); padding:0.75rem; border-radius:var(--radius-sm); border:1px solid var(--border-color); cursor:pointer;" onclick="notesManager.editNote('${note.id}')">
+                            <div style="font-weight:600; font-size:0.9rem; margin-bottom:0.25rem;">${note.title}</div>
+                            <div style="font-size:0.75rem; color:var(--text-muted); line-height:1.4;">${preview}</div>
+                        </div>
+                    `;
+                });
+            }
+        }
+
         // Render grade status
         const gradeInfo = document.getElementById('detail-course-grade-info');
         let linkedCourse = null;
@@ -253,9 +327,17 @@ const scheduleManager = {
         }
 
         if (linkedCourse) {
+            // Build grade details, only show if values exist
+            const gradeDetails = [];
+            if (linkedCourse.uh !== undefined && linkedCourse.uh !== '') gradeDetails.push(`UH: ${linkedCourse.uh}`);
+            if (linkedCourse.uts !== undefined && linkedCourse.uts !== '') gradeDetails.push(`UTS: ${linkedCourse.uts}`);
+            if (linkedCourse.uas !== undefined && linkedCourse.uas !== '') gradeDetails.push(`UAS: ${linkedCourse.uas}`);
+
+            const gradeDetailsText = gradeDetails.length > 0 ? `<div style="font-size:0.75rem; color:var(--text-muted);">${gradeDetails.join(' | ')}</div>` : '';
+
             gradeInfo.innerHTML = `
-                <div style="font-weight:600; font-size:1.1rem; color:var(--primary); margin-bottom:0.25rem;">${linkedCourse.grade} (Skor: ${linkedCourse.finalScore})</div>
-                <div style="font-size:0.75rem; color:var(--text-muted);">UH: ${linkedCourse.uh} | UTS: ${linkedCourse.uts} | UAS: ${linkedCourse.uas}</div>
+                <div style="font-weight:600; font-size:1.1rem; color:var(--primary); margin-bottom:0.25rem;">${linkedCourse.grade || '-'} ${linkedCourse.finalScore ? '(Skor: ' + linkedCourse.finalScore + ')' : ''}</div>
+                ${gradeDetailsText}
             `;
         } else {
             gradeInfo.innerHTML = `<span style="font-size:0.85rem; color:var(--text-muted)">${i18n.t('schedule_detail_no_grades')}</span>`;
@@ -268,11 +350,23 @@ const scheduleManager = {
         document.getElementById('modal-course-detail').classList.remove('active');
         // Re-render schedule list to update task badges
         this.renderScheduleList();
+        // Refresh notes dashboard if visible
+        if (typeof notesManager !== 'undefined' && document.getElementById('view-notes').classList.contains('active')) {
+            notesManager.renderNotesDashboard();
+        }
         // Trigger Home update if necessary
         if (typeof homeManager !== 'undefined') {
             homeManager.renderTodaySchedule();
             homeManager.renderUpcomingTasks();
         }
+    },
+
+    editCurrentCourse: function () {
+        const id = document.getElementById('detail-course-id').value;
+        this.closeCourseDetailModal();
+        setTimeout(() => {
+            this.openAddModal(id);
+        }, 300);
     },
 
     deleteCurrentCourseDetail: function () {
@@ -286,6 +380,23 @@ const scheduleManager = {
         const schedule = this.schedules.find(s => s.id === schId);
 
         if (!schedule) return;
+
+        // Check attendance percentage
+        if (typeof Storage !== 'undefined' && typeof Storage.getAttendanceRecords === 'function') {
+            const attendanceRecords = Storage.getAttendanceRecords();
+            const courseAttendance = attendanceRecords.filter(rec => rec.scheduleId === schId);
+            const hadirCount = courseAttendance.filter(rec => rec.status === 'hadir').length;
+            const attendancePercentage = (hadirCount / 16) * 100;
+
+            if (attendancePercentage < 75) {
+                const shouldProceed = confirm(
+                    `⚠️ PERINGATAN\n\n` +
+                    `Presensi Anda untuk mata kuliah "${schedule.name}" saat ini ${Math.floor(attendancePercentage)}% (${hadirCount}/16 pertemuan).\n\n` +
+                    `Minimal 75% (12/16 pertemuan) diperlukan untuk input nilai. Apakah Anda yakin ingin melanjutkan?`
+                );
+                if (!shouldProceed) return;
+            }
+        }
 
         let linkedSemId = null;
         if (typeof gradesManager !== 'undefined') {
