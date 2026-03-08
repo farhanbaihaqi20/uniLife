@@ -9,26 +9,27 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('current-date').innerText = today;
 
     // 2. Theme Management
-    const themeBtn = document.querySelector('.theme-toggle');
     const settings = Storage.getSettings();
-    document.documentElement.setAttribute('data-theme', settings.theme);
-
-    updateThemeIconContainer(settings.theme);
-
-    themeBtn.addEventListener('click', () => {
-        const currentTheme = document.documentElement.getAttribute('data-theme');
-        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-
-        document.documentElement.setAttribute('data-theme', newTheme);
-        settings.theme = newTheme;
-        Storage.setSettings(settings);
-
-        updateThemeIconContainer(newTheme);
+    
+    // Helper function to apply theme based on setting
+    window.applyTheme = function(themeSetting) {
+        let effectiveTheme = themeSetting;
+        if (themeSetting === 'system') {
+            effectiveTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', effectiveTheme);
+    };
+    
+    // Apply initial theme
+    window.applyTheme(settings.theme);
+    
+    // Listen for system theme changes if using system theme
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        const currentSettings = Storage.getSettings();
+        if (currentSettings.theme === 'system') {
+            window.applyTheme('system');
+        }
     });
-
-    function updateThemeIconContainer(theme) {
-        themeBtn.innerHTML = theme === 'light' ? '<i class="ph ph-moon"></i>' : '<i class="ph ph-sun"></i>';
-    }
 
     // 3. Navigation
     const navItems = document.querySelectorAll('.nav-item');
@@ -103,6 +104,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof i18n !== 'undefined') i18n.init();
     if (typeof profileManager !== 'undefined') profileManager.init();
     if (typeof gradeGoals !== 'undefined') gradeGoals.init();
+    if (typeof notificationManager !== 'undefined') {
+        notificationManager.injectNotificationUI();
+        notificationManager.init();
+    }
     if (typeof notesManager !== 'undefined') {
         notesManager.init();
         notesManager.injectModal();
@@ -135,9 +140,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 tasksManager.tasks = Storage.getTasks();
                 tasksManager.renderTasks();
             }
+            // Check for upcoming task notifications
+            if (typeof notificationManager !== 'undefined') {
+                notificationManager.checkUpcomingTasks();
+            }
             if (typeof scheduleManager !== 'undefined' && document.getElementById('modal-course-detail')?.classList.contains('active')) {
                 const courseId = document.getElementById('course-detail-id')?.value;
                 if (courseId) scheduleManager.renderCourseTasks(courseId);
+            }
+        }
+
+        // Reminders changed
+        if (!key || key === 'unilife_reminders') {
+            if (typeof homeManager !== 'undefined') homeManager.renderReminders();
+            // Check for new reminders
+            if (typeof notificationManager !== 'undefined') {
+                notificationManager.checkNewReminders();
+            }
+        }
+
+        // Inbox (Quick Capture) changed
+        if (!key || key === 'unilife_inbox') {
+            if (typeof inboxManager !== 'undefined') inboxManager.renderInboxItems();
+            // Check for new inbox items
+            if (typeof notificationManager !== 'undefined') {
+                notificationManager.checkNewInbox();
             }
         }
 

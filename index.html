@@ -40,10 +40,8 @@
                 </div>
             </div>
             <div class="header-actions" style="display:flex; gap:0.5rem; align-items:center;">
-                <button class="icon-btn theme-toggle" title="Toggle Theme"
-                    style="width: 38px; height: 38px; border:none; background:var(--bg-main);">
-                    <i class="ph ph-moon"></i>
-                </button>
+                <!-- Notification button will be injected here by notification manager -->
+                <div id="notification-container" style="position: relative;"></div>
             </div>
         </header>
 
@@ -369,16 +367,15 @@
                     <hr style="border: none; border-top: 1px solid var(--border-color); margin: 0.5rem 0;">
 
                     <button class="btn btn-outline full-width" onclick="profileManager.resetApp()"
-                        style="border: none; justify-content: space-between; padding: 0.75rem 0.5rem; border-radius: 0;">
-                        <div
-                            style="display:flex; align-items:center; gap:0.5rem; color: var(--danger); font-weight:500;">
+                        style="border: none; justify-content: space-between; padding: 0.75rem 0.5rem; border-radius: 0; color: var(--danger);">
+                        <div style="display:flex; align-items:center; gap:0.5rem; font-weight:500;">
                             <div
-                                style="width:36px; height:36px; border-radius:50%; background:var(--danger-light); display:flex; align-items:center; justify-content:center;">
+                                style="width:36px; height:36px; border-radius:50%; background:rgba(239, 68, 68, 0.1); display:flex; align-items:center; justify-content:center;">
                                 <i class="ph ph-warning-circle"></i>
                             </div>
-                            <span data-i18n="profile_reset">Reset Aplikasi (Hapus Data)</span>
+                            <span data-i18n="profile_reset_data">Reset Data Aplikasi</span>
                         </div>
-                        <i class="ph ph-caret-right" style="color: var(--danger); opacity:0.5;"></i>
+                        <i class="ph ph-caret-right" style="color: var(--danger); opacity: 0.5;"></i>
                     </button>
                 </div>
             </section>
@@ -606,6 +603,35 @@
                     </label>
                 </div>
 
+                <h4 data-i18n="settings_theme_title"
+                    style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem; margin-top: 2rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                    Tema Tampilan</h4>
+
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <label
+                        style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 0.5rem 0;">
+                        <span style="font-weight: 500; display:flex; align-items:center; gap:0.5rem;"><i
+                                class="ph ph-sun"></i> <span data-i18n="settings_theme_light">Terang</span></span>
+                        <input type="radio" name="theme_setting" value="light"
+                            style="width:18px; height:18px; accent-color:var(--primary);">
+                    </label>
+                    <label
+                        style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 0.5rem 0; border-top: 1px solid var(--border-color);">
+                        <span style="font-weight: 500; display:flex; align-items:center; gap:0.5rem;"><i
+                                class="ph ph-moon"></i> <span data-i18n="settings_theme_dark">Gelap</span></span>
+                        <input type="radio" name="theme_setting" value="dark"
+                            style="width:18px; height:18px; accent-color:var(--primary);">
+                    </label>
+                    <label
+                        style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 0.5rem 0; border-top: 1px solid var(--border-color);">
+                        <span style="font-weight: 500; display:flex; align-items:center; gap:0.5rem;"><i
+                                class="ph ph-monitor"></i> <span data-i18n="settings_theme_system">Sesuai
+                                Sistem</span></span>
+                        <input type="radio" name="theme_setting" value="system" checked
+                            style="width:18px; height:18px; accent-color:var(--primary);">
+                    </label>
+                </div>
+
                 <button class="btn btn-primary full-width mt-4" onclick="profileManager.saveSettings()"
                     data-i18n="settings_save">Simpan
                     Pengaturan</button>
@@ -641,7 +667,7 @@
             <p class="welcome-subtitle" data-i18n="welcome_subtitle">
                 Platform lengkap untuk mengelola kehidupan akademik Anda dengan lebih terorganisir dan produktif.
             </p>
-            
+
             <div class="welcome-features">
                 <div class="welcome-feature">
                     <div class="welcome-feature-icon" style="background: var(--primary-light); color: var(--primary);">
@@ -649,7 +675,8 @@
                     </div>
                     <div class="welcome-feature-text">
                         <div class="welcome-feature-title" data-i18n="welcome_feature1_title">Jadwal Kuliah</div>
-                        <div class="welcome-feature-desc" data-i18n="welcome_feature1_desc">Atur jadwal kuliah mingguan Anda</div>
+                        <div class="welcome-feature-desc" data-i18n="welcome_feature1_desc">Atur jadwal kuliah mingguan
+                            Anda</div>
                     </div>
                 </div>
                 <div class="welcome-feature">
@@ -658,26 +685,31 @@
                     </div>
                     <div class="welcome-feature-text">
                         <div class="welcome-feature-title" data-i18n="welcome_feature2_title">Manajemen Tugas</div>
-                        <div class="welcome-feature-desc" data-i18n="welcome_feature2_desc">Track dan selesaikan tugas tepat waktu</div>
+                        <div class="welcome-feature-desc" data-i18n="welcome_feature2_desc">Track dan selesaikan tugas
+                            tepat waktu</div>
                     </div>
                 </div>
                 <div class="welcome-feature">
-                    <div class="welcome-feature-icon" style="background: rgba(245, 158, 11, 0.1); color: var(--warning);">
+                    <div class="welcome-feature-icon"
+                        style="background: rgba(245, 158, 11, 0.1); color: var(--warning);">
                         <i class="ph ph-chart-bar"></i>
                     </div>
                     <div class="welcome-feature-text">
                         <div class="welcome-feature-title" data-i18n="welcome_feature3_title">Tracking Nilai</div>
-                        <div class="welcome-feature-desc" data-i18n="welcome_feature3_desc">Monitor progress akademik Anda</div>
+                        <div class="welcome-feature-desc" data-i18n="welcome_feature3_desc">Monitor progress akademik
+                            Anda</div>
                     </div>
                 </div>
             </div>
-            
-            <button class="btn btn-primary full-width" onclick="profileManager.startProfileSetup()" style="padding: 1rem; font-size: 1rem;">
+
+            <button class="btn btn-primary full-width" onclick="profileManager.startProfileSetup()"
+                style="padding: 1rem; font-size: 1rem;">
                 <span data-i18n="welcome_get_started">Mulai Sekarang</span>
                 <i class="ph ph-arrow-right"></i>
             </button>
-            
-            <button class="btn btn-outline full-width" onclick="profileManager.skipWelcome()" style="padding: 0.75rem; margin-top: 0.75rem; border: none; color: var(--text-muted);">
+
+            <button class="btn btn-outline full-width" onclick="profileManager.skipWelcome()"
+                style="padding: 0.75rem; margin-top: 0.75rem; border: none; color: var(--text-muted);">
                 <span data-i18n="welcome_skip">Lewati</span>
             </button>
         </div>
@@ -691,6 +723,7 @@
     <script src="js/radar.js"></script>
     <script src="js/gradeGoals.js"></script>
     <script src="js/calendarExport.js"></script>
+    <script src="js/notification.js"></script>
     <script src="js/profile.js"></script>
     <script src="js/home.js"></script>
     <script src="js/focus.js"></script>

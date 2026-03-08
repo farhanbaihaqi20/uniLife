@@ -126,12 +126,18 @@ const profileManager = {
     },
 
     openSettingsModal: function () {
-        // Load language preference if any
-        const settings = Storage.getSettings ? Storage.getSettings() : { language: 'id' };
-        const radios = document.getElementsByName('lang_setting');
-        radios.forEach(r => {
+        // Load language and theme preferences
+        const settings = Storage.getSettings ? Storage.getSettings() : { language: 'id', theme: 'system' };
+        const langRadios = document.getElementsByName('lang_setting');
+        langRadios.forEach(r => {
             if (r.value === (settings.language || 'id')) r.checked = true;
         });
+        
+        const themeRadios = document.getElementsByName('theme_setting');
+        themeRadios.forEach(r => {
+            if (r.value === (settings.theme || 'system')) r.checked = true;
+        });
+        
         document.getElementById('modal-settings').classList.add('active');
     },
 
@@ -141,18 +147,35 @@ const profileManager = {
 
     saveSettings: function () {
         let selectedLang = 'id';
-        const radios = document.getElementsByName('lang_setting');
-        radios.forEach(r => { if (r.checked) selectedLang = r.value; });
+        const langRadios = document.getElementsByName('lang_setting');
+        langRadios.forEach(r => { if (r.checked) selectedLang = r.value; });
+
+        let selectedTheme = 'system';
+        const themeRadios = document.getElementsByName('theme_setting');
+        themeRadios.forEach(r => { if (r.checked) selectedTheme = r.value; });
 
         let settings = Storage.getSettings ? Storage.getSettings() : {};
         const oldLang = settings.language || 'id';
+        const oldTheme = settings.theme || 'system';
 
         settings.language = selectedLang;
+        settings.theme = selectedTheme;
         if (Storage.setSettings) Storage.setSettings(settings);
 
         this.closeSettingsModal();
 
+        let needsReload = false;
         if (oldLang !== selectedLang) {
+            needsReload = true;
+        }
+        if (oldTheme !== selectedTheme) {
+            // Apply theme immediately without reload
+            if (typeof window.applyTheme !== 'undefined') {
+                window.applyTheme(selectedTheme);
+            }
+        }
+
+        if (needsReload) {
             // Trigger loader and reload
             const loader = document.getElementById('semester-loader');
             const loaderText = document.getElementById('semester-loader-text');

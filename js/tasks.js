@@ -71,6 +71,8 @@ const tasksManager = {
                 dueText = i18n.t('common_day_today');
             }
 
+            let timeText = task.dueTime ? ` • ${task.dueTime}` : '';
+
             card.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                     <div style="display:flex; gap: 1rem; align-items:flex-start; flex:1">
@@ -82,13 +84,18 @@ const tasksManager = {
                             <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">${task.courseName || i18n.t('tasks_general_course')}</p>
                             ${task.notes ? `<p style="font-size: 0.875rem; margin-bottom: 0.5rem;">${task.notes}</p>` : ''}
                             <div style="font-size: 0.75rem; ${dueClass}">
-                                <i class="ph ph-calendar"></i> ${dueText}
+                                <i class="ph ph-calendar"></i> ${dueText}${timeText}
                             </div>
                         </div>
                     </div>
-                    <button class="icon-btn" onclick="tasksManager.deleteTask('${task.id}')" style="width:28px;height:28px;border:none;box-shadow:none;background:transparent;color:var(--danger)">
-                        <i class="ph ph-trash"></i>
-                    </button>
+                    <div style="display:flex; gap:0.5rem;">
+                        <button class="icon-btn" onclick="tasksManager.editTask('${task.id}')" style="width:28px;height:28px;border:none;box-shadow:none;background:transparent;color:var(--primary)">
+                            <i class="ph ph-pencil-simple"></i>
+                        </button>
+                        <button class="icon-btn" onclick="tasksManager.deleteTask('${task.id}')" style="width:28px;height:28px;border:none;box-shadow:none;background:transparent;color:var(--danger)">
+                            <i class="ph ph-trash"></i>
+                        </button>
+                    </div>
                 </div>
             `;
             container.appendChild(card);
@@ -116,6 +123,7 @@ const tasksManager = {
     saveTask: function (e) {
         e.preventDefault();
 
+        const idToEdit = document.getElementById('task-id-input').value;
         let courseId = document.getElementById('task-course-id').value;
         let courseName = document.getElementById('task-course').value;
 
@@ -126,18 +134,33 @@ const tasksManager = {
             if (sch) courseName = sch.name;
         }
 
-        const newTask = {
-            id: uuidv4(),
-            semester: typeof profileManager !== 'undefined' ? (profileManager.profile.semester || 1) : 1,
-            title: document.getElementById('task-title').value,
-            courseId: courseId || null,
-            courseName: courseName,
-            dueDate: document.getElementById('task-date').value,
-            notes: document.getElementById('task-notes').value,
-            completed: false
-        };
+        if (idToEdit) {
+            // Edit existing
+            const index = this.tasks.findIndex(t => t.id === idToEdit);
+            if (index > -1) {
+                this.tasks[index].title = document.getElementById('task-title').value;
+                this.tasks[index].courseId = courseId || null;
+                this.tasks[index].courseName = courseName;
+                this.tasks[index].dueDate = document.getElementById('task-date').value;
+                this.tasks[index].dueTime = document.getElementById('task-time').value;
+                this.tasks[index].notes = document.getElementById('task-notes').value;
+            }
+        } else {
+            // Add new
+            const newTask = {
+                id: uuidv4(),
+                semester: typeof profileManager !== 'undefined' ? (profileManager.profile.semester || 1) : 1,
+                title: document.getElementById('task-title').value,
+                courseId: courseId || null,
+                courseName: courseName,
+                dueDate: document.getElementById('task-date').value,
+                dueTime: document.getElementById('task-time').value,
+                notes: document.getElementById('task-notes').value,
+                completed: false
+            };
+            this.tasks.push(newTask);
+        }
 
-        this.tasks.push(newTask);
         Storage.setTasks(this.tasks);
 
         // Always show pending tab after adding
@@ -159,8 +182,11 @@ const tasksManager = {
     },
 
     openAddModal: function (courseId = null) {
+        document.getElementById('modal-task-title').innerText = i18n.t('tasks_add_modal_title') || 'Tambah Tugas Baru';
+        document.getElementById('task-id-input').value = '';
         document.getElementById('modal-task').classList.add('active');
         document.getElementById('task-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('task-time').value = '23:59';
 
         const courseIdInput = document.getElementById('task-course-id');
         const courseNameInput = document.getElementById('task-course');
@@ -182,9 +208,35 @@ const tasksManager = {
         }
     },
 
+    editTask: function (id) {
+        const task = this.tasks.find(t => t.id === id);
+        if (!task) return;
+
+        document.getElementById('modal-task-title').innerText = 'Edit Tugas';
+        document.getElementById('task-id-input').value = task.id;
+        document.getElementById('task-title').value = task.title;
+        document.getElementById('task-course-id').value = task.courseId || '';
+        document.getElementById('task-course').value = task.courseName || '';
+        document.getElementById('task-date').value = task.dueDate || new Date().toISOString().split('T')[0];
+        document.getElementById('task-time').value = task.dueTime || '23:59';
+        document.getElementById('task-notes').value = task.notes || '';
+
+        const courseNameInput = document.getElementById('task-course');
+        if (task.courseId) {
+            courseNameInput.readOnly = true;
+            courseNameInput.style.opacity = '0.7';
+        } else {
+            courseNameInput.readOnly = false;
+            courseNameInput.style.opacity = '1';
+        }
+
+        document.getElementById('modal-task').classList.add('active');
+    },
+
     closeModal: function () {
         document.getElementById('modal-task').classList.remove('active');
         document.getElementById('form-task').reset();
+        document.getElementById('task-id-input').value = '';
     },
 
     injectTaskModal: function () {
@@ -192,8 +244,9 @@ const tasksManager = {
             <div class="modal-overlay" id="modal-task">
                 <div class="modal-content">
                     <button class="modal-close" onclick="tasksManager.closeModal()"><i class="ph ph-x"></i></button>
-                    <h3>${i18n.t('tasks_add_modal_title')}</h3>
+                    <h3 id="modal-task-title">${i18n.t('tasks_add_modal_title')}</h3>
                     <form id="form-task" onsubmit="tasksManager.saveTask(event)">
+                        <input type="hidden" id="task-id-input">
                         <input type="hidden" id="task-course-id">
                         <div class="form-group mt-4">
                             <label>${i18n.t('tasks_what_label')}</label>
@@ -203,9 +256,15 @@ const tasksManager = {
                             <label>${i18n.t('tasks_course_optional')}</label>
                             <input type="text" id="task-course" placeholder="${i18n.t('tasks_course_placeholder')}">
                         </div>
-                        <div class="form-group">
-                            <label>${i18n.t('tasks_due_date')}</label>
-                            <input type="date" id="task-date" required>
+                        <div class="form-group row">
+                            <div class="col">
+                                <label>${i18n.t('tasks_due_date')}</label>
+                                <input type="date" id="task-date" required>
+                            </div>
+                            <div class="col">
+                                <label>Jam (Opsional)</label>
+                                <input type="time" id="task-time" value="23:59">
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>${i18n.t('tasks_notes_optional')}</label>

@@ -30,7 +30,7 @@ const Storage = {
     getTasks: () => Storage.get('unilife_tasks', []),
     setTasks: (data) => Storage.set('unilife_tasks', data),
 
-    getSettings: () => Storage.get('unilife_settings', { theme: 'light', reminders: true }),
+    getSettings: () => Storage.get('unilife_settings', { theme: 'system', language: 'id', reminders: true }),
     setSettings: (data) => Storage.set('unilife_settings', data),
 
     // New Models
@@ -64,5 +64,9 @@ const Storage = {
 
     // Notes (catatan materi)
     getNotes: () => Storage.get('unilife_notes', []), // Array of { id, title, content, category, createdAt, updatedAt }
-    setNotes: (data) => Storage.set('unilife_notes', data)
+    setNotes: (data) => Storage.set('unilife_notes', data),
+
+    // Notifications (system notifications)
+    getNotifications: () => Storage.get('unilife_notifications', []), // Array of { id, type, title, message, timestamp, isRead, sourceId, action }
+    setNotifications: (data) => Storage.set('unilife_notifications', data)
 };

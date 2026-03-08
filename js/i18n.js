@@ -63,6 +63,10 @@ const i18n = {
             // Settings Modal
             'settings_title': 'Pengaturan Aplikasi',
             'settings_lang_title': 'Bahasa / Language',
+            'settings_theme_title': 'Tema Tampilan',
+            'settings_theme_light': 'Terang',
+            'settings_theme_dark': 'Gelap',
+            'settings_theme_system': 'Sesuai Sistem',
             'settings_save': 'Simpan Pengaturan',
             'settings_changing_language': 'Mengubah Bahasa...',
 
@@ -208,7 +212,20 @@ const i18n = {
 
             // Calendar Export
             'calendar_export': 'Ekspor ke Kalender',
-            'calendar_exported': 'Kalender diekspor!'
+            'calendar_exported': 'Kalender diekspor!',
+
+            // Notification System
+            'notification_title': 'Notifikasi',
+            'notification_reminder': 'Pengingat',
+            'notification_task_deadline': 'Tugas Mendekati Deadline',
+            'notification_inbox_new': 'Tangkap Cepat Baru',
+            'notification_no_notifications': 'Tidak ada notifikasi',
+            'notification_mark_all_read': 'Tandai semua sebagai dibaca',
+            'notification_delete_all': 'Hapus semua',
+            'notification_just_now': 'Baru saja',
+            'notification_minutes_ago': '{count} menit yang lalu',
+            'notification_hours_ago': '{count} jam yang lalu',
+            'notification_days_ago': '{count} hari yang lalu'
         },
         'en': {
             // Navbar
@@ -270,6 +287,10 @@ const i18n = {
             // Settings Modal
             'settings_title': 'App Settings',
             'settings_lang_title': 'Language',
+            'settings_theme_title': 'Display Theme',
+            'settings_theme_light': 'Light',
+            'settings_theme_dark': 'Dark',
+            'settings_theme_system': 'System',
             'settings_save': 'Save Settings',
             'settings_changing_language': 'Changing Language...',
 
@@ -415,7 +436,20 @@ const i18n = {
 
             // Calendar Export
             'calendar_export': 'Export to Calendar',
-            'calendar_exported': 'Calendar exported!'
+            'calendar_exported': 'Calendar exported!',
+
+            // Notification System
+            'notification_title': 'Notifications',
+            'notification_reminder': 'Reminder',
+            'notification_task_deadline': 'Task Approaching Deadline',
+            'notification_inbox_new': 'New Quick Capture',
+            'notification_no_notifications': 'No notifications',
+            'notification_mark_all_read': 'Mark all as read',
+            'notification_delete_all': 'Delete all',
+            'notification_just_now': 'Just now',
+            'notification_minutes_ago': '{count} minutes ago',
+            'notification_hours_ago': '{count} hours ago',
+            'notification_days_ago': '{count} days ago'
         }
     },
 
