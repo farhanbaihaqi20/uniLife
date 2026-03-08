@@ -5,6 +5,48 @@ const profileManager = {
         this.profile = Storage.getProfile();
         this.renderProfileSummary();
         this.setupTrigger();
+        this.checkFirstTimeUser();
+    },
+
+    checkFirstTimeUser: function () {
+        // Check if this is the first time user (no custom profile set)
+        const isFirstTime = Storage.get('unilife_first_time', true);
+        if (isFirstTime) {
+            // Show welcome modal after a short delay
+            setTimeout(() => {
+                const welcomeModal = document.getElementById('welcome-modal');
+                if (welcomeModal) {
+                    welcomeModal.classList.add('active');
+                }
+            }, 500);
+        }
+    },
+
+    startProfileSetup: function () {
+        // Hide welcome modal
+        const welcomeModal = document.getElementById('welcome-modal');
+        if (welcomeModal) {
+            welcomeModal.classList.remove('active');
+        }
+        
+        // Mark as not first time anymore
+        Storage.set('unilife_first_time', false);
+        
+        // Open profile edit modal
+        setTimeout(() => {
+            this.openModal();
+        }, 300);
+    },
+
+    skipWelcome: function () {
+        // Hide welcome modal
+        const welcomeModal = document.getElementById('welcome-modal');
+        if (welcomeModal) {
+            welcomeModal.classList.remove('active');
+        }
+        
+        // Mark as not first time anymore
+        Storage.set('unilife_first_time', false);
     },
 
     renderProfileSummary: function () {
@@ -17,9 +59,11 @@ const profileManager = {
             if (photoUrl) {
                 t.innerHTML = '';
                 t.style.backgroundImage = `url(${photoUrl})`;
+                t.classList.remove('profile-avatar-initial');
             } else {
                 t.innerHTML = initial;
                 t.style.backgroundImage = 'none';
+                t.classList.add('profile-avatar-initial');
             }
         });
 
@@ -29,9 +73,11 @@ const profileManager = {
             if (photoUrl) {
                 dashPhoto.innerHTML = '';
                 dashPhoto.style.backgroundImage = `url(${photoUrl})`;
+                dashPhoto.classList.remove('profile-avatar-initial');
             } else {
                 dashPhoto.innerHTML = initial;
                 dashPhoto.style.backgroundImage = 'none';
+                dashPhoto.classList.add('profile-avatar-initial');
             }
         }
 
@@ -135,12 +181,18 @@ const profileManager = {
         document.getElementById('prof-major').value = this.profile.major || '';
 
         const preview = document.getElementById('prof-photo-preview');
+        const removeBtn = document.getElementById('prof-photo-remove');
+
         if (this.profile.photoBase64) {
             preview.innerHTML = '';
             preview.style.backgroundImage = `url(${this.profile.photoBase64})`;
+            preview.classList.remove('profile-avatar-initial');
+            if (removeBtn) removeBtn.style.display = 'block';
         } else {
             preview.innerHTML = '<i class="ph ph-user"></i>';
             preview.style.backgroundImage = 'none';
+            preview.classList.add('profile-avatar-initial');
+            if (removeBtn) removeBtn.style.display = 'none';
         }
 
         document.getElementById('modal-profile').classList.add('active');
@@ -163,8 +215,28 @@ const profileManager = {
             const preview = document.getElementById('prof-photo-preview');
             preview.innerHTML = '';
             preview.style.backgroundImage = `url(${base64String})`;
+            preview.classList.remove('profile-avatar-initial');
+
+            const removeBtn = document.getElementById('prof-photo-remove');
+            if (removeBtn) removeBtn.style.display = 'block';
         };
         reader.readAsDataURL(file);
+    },
+
+    removePhoto: function () {
+        this.profile.photoBase64 = null;
+
+        const preview = document.getElementById('prof-photo-preview');
+        preview.innerHTML = '<i class="ph ph-user"></i>';
+        preview.style.backgroundImage = 'none';
+        preview.classList.add('profile-avatar-initial');
+
+        const removeBtn = document.getElementById('prof-photo-remove');
+        if (removeBtn) removeBtn.style.display = 'none';
+
+        // Clear input to allow re-uploading the same file
+        const input = document.getElementById('prof-photo-input');
+        if (input) input.value = '';
     },
 
     saveProfile: function (e) {

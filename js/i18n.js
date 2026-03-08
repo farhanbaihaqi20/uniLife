@@ -48,6 +48,18 @@ const i18n = {
             'profile_reset_confirm_1': '⚠️ PERINGATAN ⚠️\nApakah kamu yakin ingin mereset aplikasi? Semua jadwal, nilai, tugas, dan data profil akan DIHAPUS PERMANEN dan tidak dapat dikembalikan!',
             'profile_reset_confirm_2': 'Sekali lagi, apakah kamu SERIUS mau menghapus semuanya?',
 
+            // Welcome Screen
+            'welcome_title': 'Selamat Datang di UniLife!',
+            'welcome_subtitle': 'Platform lengkap untuk mengelola kehidupan akademik Anda dengan lebih terorganisir dan produktif.',
+            'welcome_feature1_title': 'Jadwal Kuliah',
+            'welcome_feature1_desc': 'Atur jadwal kuliah mingguan Anda',
+            'welcome_feature2_title': 'Manajemen Tugas',
+            'welcome_feature2_desc': 'Track dan selesaikan tugas tepat waktu',
+            'welcome_feature3_title': 'Tracking Nilai',
+            'welcome_feature3_desc': 'Monitor progress akademik Anda',
+            'welcome_get_started': 'Mulai Sekarang',
+            'welcome_skip': 'Lewati',
+
             // Settings Modal
             'settings_title': 'Pengaturan Aplikasi',
             'settings_lang_title': 'Bahasa / Language',
@@ -242,6 +254,18 @@ const i18n = {
             'profile_english_dummy_note': '*English support is now fully enabled.',
             'profile_reset_confirm_1': '⚠️ WARNING ⚠️\nAre you sure you want to reset the app? All schedules, grades, tasks, and profile data will be PERMANENTLY DELETED and cannot be restored!',
             'profile_reset_confirm_2': 'One more time, are you REALLY sure you want to delete everything?',
+
+            // Welcome Screen
+            'welcome_title': 'Welcome to UniLife!',
+            'welcome_subtitle': 'A complete platform to manage your academic life more organized and productive.',
+            'welcome_feature1_title': 'Class Schedule',
+            'welcome_feature1_desc': 'Organize your weekly class schedule',
+            'welcome_feature2_title': 'Task Management',
+            'welcome_feature2_desc': 'Track and complete tasks on time',
+            'welcome_feature3_title': 'Grade Tracking',
+            'welcome_feature3_desc': 'Monitor your academic progress',
+            'welcome_get_started': 'Get Started',
+            'welcome_skip': 'Skip',
 
             // Settings Modal
             'settings_title': 'App Settings',

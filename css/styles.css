@@ -31,6 +31,10 @@
     --header-divider-glow: rgba(59, 130, 246, 0.14);
     --header-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
     
+    /* Avatar Colors */
+    --avatar-text: #1E293B;
+    --avatar-bg: linear-gradient(135deg, #E0E7FF 0%, #DBEAFE 100%);
+    
     --nav-height: 65px;
 }
 
@@ -46,6 +50,10 @@
     --header-divider-core: rgba(147, 197, 253, 0.7);
     --header-divider-glow: rgba(96, 165, 250, 0.2);
     --header-shadow: 0 10px 28px rgba(2, 6, 23, 0.45);
+    
+    /* Avatar Colors for Dark Theme */
+    --avatar-text: #F8FAFC;
+    --avatar-bg: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
 }
 
 * {
@@ -684,6 +692,151 @@ body {
 .fab-menu.active .fab-menu-item {
     transform: translateY(0) scale(1);
     opacity: 1;
+}
+
+/* Profile Avatar Styles */
+.profile-avatar {
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    cursor: pointer;
+    overflow: hidden;
+    background-size: cover;
+    background-position: center;
+}
+
+.profile-avatar-initial {
+    background: var(--avatar-bg);
+    color: var(--avatar-text);
+}
+
+#profile-trigger {
+    width: 42px;
+    height: 42px;
+    font-size: 1.1rem;
+    box-shadow: var(--shadow-sm);
+    border: 2px solid white;
+}
+
+[data-theme="dark"] #profile-trigger {
+    border-color: var(--bg-card);
+}
+
+#prof-dash-photo {
+    width: 100px;
+    height: 100px;
+    font-size: 2.5rem;
+    box-shadow: var(--shadow-md);
+    border: 4px solid var(--bg-card);
+    margin-bottom: 1rem;
+}
+
+/* Welcome Modal Styles */
+.welcome-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bg-main);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.welcome-modal.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.welcome-content {
+    max-width: 500px;
+    width: 100%;
+    text-align: center;
+}
+
+.welcome-icon {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 2rem;
+    background: var(--primary-gradient);
+    border-radius: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 4rem;
+    color: white;
+    box-shadow: var(--shadow-lg);
+    animation: welcomeBounce 0.6s ease;
+}
+
+@keyframes welcomeBounce {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.welcome-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 0.5rem;
+}
+
+.welcome-subtitle {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    margin-bottom: 2rem;
+    line-height: 1.6;
+}
+
+.welcome-features {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.welcome-feature {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem;
+    text-align: left;
+}
+
+.welcome-feature-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.welcome-feature-text {
+    flex: 1;
+}
+
+.welcome-feature-title {
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 0.25rem;
+}
+
+.welcome-feature-desc {
+    font-size: 0.875rem;
+    color: var(--text-muted);
 }
 
 .fab-menu.active .fab-menu-item:nth-child(1) {
