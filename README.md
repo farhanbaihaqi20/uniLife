@@ -66,26 +66,13 @@ Karena aplikasi ini sepenuhnya menggunakan client-side technology, menjalankanny
 ### Cara Menginstal PWA:
 Buka aplikasi di browser (seperti Chrome di Android atau Safari di iOS), lalu pilih opsi **"Add to Home Screen"** atau **"Install App"**. UniLife Tracker akan muncul di daftar aplikasimu dan bisa digunakan saat *offline*!
 
----
 
-## 📸 Tampilan Aplikasi (Screenshots)
-
-*(Note: Silakan replace URL gambar di bawah ini dengan screenshot asli aplikasimu)*
-
-<p align="center">
-  <img src="https://via.placeholder.com/250x500.png?text=Dashboard" alt="Dashboard" width="23%">
-  <img src="https://via.placeholder.com/250x500.png?text=Jadwal" alt="Jadwal" width="23%">
-  <img src="https://via.placeholder.com/250x500.png?text=Nilai+%26+IPK" alt="Nilai dan IPK" width="23%">
-  <img src="https://via.placeholder.com/250x500.png?text=Sesi+Fokus" alt="Sesi Fokus" width="23%">
-</p>
-
----
 
 ## 👨‍💻 Pembuat (Author)
 
 **Farhan Baihaqi** 
 
-* **GitHub:** [@farhanbaihaqi20](https://github.com/farhanbaihaqi20) *(Ganti dengan username aslimu)*
+* **GitHub:** [@farhanbaihaqi20](https://github.com/farhanbaihaqi20)
 * Jika aplikasi ini bermanfaat untuk menunjang kehidupan kampusmu, jangan lupa berikan ⭐ star pada repository ini!
 
 ---
