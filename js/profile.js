@@ -396,15 +396,12 @@ const profileManager = {
     openSettingsModal: function () {
         // Load language and theme preferences
         const settings = Storage.getSettings ? Storage.getSettings() : { language: 'id', theme: 'system' };
-        const langRadios = document.getElementsByName('lang_setting');
-        langRadios.forEach(r => {
-            if (r.value === (settings.language || 'id')) r.checked = true;
-        });
 
-        const themeRadios = document.getElementsByName('theme_setting');
-        themeRadios.forEach(r => {
-            if (r.value === (settings.theme || 'system')) r.checked = true;
-        });
+        const langSelect = document.getElementById('setting-lang-select');
+        if (langSelect) langSelect.value = settings.language || 'id';
+
+        const themeSelect = document.getElementById('setting-theme-select');
+        if (themeSelect) themeSelect.value = settings.theme || 'system';
 
         document.getElementById('modal-settings').classList.add('active');
     },
@@ -414,13 +411,11 @@ const profileManager = {
     },
 
     saveSettings: function () {
-        let selectedLang = 'id';
-        const langRadios = document.getElementsByName('lang_setting');
-        langRadios.forEach(r => { if (r.checked) selectedLang = r.value; });
+        const langSelect = document.getElementById('setting-lang-select');
+        const selectedLang = langSelect ? langSelect.value : 'id';
 
-        let selectedTheme = 'system';
-        const themeRadios = document.getElementsByName('theme_setting');
-        themeRadios.forEach(r => { if (r.checked) selectedTheme = r.value; });
+        const themeSelect = document.getElementById('setting-theme-select');
+        const selectedTheme = themeSelect ? themeSelect.value : 'system';
 
         let settings = Storage.getSettings ? Storage.getSettings() : {};
         const oldLang = settings.language || 'id';
@@ -539,7 +534,7 @@ const profileManager = {
         if (rawSemester > 14) rawSemester = 14;
         const newSemester = rawSemester.toString();
         document.getElementById('prof-sem').value = newSemester;
-        
+
         // Only consider it a "change" if old wasn't empty and it's actually different
         const isSemesterChanged = (oldSemester !== newSemester && oldSemester !== '');
 

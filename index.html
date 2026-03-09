@@ -306,9 +306,9 @@
             <!-- NOTES DASHBOARD VIEW -->
             <section id="view-notes" class="view-section">
                 <div class="section-header">
-                    <h2>Catatan Kuliah</h2>
+                    <h2 data-i18n="notes_title">Catatan Kuliah</h2>
                     <button class="btn btn-primary" onclick="notesManager.openAddModal()">
-                        <i class="ph ph-plus"></i> Tambah
+                        <i class="ph ph-plus"></i> <span data-i18n="common_add">Tambah</span>
                     </button>
                 </div>
 
@@ -320,13 +320,14 @@
                             <i class="ph ph-magnifying-glass"
                                 style="position: absolute; left: 0.875rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 1.1rem;"></i>
                             <input type="text" id="notes-search-input" placeholder="Cari catatan..."
+                                data-i18n-placeholder="notes_search_placeholder"
                                 style="width: 100%; padding: 0.625rem 0.875rem 0.625rem 2.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-main); color: var(--text-main); font-size: 0.9rem;"
                                 oninput="notesManager.handleSearch(this.value)">
                         </div>
                         <select id="notes-sort-select" onchange="notesManager.handleSortChange(this.value)"
                             style="padding: 0.625rem 0.875rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-main); color: var(--text-main); font-size: 0.9rem; cursor: pointer;">
-                            <option value="newest">Terbaru</option>
-                            <option value="oldest">Terlama</option>
+                            <option value="newest" data-i18n="notes_sort_newest">Terbaru</option>
+                            <option value="oldest" data-i18n="notes_sort_oldest">Terlama</option>
                             <option value="a-z">A - Z</option>
                             <option value="z-a">Z - A</option>
                         </select>
@@ -347,14 +348,15 @@
             <!-- ATTENDANCE VIEW -->
             <section id="view-attendance" class="view-section">
                 <div class="section-header">
-                    <h2>Rekap Presensi</h2>
+                    <h2 data-i18n="attendance_title">Rekap Presensi</h2>
                 </div>
 
                 <div class="card"
                     style="padding: 1rem; margin-bottom: 1rem; background: linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(59, 130, 246, 0.12));">
-                    <h3 style="font-size: 1rem; margin-bottom: 0.35rem;"><i class="ph ph-info"></i> Aturan Kehadiran
+                    <h3 style="font-size: 1rem; margin-bottom: 0.35rem;"><i class="ph ph-info"></i> <span
+                            data-i18n="attendance_rules_title">Aturan Kehadiran</span>
                     </h3>
-                    <p style="font-size: 0.85rem; color: var(--text-muted);">
+                    <p style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="attendance_rules_desc">
                         Total pertemuan standar: <b>16 kali</b>. Minimal kehadiran: <b>75%</b> (setara minimal <b>12
                             pertemuan</b>).
                     </p>
@@ -366,7 +368,8 @@
 
                 <div class="card" style="padding: 1rem; margin-bottom: 1rem;">
                     <h3 style="font-size: 1rem; margin-bottom: 0.65rem;"><i class="ph ph-warning-circle"
-                            style="color: var(--danger);"></i> Belum Memenuhi 75%</h3>
+                            style="color: var(--danger);"></i> <span data-i18n="attendance_under_target">Belum Memenuhi
+                            75%</span></h3>
                     <div id="attendance-under-target-list">
                         <!-- Populated by JS -->
                     </div>
@@ -375,11 +378,13 @@
                 <div class="attendance-filters"
                     style="display:flex; gap:0.5rem; margin-bottom: 1rem; background: var(--bg-card); padding: 0.25rem; border:1px solid var(--border-color); border-radius: var(--radius-sm);">
                     <button class="attendance-filter-btn active" data-filter="all"
-                        onclick="presensiManager.setRecapFilter('all')">Semua</button>
+                        onclick="presensiManager.setRecapFilter('all')" data-i18n="attendance_filter_all">Semua</button>
                     <button class="attendance-filter-btn" data-filter="under"
-                        onclick="presensiManager.setRecapFilter('under')">Belum 75%</button>
+                        onclick="presensiManager.setRecapFilter('under')" data-i18n="attendance_filter_under">Belum
+                        75%</button>
                     <button class="attendance-filter-btn" data-filter="met"
-                        onclick="presensiManager.setRecapFilter('met')">Sudah 75%</button>
+                        onclick="presensiManager.setRecapFilter('met')" data-i18n="attendance_filter_met">Sudah
+                        75%</button>
                 </div>
 
                 <div id="attendance-recap-list" style="margin-bottom: 2rem;">
@@ -540,7 +545,7 @@
                     <h3
                         style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
                         <i class="ph ph-warning-circle" style="color: var(--danger);"></i>
-                        <span>Tugas Mendesak (3 Hari ke Depan)</span>
+                        <span data-i18n="profile_urgent_tasks">Tugas Mendesak (3 Hari ke Depan)</span>
                     </h3>
                     <div id="profile-urgent-tasks" style="display: flex; flex-direction: column; gap: 0.75rem;">
                         <!-- Populated by JS -->
@@ -549,7 +554,7 @@
                         style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 1rem;">
                         <i class="ph ph-check-circle"
                             style="font-size: 1.5rem; opacity: 0.5; display: block; margin-bottom: 0.5rem;"></i>
-                        Tidak ada tugas mendesak, tetap semangat! ✨
+                        <span data-i18n="profile_urgent_empty">Tidak ada tugas mendesak, tetap semangat! ✨</span>
                     </div>
                 </div>
 
@@ -559,34 +564,38 @@
                     <h3
                         style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
                         <i class="ph ph-activity"></i>
-                        <span>Statistik Lengkap</span>
+                        <span data-i18n="profile_stats_title">Statistik Lengkap</span>
                     </h3>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                         <div
                             style="padding: 1rem; background: var(--bg-main); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
                             <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;"><i
-                                    class="ph ph-book"></i> Mata Kuliah</p>
+                                    class="ph ph-book"></i> <span data-i18n="profile_stats_courses">Mata Kuliah</span>
+                            </p>
                             <p id="profile-course-count"
                                 style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">0</p>
                         </div>
                         <div
                             style="padding: 1rem; background: var(--bg-main); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
                             <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;"><i
-                                    class="ph ph-check-circle"></i> Tugas Selesai</p>
+                                    class="ph ph-check-circle"></i> <span data-i18n="profile_stats_completed">Tugas
+                                    Selesai</span></p>
                             <p id="profile-completed-tasks"
                                 style="font-size: 1.5rem; font-weight: 700; color: var(--success);">0</p>
                         </div>
                         <div
                             style="padding: 1rem; background: var(--bg-main); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
                             <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;"><i
-                                    class="ph ph-clock"></i> Total Fokus</p>
+                                    class="ph ph-clock"></i> <span data-i18n="profile_stats_focus">Total Fokus</span>
+                            </p>
                             <p id="profile-total-focus-time"
                                 style="font-size: 1.5rem; font-weight: 700; color: #a855f7;">0h</p>
                         </div>
                         <div
                             style="padding: 1rem; background: var(--bg-main); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
                             <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;"><i
-                                    class="ph ph-calendar"></i> Kehadiran</p>
+                                    class="ph ph-calendar"></i> <span
+                                    data-i18n="profile_stats_attendance">Kehadiran</span></p>
                             <p id="profile-attendance-percent"
                                 style="font-size: 1.5rem; font-weight: 700; color: #0284C7;">-</p>
                         </div>
@@ -947,63 +956,36 @@
             <h3 style="margin-bottom: 1.5rem;" data-i18n="settings_title">Pengaturan Aplikasi</h3>
 
             <div class="card" style="padding: 1.25rem;">
-                <h4 data-i18n="settings_lang_title"
-                    style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em;">
-                    Bahasa / Language</h4>
-
-                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                    <label
-                        style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 0.5rem 0;">
-                        <span style="font-weight: 500; display:flex; align-items:center; gap:0.5rem;"><i
-                                class="ph ph-flag"></i> <span data-i18n="profile_lang_indonesian">Bahasa
-                                Indonesia</span></span>
-                        <input type="radio" name="lang_setting" value="id" checked
-                            style="width:18px; height:18px; accent-color:var(--primary);">
-                    </label>
-                    <label
-                        style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 0.5rem 0; border-top: 1px solid var(--border-color);">
-                        <span style="font-weight: 500; display:flex; align-items:center; gap:0.5rem;"><i
-                                class="ph ph-globe-hemisphere-west"></i> English</span>
-                        <input type="radio" name="lang_setting" value="en"
-                            style="width:18px; height:18px; accent-color:var(--primary);">
-                    </label>
+                <!-- Language Setting -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <span style="font-weight: 500; display:flex; align-items:center; gap:0.5rem;">
+                        <i class="ph ph-translate" style="font-size: 1.2rem; color: var(--primary);"></i>
+                        <span data-i18n="settings_lang_title">Bahasa / Language</span>
+                    </span>
+                    <select id="setting-lang-select"
+                        style="padding: 0.5rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-main); font-size: 0.9rem; min-width: 140px; cursor: pointer;">
+                        <option value="id" data-i18n="profile_lang_indonesian">Bahasa Indonesia</option>
+                        <option value="en">English</option>
+                    </select>
                 </div>
 
-                <h4 data-i18n="settings_theme_title"
-                    style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem; margin-top: 2rem; text-transform: uppercase; letter-spacing: 0.05em;">
-                    Tema Tampilan</h4>
-
-                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                    <label
-                        style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 0.5rem 0;">
-                        <span style="font-weight: 500; display:flex; align-items:center; gap:0.5rem;"><i
-                                class="ph ph-sun"></i> <span data-i18n="settings_theme_light">Terang</span></span>
-                        <input type="radio" name="theme_setting" value="light"
-                            style="width:18px; height:18px; accent-color:var(--primary);">
-                    </label>
-                    <label
-                        style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 0.5rem 0; border-top: 1px solid var(--border-color);">
-                        <span style="font-weight: 500; display:flex; align-items:center; gap:0.5rem;"><i
-                                class="ph ph-moon"></i> <span data-i18n="settings_theme_dark">Gelap</span></span>
-                        <input type="radio" name="theme_setting" value="dark"
-                            style="width:18px; height:18px; accent-color:var(--primary);">
-                    </label>
-                    <label
-                        style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 0.5rem 0; border-top: 1px solid var(--border-color);">
-                        <span style="font-weight: 500; display:flex; align-items:center; gap:0.5rem;"><i
-                                class="ph ph-monitor"></i> <span data-i18n="settings_theme_system">Sesuai
-                                Sistem</span></span>
-                        <input type="radio" name="theme_setting" value="system" checked
-                            style="width:18px; height:18px; accent-color:var(--primary);">
-                    </label>
+                <!-- Theme Setting -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <span style="font-weight: 500; display:flex; align-items:center; gap:0.5rem;">
+                        <i class="ph ph-palette" style="font-size: 1.2rem; color: var(--primary);"></i>
+                        <span data-i18n="settings_theme_title">Tema Tampilan</span>
+                    </span>
+                    <select id="setting-theme-select"
+                        style="padding: 0.5rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-main); font-size: 0.9rem; min-width: 140px; cursor: pointer;">
+                        <option value="light" data-i18n="settings_theme_light">Terang</option>
+                        <option value="dark" data-i18n="settings_theme_dark">Gelap</option>
+                        <option value="system" data-i18n="settings_theme_system">Sesuai Sistem</option>
+                    </select>
                 </div>
 
                 <button class="btn btn-primary full-width mt-4" onclick="profileManager.saveSettings()"
                     data-i18n="settings_save">Simpan
                     Pengaturan</button>
-                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 1rem; text-align: center;"
-                    data-i18n="profile_english_dummy_note">*English
-                    support is just a dummy toggle for now.</p>
             </div>
         </div>
     </div>

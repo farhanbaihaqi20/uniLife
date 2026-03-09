@@ -232,7 +232,31 @@ const i18n = {
             'notification_just_now': 'Baru saja',
             'notification_minutes_ago': '{count} menit yang lalu',
             'notification_hours_ago': '{count} jam yang lalu',
-            'notification_days_ago': '{count} hari yang lalu'
+            'notification_days_ago': '{count} hari yang lalu',
+
+            // Notes View
+            'notes_title': 'Catatan Kuliah',
+            'notes_search_placeholder': 'Cari catatan...',
+            'notes_sort_newest': 'Terbaru',
+            'notes_sort_oldest': 'Terlama',
+
+            // Attendance View
+            'attendance_title': 'Rekap Presensi',
+            'attendance_rules_title': 'Aturan Kehadiran',
+            'attendance_rules_desc': 'Total pertemuan standar: <b>16 kali</b>. Minimal kehadiran: <b>75%</b> (setara minimal <b>12 pertemuan</b>).',
+            'attendance_under_target': 'Belum Memenuhi 75%',
+            'attendance_filter_all': 'Semua',
+            'attendance_filter_under': 'Belum 75%',
+            'attendance_filter_met': 'Sudah 75%',
+
+            // Profile Dashboard Stats
+            'profile_urgent_tasks': 'Tugas Mendesak (3 Hari ke Depan)',
+            'profile_urgent_empty': 'Tidak ada tugas mendesak, tetap semangat! ✨',
+            'profile_stats_title': 'Statistik Lengkap',
+            'profile_stats_courses': 'Mata Kuliah',
+            'profile_stats_completed': 'Tugas Selesai',
+            'profile_stats_focus': 'Total Fokus',
+            'profile_stats_attendance': 'Kehadiran'
         },
         'en': {
             // Navbar
@@ -464,7 +488,31 @@ const i18n = {
             'notification_just_now': 'Just now',
             'notification_minutes_ago': '{count} minutes ago',
             'notification_hours_ago': '{count} hours ago',
-            'notification_days_ago': '{count} days ago'
+            'notification_days_ago': '{count} days ago',
+
+            // Notes View
+            'notes_title': 'Lecture Notes',
+            'notes_search_placeholder': 'Search notes...',
+            'notes_sort_newest': 'Newest',
+            'notes_sort_oldest': 'Oldest',
+
+            // Attendance View
+            'attendance_title': 'Attendance Recap',
+            'attendance_rules_title': 'Attendance Rules',
+            'attendance_rules_desc': 'Standard total meetings: <b>16 times</b>. Minimum attendance: <b>75%</b> (req. at least <b>12 meetings</b>).',
+            'attendance_under_target': 'Below 75%',
+            'attendance_filter_all': 'All',
+            'attendance_filter_under': 'Below 75%',
+            'attendance_filter_met': 'Met 75%',
+
+            // Profile Dashboard Stats
+            'profile_urgent_tasks': 'Urgent Tasks (Next 3 Days)',
+            'profile_urgent_empty': 'No urgent tasks, keep it up! ✨',
+            'profile_stats_title': 'Detailed Statistics',
+            'profile_stats_courses': 'Courses',
+            'profile_stats_completed': 'Completed Tasks',
+            'profile_stats_focus': 'Total Focus',
+            'profile_stats_attendance': 'Attendance'
         }
     },
 
