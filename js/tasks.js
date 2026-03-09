@@ -56,20 +56,26 @@ const tasksManager = {
         const today = new Date().toISOString().split('T')[0];
 
         filteredTasks.forEach(task => {
-            const card = document.createElement('div');
-            card.className = 'card';
-            if (task.completed) card.style.opacity = '0.7';
-
             let dueClass = '';
             let dueText = `${i18n.t('tasks_due_prefix')} ${task.dueDate}`;
+            let borderColor = 'var(--text-muted)';
 
             if (!task.completed && task.dueDate < today) {
                 dueClass = 'color: var(--danger); font-weight: 600;';
                 dueText = `${i18n.t('common_overdue_prefix')} ${task.dueDate}`;
+                borderColor = 'var(--danger)';
             } else if (!task.completed && task.dueDate === today) {
                 dueClass = 'color: var(--warning); font-weight: 600;';
                 dueText = i18n.t('common_day_today');
+                borderColor = 'var(--warning)';
+            } else if (task.completed) {
+                borderColor = 'var(--success)';
             }
+
+            const card = document.createElement('div');
+            card.className = 'card fade-in';
+            card.style.borderLeft = `3px solid ${borderColor}`;
+            if (task.completed) card.style.opacity = '0.7';
 
             let timeText = task.dueTime ? ` • ${task.dueTime}` : '';
 

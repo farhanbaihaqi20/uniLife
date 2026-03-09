@@ -184,21 +184,21 @@ const gradesManager = {
                     <div class="course-list mt-4" style="display:flex; flex-direction:column; gap:0.75rem;">
                         ${sem.courses.length === 0 ? `<p style="font-size:0.875rem; color:var(--text-muted); text-align:center;">${i18n.t('grades_empty_courses')}</p>` : ''}
                         ${sem.courses.map(course => {
-                // Determine color theme based on grade
+                // Determine color theme based on grade using CSS variables
                 let themeColor = 'var(--text-muted)';
-                let bgLight = 'var(--bg-main)';
+                let bgLight = 'var(--bg-card)';
                 if (['A', 'AB'].includes(course.grade)) {
-                    themeColor = '#22c55e'; // Green
-                    bgLight = '#f0fdf4';
+                    themeColor = 'var(--success)';
+                    bgLight = 'rgba(16, 185, 129, 0.08)';
                 } else if (['B', 'BC'].includes(course.grade)) {
-                    themeColor = '#3b82f6'; // Blue
-                    bgLight = '#eff6ff';
+                    themeColor = 'var(--primary)';
+                    bgLight = 'rgba(59, 130, 246, 0.08)';
                 } else if (['C'].includes(course.grade)) {
-                    themeColor = '#eab308'; // Yellow
-                    bgLight = '#fefce8';
+                    themeColor = 'var(--warning)';
+                    bgLight = 'rgba(245, 158, 11, 0.08)';
                 } else if (['D', 'E'].includes(course.grade)) {
-                    themeColor = '#ef4444'; // Red
-                    bgLight = '#fef2f2';
+                    themeColor = 'var(--danger)';
+                    bgLight = 'var(--danger-light)';
                 }
 
                 // Generate a mock ID based on course ID for the visual ID pill
@@ -208,36 +208,36 @@ const gradesManager = {
                 const goalBadge = (typeof gradeGoals !== 'undefined') ? gradeGoals.renderGoalBadge(course, sem.id) : '';
 
                 return `
-                            <div style="background:var(--bg-card); border-radius:var(--radius-md); border-left: 6px solid ${themeColor}; box-shadow: 0 2px 8px rgba(0,0,0,0.03); border-right: 1px solid var(--border-color); border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); overflow: hidden;">
-                                <div style="display:flex; justify-content:space-between; align-items:center; padding: 1rem;">
+                            <div style="background:var(--bg-card); border-radius:var(--radius-md); border-left: 5px solid ${themeColor}; box-shadow: var(--shadow-sm); border-right: 1px solid var(--border-color); border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); overflow: hidden;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; padding: 1.25rem;">
                                     <div style="flex:1;">
-                                        <div style="display:flex; gap:0.5rem; align-items:center; margin-bottom: 0.5rem; flex-wrap: wrap;">
-                                            <span style="font-size:0.65rem; font-family:monospace; color:${themeColor}; background:${bgLight}; padding:0.2rem 0.5rem; border-radius:4px; border:1px solid ${themeColor}33;">${mockId}</span>
-                                            <span style="font-size:0.65rem; color:#22c55e; background:#f0fdf4; padding:0.2rem 0.5rem; border-radius:4px; font-weight:600; border:1px solid #22c55e33;">${course.sks} SKS</span>
-                                            ${goalBadge ? '<button class="icon-btn" onclick="gradeGoals.openGoalModal(\'' + sem.id + '\', \'' + course.id + '\')" style="width:28px;height:28px;font-size:0.9rem;background:#667eea;color:white;margin-left:0.25rem;border:none;box-shadow:0 2px 4px rgba(102,126,234,0.3);" title="' + (i18n.t('goal_set') || 'Set Target') + '"><i class="ph-bold ph-target"></i></button>' : '<button class="icon-btn" onclick="gradeGoals.openGoalModal(\'' + sem.id + '\', \'' + course.id + '\')" style="width:28px;height:28px;font-size:0.9rem;background:var(--primary-light);color:var(--primary);margin-left:0.25rem;border:1px solid var(--primary);box-shadow:0 2px 4px rgba(59,130,246,0.2);" title="' + (i18n.t('goal_set') || 'Set Target') + '"><i class="ph-bold ph-plus"></i></button>'}
+                                        <div style="display:flex; gap:0.5rem; align-items:center; margin-bottom: 0.75rem; flex-wrap: wrap;">
+                                            <span style="font-size:0.65rem; font-family:monospace; color:${themeColor}; background:${bgLight}; padding:0.25rem 0.6rem; border-radius:12px; border:1px solid ${themeColor}33;">${mockId}</span>
+                                            <span style="font-size:0.65rem; color:var(--success); background:rgba(16, 185, 129, 0.1); padding:0.25rem 0.6rem; border-radius:12px; font-weight:600; border:1px solid rgba(16, 185, 129, 0.2);">${course.sks} SKS</span>
+                                            ${goalBadge ? '<button class="icon-btn" onclick="gradeGoals.openGoalModal(\'' + sem.id + '\', \'' + course.id + '\')" style="width:28px;height:28px;font-size:0.9rem;background:var(--primary);color:white;margin-left:0.25rem;border:none;box-shadow:var(--shadow-sm);" title="' + (i18n.t('goal_set') || 'Set Target') + '"><i class="ph-bold ph-target"></i></button>' : '<button class="icon-btn" onclick="gradeGoals.openGoalModal(\'' + sem.id + '\', \'' + course.id + '\')" style="width:28px;height:28px;font-size:0.9rem;background:var(--primary-light);color:var(--primary);margin-left:0.25rem;border:1px solid var(--primary);box-shadow:var(--shadow-sm);" title="' + (i18n.t('goal_set') || 'Set Target') + '"><i class="ph-bold ph-plus"></i></button>'}
                                         </div>
-                                        <div style="font-weight:700; font-size:1rem; color:var(--text-main); line-height:1.2; margin-bottom: 0.2rem;">${course.name}</div>
+                                        <div style="font-weight:700; font-size:1.05rem; color:var(--text-main); line-height:1.3; margin-bottom: 0.25rem;">${course.name}</div>
                                         <div style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">${i18n.t('grades_course_module_label')}</div>
                                     </div>
                                     
-                                    <div style="display:flex; align-items:center; gap: 1rem;">
+                                    <div style="display:flex; align-items:center; gap: 1.25rem;">
                                         <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; width: 60px;">
-                                            <div style="width: 45px; height: 45px; border-radius: 50%; background-color: ${themeColor}; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem; box-shadow: 0 2px 6px ${themeColor}40; margin-bottom:0.25rem;">
+                                            <div style="width: 48px; height: 48px; border-radius: 12px; background: ${bgLight}; border: 1px solid ${themeColor}; color: ${themeColor}; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.25rem; margin-bottom:0.35rem;">
                                                 ${course.grade}
                                             </div>
                                             <div style="font-size:0.85rem; font-weight:600; color:var(--text-main);">${course.finalScore ? parseFloat(course.finalScore).toFixed(2).replace('.', ',') : '-'}</div>
                                         </div>
-                                        <div style="display:flex; flex-direction:column; gap:0.25rem;">
-                                            <button class="icon-btn" onclick="gradesManager.openEditCourseModal('${sem.id}', '${course.id}')" style="width:28px;height:28px;border:none;box-shadow:none;background:var(--bg-main);color:var(--text-main); border-radius:4px;">
+                                        <div style="display:flex; flex-direction:column; gap:0.35rem; border-left: 1px solid var(--border-color); padding-left: 1rem;">
+                                            <button class="icon-btn" onclick="gradesManager.openEditCourseModal('${sem.id}', '${course.id}')" style="width:32px;height:32px;border:none;box-shadow:none;background:var(--bg-main);color:var(--text-main); border-radius:8px; transition:all 0.2s;">
                                                 <i class="ph ph-pencil-simple"></i>
                                             </button>
-                                            <button class="icon-btn" onclick="gradesManager.deleteCourse('${sem.id}', '${course.id}')" style="width:28px;height:28px;border:none;box-shadow:none;background:var(--bg-main);color:var(--danger); border-radius:4px;">
+                                            <button class="icon-btn" onclick="gradesManager.deleteCourse('${sem.id}', '${course.id}')" style="width:32px;height:32px;border:none;box-shadow:none;background:var(--danger-light);color:var(--danger); border-radius:8px; transition:all 0.2s;">
                                                 <i class="ph ph-trash"></i>
                                             </button>
                                         </div>
                                     </div>
                                 </div>
-                                ${goalBadge ? '<div style="padding: 0 1rem 1rem;">' + goalBadge + '</div>' : ''}
+                                ${goalBadge ? '<div style="padding: 0 1.25rem 1.25rem;">' + goalBadge + '</div>' : ''}
                             </div>
                             `;
             }).join('')}

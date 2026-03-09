@@ -339,27 +339,32 @@ const profileManager = {
             const today = new Date();
             const diff = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
 
-            let urgencyColor = '#10b981'; // green
+            let urgencyColor = 'var(--success)'; // green
             let urgencyLabel = 'Tersisa';
 
             if (diff === 0) {
-                urgencyColor = '#ef4444';
+                urgencyColor = 'var(--danger)';
                 urgencyLabel = 'HARI INI!';
             } else if (diff === 1) {
-                urgencyColor = '#f59e0b';
+                urgencyColor = 'var(--warning)';
                 urgencyLabel = 'Besok';
             }
 
             const taskCard = document.createElement('div');
+            // Extract the variable name to use for background alpha calculation (crude fallback if variable can't be resolved in inline style directly with opacity, but fine for inline)
+            // Using a simple 10% opacity background of the text color. In CSS this is tricky with vars without new syntax, so we fall back to generic card bg
             taskCard.style.cssText = `
                 padding: 1rem;
-                background: var(--bg-main);
+                background: ${diff === 0 ? 'var(--danger-light)' : 'var(--bg-card)'};
                 border-radius: var(--radius-sm);
                 border-left: 4px solid ${urgencyColor};
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
             `;
+            taskCard.onmouseenter = () => { taskCard.style.transform = 'translateY(-2px)'; taskCard.style.boxShadow = 'var(--shadow-sm)'; };
+            taskCard.onmouseleave = () => { taskCard.style.transform = 'translateY(0)'; taskCard.style.boxShadow = 'none'; };
 
             taskCard.innerHTML = `
                 <div style="flex: 1;">
@@ -370,7 +375,7 @@ const profileManager = {
                     </p>
                 </div>
                 <div style="display: flex; gap: 0.5rem; align-items: center;">
-                    <div style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: ${urgencyColor}20; color: ${urgencyColor}; font-weight: 600;">
+                    <div style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: ${diff === 0 ? 'var(--danger-light)' : 'rgba(100,116,139,0.1)'}; color: ${urgencyColor}; font-weight: 600;">
                         ${diff}d
                     </div>
                 </div>

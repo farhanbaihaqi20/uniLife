@@ -40,20 +40,34 @@
 
 /* Dark Theme Variables */
 [data-theme="dark"] {
-    --bg-main: #0F172A;
-    --bg-card: #1E293B;
+    --bg-main: #0B1120;
+    /* Slightly deeper, richer background */
+    --bg-card: #162032;
+    /* Better contrast for cards */
     --text-main: #F8FAFC;
     --text-muted: #94A3B8;
-    --border-color: #334155;
+    --border-color: #2A384F;
+    /* Softer border for premium feel */
     --primary-light: #1e3a8a;
-    --header-divider-line: rgba(96, 165, 250, 0.36);
-    --header-divider-core: rgba(147, 197, 253, 0.7);
-    --header-divider-glow: rgba(96, 165, 250, 0.2);
-    --header-shadow: 0 10px 28px rgba(2, 6, 23, 0.45);
+
+    /* Adjusted State Colors for Dark Mode (Softer, more premium) */
+    --danger: #F87171;
+    /* Softer red, easier on eyes in dark mode */
+    --danger-light: rgba(239, 68, 68, 0.15);
+    /* Translucent background for danger items */
+    --warning: #FBBF24;
+    /* Adjusted warning color */
+    --success: #34D399;
+    /* Adjusted success color */
+
+    --header-divider-line: rgba(96, 165, 250, 0.25);
+    --header-divider-core: rgba(147, 197, 253, 0.5);
+    --header-divider-glow: rgba(96, 165, 250, 0.15);
+    --header-shadow: 0 10px 28px rgba(0, 0, 0, 0.6);
 
     /* Avatar Colors for Dark Theme */
     --avatar-text: #F8FAFC;
-    --avatar-bg: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+    --avatar-bg: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
 }
 
 * {
@@ -92,6 +106,154 @@ body {
 /* Buttons with premium animations */
 .btn {
     display: inline-flex;
+
+    .focus-presets-panel {
+        margin-bottom: 1.6rem;
+        padding: 0.9rem;
+        border-radius: var(--radius-md);
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.05), rgba(37, 99, 235, 0.08));
+        border: 1px solid var(--border-color);
+    }
+
+    .focus-presets-title {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--text-muted);
+        margin-bottom: 0.65rem;
+    }
+
+    .focus-presets-grid {
+        display: grid;
+        gap: 0.6rem;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .focus-preset-btn {
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        background: var(--bg-card);
+        color: var(--text-main);
+        padding: 0.65rem 0.55rem;
+        cursor: pointer;
+        transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+        text-align: left;
+    }
+
+    .focus-preset-btn strong {
+        display: block;
+        font-size: 0.8rem;
+        margin-bottom: 0.2rem;
+    }
+
+    .focus-preset-btn small {
+        font-size: 0.72rem;
+        color: var(--text-muted);
+    }
+
+    .focus-preset-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 22px rgba(15, 23, 42, 0.14);
+        border-color: rgba(59, 130, 246, 0.5);
+    }
+
+    .focus-summary-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 10020;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(2, 6, 23, 0.55);
+        backdrop-filter: blur(6px);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+
+    .focus-summary-modal.active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .focus-summary-card {
+        width: min(92vw, 420px);
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: calc(var(--radius-md) + 4px);
+        padding: 1.3rem;
+        text-align: center;
+        transform: translateY(18px) scale(0.98);
+        opacity: 0;
+        transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+        box-shadow: 0 22px 48px rgba(15, 23, 42, 0.28);
+    }
+
+    [data-theme="dark"] .focus-summary-card {
+        box-shadow: 0 22px 48px rgba(0, 0, 0, 0.6);
+    }
+
+    .focus-summary-modal.active .focus-summary-card {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+
+    .focus-summary-icon {
+        width: 54px;
+        height: 54px;
+        border-radius: 50%;
+        margin: 0 auto 0.75rem;
+        display: grid;
+        place-items: center;
+        color: #f59e0b;
+        background: rgba(245, 158, 11, 0.12);
+        border: 1px solid rgba(245, 158, 11, 0.35);
+    }
+
+    .focus-summary-subtitle {
+        color: var(--text-muted);
+        margin: 0.25rem 0 1rem;
+        font-size: 0.9rem;
+    }
+
+    .focus-summary-metrics {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.6rem;
+        margin-bottom: 1rem;
+    }
+
+    .focus-summary-metric {
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        background: rgba(100, 116, 139, 0.07);
+        padding: 0.6rem 0.45rem;
+    }
+
+    .focus-summary-metric span {
+        font-size: 0.73rem;
+        color: var(--text-muted);
+        display: block;
+    }
+
+    .focus-summary-metric strong {
+        font-size: 1rem;
+        color: var(--text-main);
+    }
+
+    @media (max-width: 768px) {
+        .focus-presets-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .focus-summary-metrics {
+            grid-template-columns: 1fr;
+        }
+    }
+
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
@@ -580,6 +742,603 @@ body {
 .card:active {
     transform: translateY(-2px) scale(0.99);
     transition: transform 0.1s ease;
+}
+
+/* Premium Focus Timer */
+.focus-status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 170px;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.focus-timer-shell {
+    position: relative;
+    width: min(78vw, 260px);
+    aspect-ratio: 1;
+    margin: 0 auto 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background:
+        radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.15) 52%, transparent 70%),
+        linear-gradient(145deg, rgba(59, 130, 246, 0.14), rgba(15, 23, 42, 0.04));
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12), inset 0 0 0 1px rgba(59, 130, 246, 0.1);
+    overflow: hidden;
+}
+
+[data-theme="dark"] .focus-timer-shell {
+    background:
+        radial-gradient(circle at 30% 30%, rgba(59, 130, 246, 0.35), rgba(59, 130, 246, 0.08) 55%, transparent 75%),
+        linear-gradient(145deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95));
+    box-shadow: 0 16px 36px rgba(2, 6, 23, 0.55), inset 0 0 0 1px rgba(96, 165, 250, 0.2);
+}
+
+.focus-progress {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.focus-progress-track,
+.focus-progress-bar {
+    fill: none;
+    stroke-width: 11;
+}
+
+.focus-progress-track {
+    stroke: rgba(100, 116, 139, 0.2);
+}
+
+.focus-progress-bar {
+    stroke: var(--primary);
+    stroke-linecap: round;
+    stroke-dasharray: 603.19;
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 0.9s linear, stroke 0.25s ease;
+    filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.32));
+}
+
+.pomodoro-container.is-break .focus-status-pill {
+    color: var(--success) !important;
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.26);
+}
+
+.pomodoro-container.is-break .focus-progress-bar {
+    stroke: var(--success);
+    filter: drop-shadow(0 0 9px rgba(16, 185, 129, 0.36));
+}
+
+.pomodoro-container.is-running .focus-timer-shell::after {
+    content: "";
+    position: absolute;
+    inset: 12%;
+    border-radius: 50%;
+    border: 2px solid rgba(59, 130, 246, 0.16);
+    animation: focusOrbitalPulse 1.8s ease-in-out infinite;
+}
+
+.pomodoro-container.is-running.is-break .focus-timer-shell::after {
+    border-color: rgba(16, 185, 129, 0.2);
+}
+
+.focus-timer-helper {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+}
+
+.focus-ambience-panel {
+    margin-bottom: 1.6rem;
+    text-align: left;
+    padding: 1.1rem;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(147, 51, 234, 0.03));
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08);
+}
+
+.focus-ambience-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.85rem;
+}
+
+.focus-ambience-title {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.focus-ambience-title i {
+    color: var(--primary);
+    font-size: 1.1rem;
+}
+
+.focus-ambience-status-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.65rem;
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.focus-ambience-status-badge i {
+    font-size: 0.9rem;
+}
+
+.focus-ambience-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.55rem;
+    margin-bottom: 0.85rem;
+}
+
+.focus-ambience-btn {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    color: var(--text-main);
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.55rem 0.5rem;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.focus-ambience-btn i {
+    font-size: 1.3rem;
+    opacity: 0.75;
+}
+
+.focus-ambience-btn:hover {
+    transform: translateY(-2px);
+    border-color: rgba(59, 130, 246, 0.4);
+    box-shadow: 0 4px 10px rgba(59, 130, 246, 0.15);
+}
+
+.focus-ambience-btn.active {
+    background: linear-gradient(135deg, var(--primary), #4f46e5);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.35);
+    transform: translateY(-1px) scale(1.02);
+}
+
+.focus-ambience-btn.active i {
+    opacity: 1;
+}
+
+.focus-ambience-btn-custom {
+    grid-column: span 2;
+    flex-direction: row;
+    gap: 0.4rem;
+}
+
+.focus-ambience-btn-custom i {
+    font-size: 1.1rem;
+}
+
+.focus-volume-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.65rem;
+    background: rgba(59, 130, 246, 0.06);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(59, 130, 246, 0.12);
+}
+
+.focus-volume-wrap i {
+    font-size: 1.1rem;
+    color: var(--primary);
+    opacity: 0.8;
+}
+
+.focus-volume-wrap input[type="range"] {
+    flex: 1;
+    accent-color: var(--primary);
+}
+
+.focus-volume-value {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--primary);
+    min-width: 35px;
+    text-align: right;
+}
+
+.focus-custom-filename {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.65rem;
+    padding: 0.55rem 0.7rem;
+    background: rgba(147, 51, 234, 0.08);
+    border: 1px solid rgba(147, 51, 234, 0.2);
+    border-radius: var(--radius-sm);
+    font-size: 0.78rem;
+    color: var(--text-main);
+}
+
+.focus-custom-filename i {
+    color: #9333ea;
+    font-size: 1rem;
+}
+
+.focus-custom-filename span {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.focus-custom-remove {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 0.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.focus-custom-remove:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+}
+
+.focus-custom-remove i {
+    font-size: 0.9rem;
+}
+
+/* Fullscreen Focus Mode Overlay */
+.focus-fullscreen-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #0F172A 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(1.015);
+    transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme="light"] .focus-fullscreen-overlay {
+    background: linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 50%, #F1F5F9 100%);
+}
+
+.focus-fullscreen-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+    transform: scale(1);
+}
+
+.focus-fullscreen-content {
+    width: 100%;
+    max-width: 500px;
+    text-align: center;
+    padding: 2rem;
+    transform: translateY(18px) scale(0.98);
+    opacity: 0;
+    transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.45s ease;
+}
+
+.focus-fullscreen-overlay.active .focus-fullscreen-content {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+}
+
+@keyframes focusFullscreenFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.focus-fullscreen-exit {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(100, 116, 139, 0.2);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    color: var(--text-main);
+    font-size: 1.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), background 0.25s ease, border-color 0.25s ease, color 0.25s ease, box-shadow 0.3s ease;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.22);
+}
+
+.focus-fullscreen-exit:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: var(--danger);
+    color: var(--danger);
+    transform: rotate(90deg) scale(1.08);
+    box-shadow: 0 12px 28px rgba(239, 68, 68, 0.22);
+}
+
+.focus-fullscreen-mode-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.25rem;
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--primary);
+    margin-bottom: 2.5rem;
+    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2);
+}
+
+.focus-fullscreen-mode-badge i {
+    font-size: 1.2rem;
+}
+
+.focus-fullscreen-mode-badge.is-break {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: var(--success);
+    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.2);
+}
+
+.focus-fullscreen-timer-wrap {
+    position: relative;
+    width: min(85vw, 320px);
+    aspect-ratio: 1;
+    margin: 0 auto 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.focus-fullscreen-progress {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.focus-fullscreen-progress-track,
+.focus-fullscreen-progress-bar {
+    fill: none;
+    stroke-width: 8;
+}
+
+.focus-fullscreen-progress-track {
+    stroke: rgba(100, 116, 139, 0.2);
+}
+
+.focus-fullscreen-progress-bar {
+    stroke: var(--primary);
+    stroke-linecap: round;
+    stroke-dasharray: 911.06;
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 1s linear, stroke 0.3s ease;
+    filter: drop-shadow(0 0 18px rgba(59, 130, 246, 0.5));
+}
+
+.focus-fullscreen-mode-badge.is-break~.focus-fullscreen-timer-wrap .focus-fullscreen-progress-bar {
+    stroke: var(--success);
+    filter: drop-shadow(0 0 18px rgba(16, 185, 129, 0.5));
+}
+
+.focus-fullscreen-timer {
+    font-size: clamp(4rem, 12vw, 6rem);
+    font-weight: 800;
+    line-height: 1;
+    color: var(--text-main);
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 4px 24px rgba(59, 130, 246, 0.3);
+}
+
+.focus-fullscreen-ambience {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1.5rem;
+    background: rgba(147, 51, 234, 0.12);
+    border: 1px solid rgba(147, 51, 234, 0.25);
+    border-radius: 999px;
+    margin-bottom: 2rem;
+}
+
+.focus-fullscreen-ambience.hidden {
+    display: none;
+}
+
+.focus-fullscreen-ambience-wave {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #9333ea, #c026d3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.1rem;
+    animation: focusAmbientPulse 2s ease-in-out infinite;
+}
+
+@keyframes focusAmbientPulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+    }
+}
+
+.focus-fullscreen-ambience-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.focus-fullscreen-ambience-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.focus-fullscreen-ambience-name {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.focus-fullscreen-controls {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+
+.focus-fullscreen-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.85rem 1.75rem;
+    min-width: 130px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-main);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    backdrop-filter: blur(10px);
+}
+
+.focus-fullscreen-btn i {
+    font-size: 1.3rem;
+}
+
+.focus-fullscreen-btn-pause {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.35);
+}
+
+.focus-fullscreen-btn-pause:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(59, 130, 246, 0.45);
+}
+
+.focus-fullscreen-btn-stop {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: var(--danger);
+}
+
+.focus-fullscreen-btn-stop:hover {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: white;
+    transform: translateY(-2px);
+}
+
+.focus-fullscreen-btn-music {
+    background: rgba(139, 92, 246, 0.12);
+    border-color: rgba(139, 92, 246, 0.32);
+    color: #a78bfa;
+}
+
+.focus-fullscreen-btn-music:hover {
+    background: rgba(139, 92, 246, 0.2);
+    transform: translateY(-2px);
+}
+
+.focus-fullscreen-btn-music.is-off {
+    background: rgba(100, 116, 139, 0.15);
+    border-color: rgba(148, 163, 184, 0.35);
+    color: var(--text-muted);
+}
+
+.focus-fullscreen-btn-music.is-off:hover {
+    background: rgba(100, 116, 139, 0.22);
+}
+
+.focus-fullscreen-hint {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    opacity: 0.6;
+}
+
+@media (max-width: 640px) {
+    .focus-fullscreen-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@keyframes focusOrbitalPulse {
+    0% {
+        transform: scale(0.96);
+        opacity: 0.55;
+    }
+
+    70% {
+        transform: scale(1.06);
+        opacity: 0.1;
+    }
+
+    100% {
+        transform: scale(1.1);
+        opacity: 0;
+    }
 }
 
 /* -------------------

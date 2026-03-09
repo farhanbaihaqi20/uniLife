@@ -35,21 +35,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const navItems = document.querySelectorAll('.nav-item');
     const sections = document.querySelectorAll('.view-section');
 
+    // Global helper so any module/home quick action can navigate safely.
+    window.openView = function (targetId, activeNavTarget = null) {
+        navItems.forEach(nav => nav.classList.remove('active'));
+
+        const navTarget = activeNavTarget || targetId;
+        const navToActivate = document.querySelector(`.nav-item[data-target="${navTarget}"]`);
+        if (navToActivate) navToActivate.classList.add('active');
+
+        sections.forEach(section => {
+            if (section.id === targetId) {
+                section.classList.add('active');
+            } else {
+                section.classList.remove('active');
+            }
+        });
+    };
+
     navItems.forEach(item => {
         item.addEventListener('click', () => {
-            // Update active state in nav
-            navItems.forEach(nav => nav.classList.remove('active'));
-            item.classList.add('active');
-
-            // Switch view
             const targetId = item.getAttribute('data-target');
-            sections.forEach(section => {
-                if (section.id === targetId) {
-                    section.classList.add('active');
-                } else {
-                    section.classList.remove('active');
-                }
-            });
+            window.openView(targetId, targetId);
         });
     });
 

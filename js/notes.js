@@ -72,7 +72,7 @@ const notesManager = {
         container.innerHTML = '';
 
         let filteredNotes = this.notes;
-        
+
         // Filter by category
         if (this.filter !== 'all') {
             filteredNotes = filteredNotes.filter(n => n.category === this.filter);
@@ -80,8 +80,8 @@ const notesManager = {
 
         // Filter by search query
         if (this.searchQuery) {
-            filteredNotes = filteredNotes.filter(n => 
-                n.title.toLowerCase().includes(this.searchQuery) || 
+            filteredNotes = filteredNotes.filter(n =>
+                n.title.toLowerCase().includes(this.searchQuery) ||
                 n.content.toLowerCase().includes(this.searchQuery) ||
                 (n.courseName && n.courseName.toLowerCase().includes(this.searchQuery))
             );
@@ -89,7 +89,7 @@ const notesManager = {
 
         // Sort notes
         let sortedNotes = [...filteredNotes];
-        switch(this.sortBy) {
+        switch (this.sortBy) {
             case 'newest':
                 sortedNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
                 break;
@@ -117,10 +117,10 @@ const notesManager = {
 
         sortedNotes.forEach(note => {
             const categoryColors = {
-                'general': { bg: 'linear-gradient(135deg, rgba(100, 116, 139, 0.05), rgba(71, 85, 105, 0.08))', border: '#64748b', borderLight: 'rgba(100, 116, 139, 0.2)', icon: 'note', label: 'Umum', glow: 'rgba(100, 116, 139, 0.1)' },
-                'lecture': { bg: 'linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(37, 99, 235, 0.12))', border: '#3b82f6', borderLight: 'rgba(59, 130, 246, 0.2)', icon: 'book-open', label: 'Materi Kuliah', glow: 'rgba(59, 130, 246, 0.15)' },
-                'assignment': { bg: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(5, 150, 105, 0.12))', border: '#10b981', borderLight: 'rgba(16, 185, 129, 0.2)', icon: 'pencil-line', label: 'Tugas/PR', glow: 'rgba(16, 185, 129, 0.15)' },
-                'exam': { bg: 'linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(220, 38, 38, 0.12))', border: '#ef4444', borderLight: 'rgba(239, 68, 68, 0.2)', icon: 'exam', label: 'Persiapan Ujian', glow: 'rgba(239, 68, 68, 0.15)' }
+                'general': { bg: 'var(--bg-card)', border: 'var(--text-muted)', borderLight: 'rgba(148, 163, 184, 0.1)', icon: 'note', label: 'Umum', glow: 'rgba(148, 163, 184, 0.05)' },
+                'lecture': { bg: 'var(--bg-card)', border: 'var(--primary)', borderLight: 'rgba(59, 130, 246, 0.1)', icon: 'book-open', label: 'Materi Kuliah', glow: 'rgba(59, 130, 246, 0.05)' },
+                'assignment': { bg: 'var(--bg-card)', border: 'var(--success)', borderLight: 'rgba(16, 185, 129, 0.1)', icon: 'pencil-line', label: 'Tugas/PR', glow: 'rgba(16, 185, 129, 0.05)' },
+                'exam': { bg: 'var(--bg-card)', border: 'var(--danger)', borderLight: 'var(--danger-light)', icon: 'exam', label: 'Persiapan Ujian', glow: 'rgba(239, 68, 68, 0.05)' }
             };
 
             const style = categoryColors[note.category] || categoryColors['general'];
@@ -131,15 +131,16 @@ const notesManager = {
             const contentPreview = note.content.length > 120 ? note.content.substring(0, 120) + '...' : note.content;
 
             const el = document.createElement('div');
-            el.className = 'card note-card-premium';
+            el.className = 'card note-card-premium fade-in';
             el.style.background = style.bg;
-            el.style.borderLeft = `3px solid ${style.border}`;
+            el.style.border = '1px solid var(--border-color)';
+            el.style.borderLeft = `4px solid ${style.border}`;
             el.style.padding = '1.25rem';
             el.style.position = 'relative';
             el.style.cursor = 'pointer';
             el.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
             el.style.overflow = 'hidden';
-            
+
             // Click to edit
             el.onclick = (e) => {
                 if (!e.target.closest('button')) {
@@ -148,19 +149,17 @@ const notesManager = {
             };
 
             // Hover effects
-            el.onmouseenter = function() {
+            el.onmouseenter = function () {
                 this.style.transform = 'translateY(-4px)';
                 this.style.boxShadow = `0 12px 24px -8px ${style.glow}, var(--shadow-md)`;
-                this.style.borderLeftWidth = '4px';
             };
-            el.onmouseleave = function() {
+            el.onmouseleave = function () {
                 this.style.transform = 'translateY(0)';
                 this.style.boxShadow = 'var(--shadow-sm)';
-                this.style.borderLeftWidth = '3px';
             };
 
             el.innerHTML = `
-                <div style="position: absolute; top: -20px; right: -20px; width: 80px; height: 80px; background: ${style.border}; opacity: 0.03; border-radius: 50%;"></div>
+                <div style="position: absolute; top: -20px; right: -20px; width: 80px; height: 80px; background: ${style.border}; opacity: 0.05; border-radius: 50%;"></div>
                 
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem; position: relative; z-index: 1;">
                     <div style="display:flex; align-items:center; gap:0.5rem; background: ${style.borderLight}; padding: 0.25rem 0.625rem; border-radius: 1rem;">
@@ -168,8 +167,8 @@ const notesManager = {
                         <span style="font-size:0.7rem; color:${style.border}; text-transform:uppercase; font-weight:700; letter-spacing:0.03em;">${style.label}</span>
                     </div>
                     ${note.courseName ? `
-                        <div style="background: linear-gradient(135deg, rgba(147, 51, 234, 0.15), rgba(79, 70, 229, 0.15)); padding: 0.25rem 0.625rem; border-radius: 1rem; border: 1px solid rgba(147, 51, 234, 0.3);">
-                            <span style="font-size:0.7rem; color: #9333ea; font-weight:600;"><i class="ph ph-graduation-cap"></i> ${note.courseName}</span>
+                        <div style="background: rgba(147, 51, 234, 0.1); padding: 0.25rem 0.625rem; border-radius: 1rem; border: 1px solid rgba(147, 51, 234, 0.2);">
+                            <span style="font-size:0.7rem; color: #a855f7; font-weight:600;"><i class="ph ph-graduation-cap"></i> ${note.courseName}</span>
                         </div>
                     ` : ''}
                 </div>
@@ -179,13 +178,13 @@ const notesManager = {
                     <div style="font-size:0.875rem; color:var(--text-muted); line-height:1.6; margin-bottom:1rem;">${contentPreview}</div>
                 </div>
                 
-                <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid ${style.borderLight}; padding-top:0.75rem; position: relative; z-index: 1;">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-color); padding-top:0.75rem; position: relative; z-index: 1;">
                     <span style="font-size:0.7rem; color:var(--text-muted); display: flex; align-items: center; gap: 0.25rem;"><i class="ph ph-clock"></i> ${timeStr}</span>
                     <div style="display:flex; gap:0.5rem;" onclick="event.stopPropagation();">
                         <button class="icon-btn" onclick="notesManager.editNote('${note.id}')" style="width:32px; height:32px; border:none; box-shadow:none; color:${style.border}; background:${style.borderLight}; transition: all 0.2s;">
                             <i class="ph-bold ph-pencil-simple"></i>
                         </button>
-                        <button class="icon-btn" onclick="notesManager.deleteNote('${note.id}')" style="width:32px; height:32px; border:none; box-shadow:none; color:var(--danger); background:rgba(239,68,68,0.1); transition: all 0.2s;">
+                        <button class="icon-btn" onclick="notesManager.deleteNote('${note.id}')" style="width:32px; height:32px; border:none; box-shadow:none; color:var(--danger); background:var(--danger-light); transition: all 0.2s;">
                             <i class="ph-bold ph-trash"></i>
                         </button>
                     </div>
@@ -202,12 +201,12 @@ const notesManager = {
             document.getElementById('note-schedule-id-input').value = scheduleId || '';
             document.getElementById('note-course-name-input').value = courseName || '';
             document.getElementById('modal-note-title').innerText = courseName ? `Catatan: ${courseName}` : 'Catatan Baru';
-            
+
             // Pre-select category to lecture if from schedule
             if (scheduleId && courseName) {
                 document.getElementById('note-category-input').value = 'lecture';
             }
-            
+
             modal.classList.add('active');
             setTimeout(() => document.getElementById('note-title-input').focus(), 100);
         }

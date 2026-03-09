@@ -285,7 +285,7 @@ const scheduleManager = {
         } else {
             courseTasks.forEach(task => {
                 tasksContainer.innerHTML += `
-                    <div style="background:var(--bg-main); padding:0.75rem; border-radius:var(--radius-sm); border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+                    <div style="background:var(--bg-card); padding:0.75rem; border-radius:var(--radius-sm); border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
                         <div>
                             <div style="font-weight:600; font-size:0.9rem;">${task.title}</div>
                             <div style="font-size:0.75rem; color:var(--danger);"><i class="ph ph-calendar"></i> ${task.dueDate}</div>
@@ -306,7 +306,7 @@ const scheduleManager = {
                 courseNotes.forEach(note => {
                     const preview = note.content.length > 80 ? note.content.substring(0, 80) + '...' : note.content;
                     notesContainer.innerHTML += `
-                        <div style="background:var(--bg-main); padding:0.75rem; border-radius:var(--radius-sm); border:1px solid var(--border-color); cursor:pointer;" onclick="notesManager.editNote('${note.id}')">
+                        <div style="background:var(--bg-card); padding:0.75rem; border-radius:var(--radius-sm); border:1px solid var(--border-color); cursor:pointer;" onclick="notesManager.editNote('${note.id}')">
                             <div style="font-weight:600; font-size:0.9rem; margin-bottom:0.25rem;">${note.title}</div>
                             <div style="font-size:0.75rem; color:var(--text-muted); line-height:1.4;">${preview}</div>
                         </div>

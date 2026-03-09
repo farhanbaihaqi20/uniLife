@@ -8,12 +8,12 @@ const deadlineRadar = {
         today.setHours(0, 0, 0, 0);
         const dueDate = new Date(task.dueDate);
         dueDate.setHours(0, 0, 0, 0);
-        
+
         const daysUntilDue = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
-        
+
         // Calculate base risk score
         let riskScore = 0;
-        
+
         // Days factor (most important)
         if (daysUntilDue < 0) {
             riskScore += 100; // Overdue - critical
@@ -92,24 +92,30 @@ const deadlineRadar = {
 
         topRisks.forEach(task => {
             const riskColors = {
-                high: { bg: '#fef2f2', border: '#ef4444', text: '#dc2626' },
-                medium: { bg: '#fef3c7', border: '#f59e0b', text: '#d97706' },
-                low: { bg: '#f0fdf4', border: '#22c55e', text: '#16a34a' }
+                high: { bg: 'var(--danger-light)', border: 'var(--danger)', text: 'var(--danger)' },
+                medium: { bg: 'rgba(245, 158, 11, 0.15)', border: 'var(--warning)', text: 'var(--warning)' },
+                low: { bg: 'rgba(16, 185, 129, 0.15)', border: 'var(--success)', text: 'var(--success)' }
             };
 
             const colors = riskColors[task.riskLevel];
             const riskLabel = task.riskLevel === 'high' ? (i18n.t('radar_risk_high') || 'High Risk') :
-                              task.riskLevel === 'medium' ? (i18n.t('radar_risk_medium') || 'Warning') :
-                              (i18n.t('radar_risk_low') || 'Safe');
+                task.riskLevel === 'medium' ? (i18n.t('radar_risk_medium') || 'Warning') :
+                    (i18n.t('radar_risk_low') || 'Safe');
 
             const el = document.createElement('div');
             el.className = 'radar-item';
             el.style.background = colors.bg;
-            el.style.border = `2px solid ${colors.border}`;
+            el.style.borderLeft = `4px solid ${colors.border}`;
+            el.style.borderTop = `1px solid var(--border-color)`;
+            el.style.borderRight = `1px solid var(--border-color)`;
+            el.style.borderBottom = `1px solid var(--border-color)`;
             el.style.borderRadius = 'var(--radius-md)';
             el.style.padding = '1rem';
             el.style.marginBottom = '0.75rem';
             el.style.cursor = 'pointer';
+            el.style.transition = 'transform 0.2s ease, box-shadow 0.2s ease';
+            el.onmouseenter = () => { el.style.transform = 'translateY(-2px)'; el.style.boxShadow = 'var(--shadow-md)'; };
+            el.onmouseleave = () => { el.style.transform = 'translateY(0)'; el.style.boxShadow = 'none'; };
             el.onclick = () => {
                 document.querySelector('.nav-item[data-target="view-tasks"]').click();
             };

@@ -13,7 +13,8 @@
     <link rel="apple-touch-icon" href="assets/icon.png">
 
     <title>UniLife Tracker</title>
-    <link rel="stylesheet" href="css/styles.css?v=1.0.0">
+    <link rel="stylesheet" href="css/styles.css?v=1.0.1
+    ">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Icons (Phosphor Icons for a premium look) -->
@@ -82,8 +83,7 @@
                         <span data-i18n="home_quick_tasks"
                             style="font-size:0.75rem; font-weight:600; color:var(--text-main)">Tugas</span>
                     </button>
-                    <button class="card"
-                        onclick="document.querySelector('.nav-item[data-target=\'view-focus\']').click()"
+                    <button class="card" onclick="window.openView && window.openView('view-focus', 'view-home')"
                         style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; padding:1rem 0.25rem; border:none; background:var(--bg-card); cursor:pointer;">
                         <div
                             style="width:40px; height:40px; border-radius:50%; background:rgba(245, 158, 11, 0.1); color:var(--warning); display:flex; align-items:center; justify-content:center; font-size:1.5rem;">
@@ -246,12 +246,43 @@
                 </div>
 
                 <div class="pomodoro-container card" style="text-align:center; padding: 2rem 1rem;">
-                    <div id="pomodoro-status" data-i18n="focus_mode_work"
+                    <div id="pomodoro-status" class="focus-status-pill" data-i18n="focus_mode_work"
                         style="font-weight: 600; color: var(--primary); margin-bottom: 1rem; letter-spacing: 2px; text-transform: uppercase;">
                         Waktu Kerja</div>
-                    <div id="pomodoro-timer"
-                        style="font-size: 4.5rem; font-weight: 700; line-height: 1; margin-bottom: 2rem; color: var(--text-main); font-variant-numeric: tabular-nums;">
-                        25:00
+
+                    <div class="focus-timer-shell" id="focus-timer-shell">
+                        <svg class="focus-progress" viewBox="0 0 220 220" aria-hidden="true">
+                            <circle class="focus-progress-track" cx="110" cy="110" r="96"></circle>
+                            <circle class="focus-progress-bar" id="focus-progress-bar" cx="110" cy="110" r="96">
+                            </circle>
+                        </svg>
+                        <div id="pomodoro-timer"
+                            style="font-size: 4.2rem; font-weight: 700; line-height: 1; margin-bottom: 0; color: var(--text-main); font-variant-numeric: tabular-nums;">
+                            25:00
+                        </div>
+                    </div>
+
+                    <p class="focus-timer-helper">Deep session 25 menit dengan progress real-time</p>
+
+                    <div class="focus-presets-panel">
+                        <div class="focus-presets-title">
+                            <i class="ph ph-sliders-horizontal"></i>
+                            <span data-i18n="focus_presets_title">Focus Scenes</span>
+                        </div>
+                        <div class="focus-presets-grid">
+                            <button class="focus-preset-btn" onclick="focusManager.applyPreset('deep')">
+                                <strong data-i18n="focus_preset_deep">Deep Work</strong>
+                                <small data-i18n="focus_preset_deep_desc">50/10 + Deep Tone</small>
+                            </button>
+                            <button class="focus-preset-btn" onclick="focusManager.applyPreset('light')">
+                                <strong data-i18n="focus_preset_light">Light Study</strong>
+                                <small data-i18n="focus_preset_light_desc">25/5 + Rain</small>
+                            </button>
+                            <button class="focus-preset-btn" onclick="focusManager.applyPreset('crunch')">
+                                <strong data-i18n="focus_preset_crunch">Exam Crunch</strong>
+                                <small data-i18n="focus_preset_crunch_desc">45/8 + Cafe</small>
+                            </button>
+                        </div>
                     </div>
 
                     <div style="display:flex; gap: 1rem; justify-content: center; margin-bottom: 2rem;">
@@ -267,6 +298,67 @@
                             data-i18n="focus_select_task">Pilih Tugas (Opsional)</label>
                         <div id="focus-task-selector">
                             <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <div class="focus-ambience-panel">
+                        <div class="focus-ambience-header">
+                            <div class="focus-ambience-title">
+                                <i class="ph ph-waveform"></i>
+                                <span data-i18n="focus_ambience_title">Ambience Fokus</span>
+                            </div>
+                            <div class="focus-ambience-status-badge">
+                                <i class="ph ph-play-circle" id="focus-ambience-icon"></i>
+                                <span id="focus-ambience-status" data-i18n="focus_ambience_status_off">Off</span>
+                            </div>
+                        </div>
+
+                        <div class="focus-ambience-grid">
+                            <button type="button" class="focus-ambience-btn" data-mode="off"
+                                onclick="focusManager.setAmbience('off')">
+                                <i class="ph ph-x-circle"></i>
+                                <span data-i18n="focus_ambience_off">Off</span>
+                            </button>
+                            <button type="button" class="focus-ambience-btn" data-mode="rain"
+                                onclick="focusManager.setAmbience('rain')">
+                                <i class="ph ph-cloud-rain"></i>
+                                <span data-i18n="focus_ambience_rain">Rain</span>
+                            </button>
+                            <button type="button" class="focus-ambience-btn" data-mode="cafe"
+                                onclick="focusManager.setAmbience('cafe')">
+                                <i class="ph ph-coffee"></i>
+                                <span data-i18n="focus_ambience_cafe">Cafe</span>
+                            </button>
+                            <button type="button" class="focus-ambience-btn" data-mode="deep"
+                                onclick="focusManager.setAmbience('deep')">
+                                <i class="ph ph-wave-sine"></i>
+                                <span data-i18n="focus_ambience_deep">Deep</span>
+                            </button>
+                            <button type="button" class="focus-ambience-btn focus-ambience-btn-custom"
+                                data-mode="custom"
+                                onclick="document.getElementById('focus-custom-audio-input').click()">
+                                <i class="ph ph-upload-simple"></i>
+                                <span data-i18n="focus_ambience_custom">Upload</span>
+                            </button>
+                        </div>
+
+                        <input type="file" id="focus-custom-audio-input" accept="audio/*" style="display: none;"
+                            onchange="focusManager.handleCustomAudio(this.files[0])">
+
+                        <div class="focus-volume-wrap">
+                            <i class="ph ph-speaker-high"></i>
+                            <input id="focus-ambience-volume" type="range" min="0" max="100" value="35"
+                                oninput="focusManager.setAmbienceVolume(this.value)">
+                            <span class="focus-volume-value"><span id="focus-volume-display">35</span>%</span>
+                        </div>
+
+                        <div id="focus-custom-audio-name" class="focus-custom-filename" style="display: none;">
+                            <i class="ph ph-music-notes"></i>
+                            <span id="focus-custom-filename-text"></span>
+                            <button type="button" class="focus-custom-remove"
+                                onclick="focusManager.removeCustomAudio()">
+                                <i class="ph ph-x"></i>
+                            </button>
                         </div>
                     </div>
 
@@ -568,7 +660,7 @@
                     </h3>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                         <div
-                            style="padding: 1rem; background: var(--bg-main); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                            style="padding: 1rem; background: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
                             <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;"><i
                                     class="ph ph-book"></i> <span data-i18n="profile_stats_courses">Mata Kuliah</span>
                             </p>
@@ -576,7 +668,7 @@
                                 style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">0</p>
                         </div>
                         <div
-                            style="padding: 1rem; background: var(--bg-main); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                            style="padding: 1rem; background: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
                             <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;"><i
                                     class="ph ph-check-circle"></i> <span data-i18n="profile_stats_completed">Tugas
                                     Selesai</span></p>
@@ -584,7 +676,7 @@
                                 style="font-size: 1.5rem; font-weight: 700; color: var(--success);">0</p>
                         </div>
                         <div
-                            style="padding: 1rem; background: var(--bg-main); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                            style="padding: 1rem; background: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
                             <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;"><i
                                     class="ph ph-clock"></i> <span data-i18n="profile_stats_focus">Total Fokus</span>
                             </p>
@@ -592,7 +684,7 @@
                                 style="font-size: 1.5rem; font-weight: 700; color: #a855f7;">0h</p>
                         </div>
                         <div
-                            style="padding: 1rem; background: var(--bg-main); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                            style="padding: 1rem; background: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
                             <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;"><i
                                     class="ph ph-calendar"></i> <span
                                     data-i18n="profile_stats_attendance">Kehadiran</span></p>
@@ -1038,23 +1130,127 @@
         </div>
     </div>
 
+    <!-- Fullscreen Focus Mode Overlay -->
+    <div class="focus-fullscreen-overlay" id="focus-fullscreen-overlay">
+        <div class="focus-fullscreen-content">
+            <!-- Exit Button -->
+            <button class="focus-fullscreen-exit" onclick="focusManager.exitFullscreenMode()" title="Exit Focus Mode">
+                <i class="ph ph-x"></i>
+            </button>
+
+            <!-- Mode Status Chip -->
+            <div class="focus-fullscreen-mode-badge" id="focus-fullscreen-mode-badge">
+                <i class="ph ph-brain"></i>
+                <span id="focus-fullscreen-mode-text" data-i18n="focus_status_work">Waktu Kerja</span>
+            </div>
+
+            <!-- Large Timer with Progress Ring -->
+            <div class="focus-fullscreen-timer-wrap">
+                <svg class="focus-fullscreen-progress" viewBox="0 0 320 320" aria-hidden="true">
+                    <circle class="focus-fullscreen-progress-track" cx="160" cy="160" r="145"></circle>
+                    <circle class="focus-fullscreen-progress-bar" id="focus-fullscreen-progress-bar" cx="160" cy="160"
+                        r="145"></circle>
+                </svg>
+                <div class="focus-fullscreen-timer" id="focus-fullscreen-timer">25:00</div>
+            </div>
+
+            <!-- Ambience Info -->
+            <div class="focus-fullscreen-ambience" id="focus-fullscreen-ambience">
+                <div class="focus-fullscreen-ambience-wave">
+                    <i class="ph ph-waveform"></i>
+                </div>
+                <div class="focus-fullscreen-ambience-text">
+                    <span class="focus-fullscreen-ambience-label" data-i18n="focus_fullscreen_playing">Memainkan</span>
+                    <span class="focus-fullscreen-ambience-name" id="focus-fullscreen-ambience-name">Rain</span>
+                </div>
+            </div>
+
+            <!-- Control Buttons -->
+            <div class="focus-fullscreen-controls">
+                <button class="focus-fullscreen-btn focus-fullscreen-btn-pause" id="focus-fullscreen-btn-pause"
+                    onclick="focusManager.toggleTimer()">
+                    <i class="ph ph-pause"></i>
+                    <span data-i18n="focus_pause">Pause</span>
+                </button>
+                <button class="focus-fullscreen-btn focus-fullscreen-btn-stop" id="focus-fullscreen-btn-stop"
+                    onclick="focusManager.stopAndExitFullscreen()">
+                    <i class="ph ph-stop"></i>
+                    <span data-i18n="focus_stop">Stop</span>
+                </button>
+                <button class="focus-fullscreen-btn focus-fullscreen-btn-music" id="focus-fullscreen-btn-music"
+                    onclick="focusManager.toggleFullscreenMusic()">
+                    <i class="ph ph-speaker-high"></i>
+                    <span data-i18n="focus_fullscreen_music_off">Music Off</span>
+                </button>
+            </div>
+
+            <!-- Subtle hint -->
+            <p class="focus-fullscreen-hint">
+                <span data-i18n="focus_hint_shortcuts">ESC keluar - SPACE pause/resume - M music - S stop</span>
+            </p>
+        </div>
+    </div>
+
+    <div class="focus-summary-modal" id="focus-summary-modal">
+        <div class="focus-summary-card">
+            <div class="focus-summary-icon">
+                <i class="ph ph-confetti"></i>
+            </div>
+            <h3 id="focus-summary-title" data-i18n="focus_summary_title">Session Complete</h3>
+            <p id="focus-summary-subtitle" class="focus-summary-subtitle"></p>
+            <div class="focus-summary-metrics">
+                <div class="focus-summary-metric">
+                    <span data-i18n="focus_summary_duration">Durasi</span>
+                    <strong id="focus-summary-duration">25 min</strong>
+                </div>
+                <div class="focus-summary-metric">
+                    <span data-i18n="focus_stats_sessions">Sesi Fokus</span>
+                    <strong id="focus-summary-sessions">0</strong>
+                </div>
+                <div class="focus-summary-metric">
+                    <span data-i18n="focus_stats_minutes">Menit Total</span>
+                    <strong id="focus-summary-minutes">0</strong>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="focusManager.closeSessionSummary()">
+                <span data-i18n="focus_summary_continue">Lanjut Fokus</span>
+            </button>
+        </div>
+    </div>
+
     <!-- Scripts - Version parameter untuk cache-busting -->
-    <script src="js/storage.js?v=1.0.0"></script>
-    <script src="js/i18n.js?v=1.0.0"></script>
-    <script src="js/inbox.js?v=1.0.0"></script>
-    <script src="js/notes.js?v=1.0.0"></script>
-    <script src="js/presensi.js?v=1.0.0"></script>
-    <script src="js/radar.js?v=1.0.0"></script>
-    <script src="js/gradeGoals.js?v=1.0.0"></script>
-    <script src="js/calendarExport.js?v=1.0.0"></script>
-    <script src="js/notification.js?v=1.0.0"></script>
-    <script src="js/profile.js?v=1.0.0"></script>
-    <script src="js/home.js?v=1.0.0"></script>
-    <script src="js/focus.js?v=1.0.0"></script>
-    <script src="js/schedule.js?v=1.0.0"></script>
-    <script src="js/grades.js?v=1.0.0"></script>
-    <script src="js/tasks.js?v=1.0.0"></script>
-    <script src="js/app.js?v=1.0.0"></script>
+    <script src="js/storage.js?v=1.0.1
+    "></script>
+    <script src="js/i18n.js?v=1.0.1
+    "></script>
+    <script src="js/inbox.js?v=1.0.1
+    "></script>
+    <script src="js/notes.js?v=1.0.1
+    "></script>
+    <script src="js/presensi.js?v=1.0.1
+    "></script>
+    <script src="js/radar.js?v=1.0.1
+    "></script>
+    <script src="js/gradeGoals.js?v=1.0.1
+    "></script>
+    <script src="js/calendarExport.js?v=1.0.1
+    "></script>
+    <script src="js/notification.js?v=1.0.1
+    "></script>
+    <script src="js/profile.js?v=1.0.1
+    "></script>
+    <script src="js/home.js?v=1.0.1
+    "></script>
+    <script src="js/focus.js?v=1.0.1
+    "></script>
+    <script src="js/schedule.js?v=1.0.1
+    "></script>
+    <script src="js/grades.js?v=1.0.1
+    "></script>
+    <script src="js/tasks.js?v=1.0.1
+    "></script>
+    <script src="js/app.js?v=1.0.1
+    "></script>
 </body>
 
 </html>

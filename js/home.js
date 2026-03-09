@@ -153,6 +153,7 @@ const homeManager = {
             card.style.padding = '1rem';
             card.style.borderRadius = 'var(--radius-sm)';
             card.style.border = '1px solid var(--border-color)';
+            card.style.borderLeft = `3px solid ${dueColor}`;
             card.style.marginBottom = '0.5rem';
             card.style.display = 'flex';
             card.style.justifyContent = 'space-between';
