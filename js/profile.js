@@ -534,7 +534,12 @@ const profileManager = {
         e.preventDefault();
 
         const oldSemester = this.profile.semester || '';
-        const newSemester = document.getElementById('prof-sem').value;
+        let rawSemester = parseInt(document.getElementById('prof-sem').value);
+        if (isNaN(rawSemester) || rawSemester < 1) rawSemester = 1;
+        if (rawSemester > 14) rawSemester = 14;
+        const newSemester = rawSemester.toString();
+        document.getElementById('prof-sem').value = newSemester;
+        
         // Only consider it a "change" if old wasn't empty and it's actually different
         const isSemesterChanged = (oldSemester !== newSemester && oldSemester !== '');
 

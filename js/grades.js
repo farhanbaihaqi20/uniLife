@@ -264,6 +264,10 @@ const gradesManager = {
     },
 
     addSemester: function () {
+        if (this.semesters.length >= 14) {
+            alert(i18n.t('grades_max_semester_reached') || 'Maksimal 14 semester. Anda tidak bisa menambah lagi.');
+            return;
+        }
         const name = prompt(i18n.t('grades_semester_prompt'), `Semester ${this.semesters.length + 1}`);
         if (name) {
             this.semesters.push({
