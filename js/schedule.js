@@ -103,8 +103,9 @@ const scheduleManager = {
                 }
             }
             card.className = `card schedule-card ${isNow ? 'is-now' : ''}`;
+            card.setAttribute('data-schedule-id', sch.id);
             card.style.cursor = 'pointer';
-            card.onclick = () => this.openCourseDetailModal(sch.id);
+            card.onclick = () => this.openCourseDetailModal(sch.id, card);
 
             card.innerHTML = `
                 <div class="schedule-time">
@@ -168,6 +169,23 @@ const scheduleManager = {
                         gradesManager.renderStats();
                         gradesManager.renderSemesters();
                     }
+
+                    // Sync linked task course names when schedule name changes.
+                    const allTasks = Storage.getTasks();
+                    let tasksUpdated = false;
+                    allTasks.forEach(task => {
+                        if (task.courseId === scheduleId) {
+                            task.courseName = scheduleData.name;
+                            tasksUpdated = true;
+                        }
+                    });
+                    if (tasksUpdated) {
+                        Storage.setTasks(allTasks);
+                        if (typeof tasksManager !== 'undefined') {
+                            tasksManager.tasks = allTasks;
+                            tasksManager.renderTasks();
+                        }
+                    }
                 }
             } else {
                 // Add new schedule
@@ -213,6 +231,9 @@ const scheduleManager = {
             this.currentActiveTab = scheduleData.day;
             this.renderTabs();
             this.renderScheduleList();
+            if (typeof tasksManager !== 'undefined' && typeof tasksManager.refreshCourseCategoryField === 'function') {
+                tasksManager.refreshCourseCategoryField();
+            }
             form.reset();
         });
     },
@@ -259,6 +280,26 @@ const scheduleManager = {
         if (confirm(i18n.t('schedule_delete_confirm'))) {
             this.schedules = this.schedules.filter(s => s.id !== id);
             Storage.setSchedules(this.schedules);
+
+            const allTasks = Storage.getTasks();
+            let tasksUpdated = false;
+            allTasks.forEach(task => {
+                if (task.courseId === id) {
+                    task.courseId = null;
+                    tasksUpdated = true;
+                }
+            });
+            if (tasksUpdated) {
+                Storage.setTasks(allTasks);
+                if (typeof tasksManager !== 'undefined') {
+                    tasksManager.tasks = allTasks;
+                    tasksManager.renderTasks();
+                }
+            }
+
+            if (typeof tasksManager !== 'undefined' && typeof tasksManager.refreshCourseCategoryField === 'function') {
+                tasksManager.refreshCourseCategoryField();
+            }
             this.renderScheduleList();
 
             // Update home if active
@@ -267,7 +308,7 @@ const scheduleManager = {
     },
 
     // --- V2: Course Details Modal ---
-    openCourseDetailModal: function (courseId) {
+    openCourseDetailModal: function (courseId, sourceCard = null) {
         const sch = this.schedules.find(s => s.id === courseId);
         if (!sch) return;
 
@@ -343,7 +384,56 @@ const scheduleManager = {
             gradeInfo.innerHTML = `<span style="font-size:0.85rem; color:var(--text-muted)">${i18n.t('schedule_detail_no_grades')}</span>`;
         }
 
-        document.getElementById('modal-course-detail').classList.add('active');
+        const detailModal = document.getElementById('modal-course-detail');
+        detailModal.classList.add('active');
+
+        const modalContent = detailModal.querySelector('.modal-content');
+        if (modalContent) {
+            modalContent.classList.remove('modal-pop-in');
+            requestAnimationFrame(() => modalContent.classList.add('modal-pop-in'));
+        }
+
+        if (sourceCard) {
+            this.animateSharedCardOpen(sourceCard, detailModal);
+        }
+    },
+
+    animateSharedCardOpen: function (sourceCard, detailModal) {
+        if (!sourceCard || !detailModal) return;
+
+        const modalContent = detailModal.querySelector('.modal-content');
+        if (!modalContent) return;
+
+        const sourceRect = sourceCard.getBoundingClientRect();
+        const clone = sourceCard.cloneNode(true);
+        clone.classList.add('shared-card-clone');
+        clone.style.position = 'fixed';
+        clone.style.top = `${sourceRect.top}px`;
+        clone.style.left = `${sourceRect.left}px`;
+        clone.style.width = `${sourceRect.width}px`;
+        clone.style.height = `${sourceRect.height}px`;
+        clone.style.margin = '0';
+        clone.style.zIndex = '1400';
+        clone.style.pointerEvents = 'none';
+        document.body.appendChild(clone);
+
+        const targetRect = modalContent.getBoundingClientRect();
+        const targetTop = targetRect.top + 14;
+        const targetLeft = targetRect.left + 12;
+        const targetScale = Math.max(0.94, Math.min(1.06, (targetRect.width - 24) / sourceRect.width));
+
+        requestAnimationFrame(() => {
+            clone.style.transformOrigin = 'top left';
+            clone.style.transition = 'transform 320ms cubic-bezier(0.22, 1, 0.36, 1), opacity 320ms ease';
+            const dx = targetLeft - sourceRect.left;
+            const dy = targetTop - sourceRect.top;
+            clone.style.transform = `translate(${dx}px, ${dy}px) scale(${targetScale})`;
+            clone.style.opacity = '0';
+        });
+
+        setTimeout(() => {
+            if (clone.parentNode) clone.parentNode.removeChild(clone);
+        }, 340);
     },
 
     closeCourseDetailModal: function () {

@@ -92,6 +92,19 @@ body {
     /* Enable GPU acceleration for smoother animations */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+input,
+textarea,
+select,
+[contenteditable="true"],
+.allow-select {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
 }
 
 /* Utilities */
@@ -295,6 +308,7 @@ body {
     display: flex;
     flex-direction: column;
     height: 100vh;
+    height: 100dvh;
     max-width: 600px;
     margin: 0 auto;
     background: linear-gradient(180deg,
@@ -390,6 +404,18 @@ body {
     display: block;
 }
 
+.view-section.active.view-anim-rise {
+    animation: viewRise 0.34s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.view-section.active.view-anim-slide {
+    animation: viewSlide 0.34s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.view-section.active.view-anim-zoom {
+    animation: viewZoom 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 @keyframes fadeInSlide {
     from {
         opacity: 0;
@@ -399,6 +425,61 @@ body {
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes viewRise {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes viewSlide {
+    from {
+        opacity: 0;
+        transform: translateX(14px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes viewZoom {
+    from {
+        opacity: 0;
+        transform: scale(0.985);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.reveal-in {
+    animation: revealIn 0.46s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--reveal-delay, 0ms);
+}
+
+@keyframes revealIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.99);
+        filter: saturate(0.92);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: saturate(1);
     }
 }
 
@@ -477,6 +558,7 @@ body {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s ease;
+    will-change: opacity;
 }
 
 .modal-overlay.active {
@@ -513,10 +595,59 @@ body {
     position: relative;
     transform: translateY(100%);
     transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    contain: layout paint;
+}
+
+.modal-content::before {
+    content: '';
+    position: absolute;
+    top: 0.7rem;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 44px;
+    height: 5px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--text-muted) 45%, transparent);
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.modal-content.sheet-dragging {
+    transition: none !important;
+}
+
+.modal-content.modal-pop-in {
+    animation: modalPopIn 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes modalPopIn {
+    from {
+        opacity: 0;
+        transform: translateY(14px) scale(0.985);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.shared-card-clone {
+    box-shadow: 0 16px 42px rgba(15, 23, 42, 0.24);
+    border-radius: var(--radius-md);
+    overflow: hidden;
 }
 
 .modal-overlay.active .modal-content {
     transform: translateY(0);
+}
+
+body.modal-open {
+    overflow: hidden;
+    touch-action: none;
 }
 
 .modal-close {
@@ -533,6 +664,92 @@ body {
     justify-content: center;
     cursor: pointer;
     color: var(--text-main);
+}
+
+.task-swipe-card {
+    position: relative;
+    overflow: hidden;
+    touch-action: pan-y;
+    transition: transform 0.2s ease;
+}
+
+.task-swipe-card::before,
+.task-swipe-card::after {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+}
+
+.task-swipe-card::before {
+    content: attr(data-swipe-right);
+    left: 0.75rem;
+    color: var(--success);
+}
+
+.task-swipe-card::after {
+    content: attr(data-swipe-left);
+    right: 0.75rem;
+    color: var(--danger);
+}
+
+.task-swipe-card.swiping-right {
+    box-shadow: inset 58px 0 0 rgba(16, 185, 129, 0.12);
+}
+
+.task-swipe-card.swiping-right::before {
+    opacity: 1;
+}
+
+.task-swipe-card.swiping-left {
+    box-shadow: inset -58px 0 0 rgba(239, 68, 68, 0.12);
+}
+
+.task-swipe-card.swiping-left::after {
+    opacity: 1;
+}
+
+.task-swipe-card.task-complete-pop {
+    animation: taskCompletePop 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.task-swipe-card.task-delete-swipe-out {
+    animation: taskDeleteOut 0.18s ease forwards;
+}
+
+@keyframes taskCompletePop {
+    0% {
+        transform: scale(1);
+        box-shadow: inset 0 0 0 rgba(16, 185, 129, 0);
+    }
+
+    55% {
+        transform: scale(1.015);
+        box-shadow: inset 0 0 0 999px rgba(16, 185, 129, 0.08);
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: inset 0 0 0 rgba(16, 185, 129, 0);
+    }
+}
+
+@keyframes taskDeleteOut {
+    to {
+        transform: translateX(-44px) scale(0.98);
+        opacity: 0;
+    }
+}
+
+@media (min-width: 769px) {
+    .task-swipe-card {
+        touch-action: auto;
+    }
 }
 
 /* Bottom Navigation with glassmorphism */
@@ -1717,6 +1934,61 @@ body {
     }
 }
 
+@media (max-width: 768px) {
+    .modal-overlay {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        background: rgba(0, 0, 0, 0.42);
+        transition: opacity 0.2s ease;
+    }
+
+    .modal-content {
+        transition: transform 0.2s ease-out;
+        padding-top: 2.3rem;
+    }
+
+    .modal-overlay.active .modal-content {
+        animation: none;
+    }
+
+    #modal-course-detail.blurred .modal-content,
+    #modal-attendance-input.active~#modal-course-detail .modal-content,
+    #modal-attendance-course-recap.active~#modal-course-detail .modal-content {
+        filter: none;
+        opacity: 0.88;
+    }
+}
+
+@media (max-width: 600px) {
+    .view-section.active.view-anim-rise,
+    .view-section.active.view-anim-slide,
+    .view-section.active.view-anim-zoom {
+        animation-duration: 0.24s;
+    }
+
+    .reveal-in {
+        animation-duration: 0.34s;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .view-section.active.view-anim-rise,
+    .view-section.active.view-anim-slide,
+    .view-section.active.view-anim-zoom,
+    .reveal-in {
+        animation: none !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .modal-overlay,
+    .modal-content,
+    .modal-overlay.active .modal-content {
+        transition: none !important;
+        animation: none !important;
+    }
+}
+
 /* Fade-in animation for content */
 .fade-in {
     animation: fadeIn 0.3s ease;
@@ -2521,6 +2793,24 @@ select:focus {
     font-family: 'Inter', sans-serif;
 }
 
+.notification-badge.pulse {
+    animation: notificationBadgePulse 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes notificationBadgePulse {
+    0% {
+        transform: scale(1);
+    }
+
+    40% {
+        transform: scale(1.22);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
 #notification-container {
     position: relative;
     display: flex;
@@ -2550,6 +2840,19 @@ select:focus {
     border: 1px solid var(--border-color);
 }
 
+.notification-panel.sheet-dragging {
+    transition: none !important;
+}
+
+.notification-drag-handle {
+    display: none;
+    width: 46px;
+    height: 5px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--text-muted) 45%, transparent);
+    margin: 0.5rem auto 0;
+}
+
 .notification-panel.active {
     opacity: 1;
     visibility: visible;
@@ -2561,7 +2864,8 @@ select:focus {
     border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
+    gap: 0.75rem;
 }
 
 .notification-panel-header h3 {
@@ -2574,6 +2878,42 @@ select:focus {
     flex: 1;
     overflow-y: auto;
     padding: 0;
+}
+
+.notification-header-actions {
+    display: inline-flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.notif-header-btn {
+    border: 1px solid var(--border-color);
+    background: var(--bg-main);
+    color: var(--text-main);
+    border-radius: 999px;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    cursor: pointer;
+    transition: transform 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.notif-header-btn:active {
+    transform: scale(0.97);
+}
+
+.notif-header-btn i {
+    font-size: 0.95rem;
+}
+
+.notif-header-btn.danger {
+    color: var(--danger);
+    border-color: color-mix(in srgb, var(--danger) 28%, var(--border-color));
+    background: color-mix(in srgb, var(--danger-light) 50%, var(--bg-main));
 }
 
 .notification-empty {
@@ -2594,6 +2934,49 @@ select:focus {
     gap: 0.75rem;
     transition: background-color 0.2s ease;
     cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    touch-action: pan-y;
+}
+
+.notification-item::before,
+.notification-item::after {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.7rem;
+    font-weight: 700;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    pointer-events: none;
+}
+
+.notification-item::before {
+    content: attr(data-swipe-right);
+    left: 0.75rem;
+    color: var(--success);
+}
+
+.notification-item::after {
+    content: attr(data-swipe-left);
+    right: 0.75rem;
+    color: var(--danger);
+}
+
+.notification-item.swiping-right {
+    box-shadow: inset 56px 0 0 rgba(16, 185, 129, 0.12);
+}
+
+.notification-item.swiping-right::before {
+    opacity: 1;
+}
+
+.notification-item.swiping-left {
+    box-shadow: inset -56px 0 0 rgba(239, 68, 68, 0.12);
+}
+
+.notification-item.swiping-left::after {
+    opacity: 1;
 }
 
 .notification-item:hover {
@@ -2720,12 +3103,53 @@ select:focus {
 @media (max-width: 600px) {
     .notification-panel {
         position: fixed;
-        top: 70px;
+        top: auto;
+        bottom: 0;
         right: 0;
         left: 0;
         width: 100%;
-        border-radius: 0;
-        max-height: 70vh;
+        border-radius: 18px 18px 0 0;
+        max-height: min(72vh, 620px);
+        transform: translateY(100%);
+        transition: transform 0.24s ease, opacity 0.24s ease, visibility 0.24s;
+        padding-bottom: env(safe-area-inset-bottom);
+        box-shadow: 0 -12px 36px rgba(0, 0, 0, 0.18);
+    }
+
+    .notification-panel.active {
+        transform: translateY(0);
+    }
+
+    .notification-drag-handle {
+        display: block;
+    }
+
+    .notification-panel-header {
+        padding-top: 0.6rem;
+    }
+
+    .notification-actions {
+        opacity: 1;
+    }
+
+    .notif-header-btn span {
+        display: none;
+    }
+
+    .notif-header-btn {
+        width: 30px;
+        height: 30px;
+        justify-content: center;
+        padding: 0;
+        border-radius: 50%;
+    }
+
+    .notif-header-btn i {
+        font-size: 1rem;
+    }
+
+    .notification-item {
+        transition: background-color 0.2s ease, transform 0.2s ease;
     }
 }
 

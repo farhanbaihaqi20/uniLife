@@ -34,6 +34,29 @@ document.addEventListener('DOMContentLoaded', () => {
     // 3. Navigation
     const navItems = document.querySelectorAll('.nav-item');
     const sections = document.querySelectorAll('.view-section');
+    let viewAnimIndex = 0;
+    const viewAnimClasses = ['view-anim-rise', 'view-anim-slide', 'view-anim-zoom'];
+
+    const animateViewSection = function (targetId) {
+        const section = document.getElementById(targetId);
+        if (!section) return;
+
+        viewAnimClasses.forEach(cls => section.classList.remove(cls));
+        const activeAnimClass = viewAnimClasses[viewAnimIndex % viewAnimClasses.length];
+        viewAnimIndex += 1;
+        section.classList.add(activeAnimClass);
+
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reducedMotion) return;
+
+        const revealItems = section.querySelectorAll('.card, .schedule-card, .task-swipe-card, .notification-item, .note-card, .stat-card, .attendance-card, .inbox-item, .home-schedule-card');
+        revealItems.forEach((item, index) => {
+            item.classList.remove('reveal-in');
+            const stagger = Math.min(index, 10) * 32;
+            item.style.setProperty('--reveal-delay', `${stagger}ms`);
+            requestAnimationFrame(() => item.classList.add('reveal-in'));
+        });
+    };
 
     // Global helper so any module/home quick action can navigate safely.
     window.openView = function (targetId, activeNavTarget = null) {
@@ -50,6 +73,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 section.classList.remove('active');
             }
         });
+
+        animateViewSection(targetId);
     };
 
     navItems.forEach(item => {
@@ -59,8 +84,197 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    animateViewSection('view-home');
+
     // 4. Universal Drag-to-Scroll for Horizontal Containers (e.g. .day-tabs, #home-schedule-list)
     const scrollableContainers = document.querySelectorAll('.day-tabs, #home-schedule-list');
+
+    // Keep background stable on mobile by locking scroll when any modal is active.
+    const syncBodyModalState = function () {
+        const hasActiveModal = !!document.querySelector('.modal-overlay.active, .welcome-modal.active');
+        document.body.classList.toggle('modal-open', hasActiveModal);
+    };
+
+    // Make interaction feel more native by preventing copy/select on non-editable surfaces.
+    const editableSelector = 'input, textarea, select, [contenteditable="true"], .allow-select';
+    const isEditableTarget = (target) => !!(target && target.closest(editableSelector));
+
+    document.addEventListener('contextmenu', (event) => {
+        if (!isEditableTarget(event.target)) event.preventDefault();
+    });
+
+    document.addEventListener('selectstart', (event) => {
+        if (!isEditableTarget(event.target)) event.preventDefault();
+    });
+
+    document.addEventListener('copy', (event) => {
+        const activeEl = document.activeElement;
+        if (!isEditableTarget(activeEl) && !isEditableTarget(event.target)) {
+            event.preventDefault();
+        }
+    });
+
+    document.addEventListener('cut', (event) => {
+        const activeEl = document.activeElement;
+        if (!isEditableTarget(activeEl) && !isEditableTarget(event.target)) {
+            event.preventDefault();
+        }
+    });
+    
+    // Native-like haptic feedback on touch interactions.
+    const nativeHaptics = {
+        lastPulseAt: 0,
+        patterns: {
+            light: [8],
+            medium: [14],
+            success: [10, 28, 12]
+        },
+        pulse(type = 'light') {
+            if (!('vibrate' in navigator)) return;
+            const now = Date.now();
+            if (now - this.lastPulseAt < 45) return;
+            navigator.vibrate(this.patterns[type] || this.patterns.light);
+            this.lastPulseAt = now;
+        }
+    };
+
+    const hapticTapSelector = 'button, .btn, .icon-btn, .nav-item, .fab-main, .fab-menu-btn, .day-tab, .filter-btn, .modal-close';
+    document.addEventListener('pointerdown', (event) => {
+        if (event.pointerType === 'mouse') return;
+        if (event.target.closest(hapticTapSelector)) {
+            nativeHaptics.pulse('light');
+        }
+    }, { passive: true });
+
+    document.addEventListener('submit', () => nativeHaptics.pulse('medium'), true);
+
+    const setupModalSheetGestures = function () {
+        const overlays = document.querySelectorAll('.modal-overlay');
+        overlays.forEach((overlay) => {
+            if (overlay.dataset.sheetBound === '1') return;
+            const sheet = overlay.querySelector('.modal-content');
+            if (!sheet) return;
+
+            overlay.dataset.sheetBound = '1';
+
+            let startY = 0;
+            let dragY = 0;
+            let isDragging = false;
+
+            const resetSheet = (springBack = false) => {
+                sheet.classList.remove('sheet-dragging');
+                if (springBack) {
+                    sheet.style.transition = 'transform 260ms cubic-bezier(0.22, 1, 0.36, 1)';
+                    requestAnimationFrame(() => {
+                        sheet.style.transform = 'translateY(0)';
+                    });
+                    setTimeout(() => {
+                        sheet.style.transition = '';
+                        sheet.style.transform = '';
+                    }, 280);
+                    return;
+                }
+                sheet.style.transform = '';
+            };
+
+            const closeOverlay = () => {
+                const closeBtn = overlay.querySelector('.modal-close');
+                if (closeBtn) {
+                    closeBtn.click();
+                } else {
+                    overlay.classList.remove('active');
+                }
+            };
+
+            sheet.addEventListener('touchstart', (event) => {
+                if (!overlay.classList.contains('active')) return;
+                if (event.touches.length !== 1) return;
+
+                const touch = event.touches[0];
+                const rect = sheet.getBoundingClientRect();
+                const offsetFromTop = touch.clientY - rect.top;
+
+                // Start drag only near the top area to avoid conflicts with input scrolling.
+                if (offsetFromTop > 84) return;
+
+                startY = touch.clientY;
+                dragY = 0;
+                isDragging = true;
+                sheet.classList.add('sheet-dragging');
+            }, { passive: true });
+
+            sheet.addEventListener('touchmove', (event) => {
+                if (!isDragging || !overlay.classList.contains('active')) return;
+
+                const touch = event.touches[0];
+                const rawDelta = touch.clientY - startY;
+                dragY = Math.max(0, rawDelta);
+
+                if (dragY > 0) {
+                    event.preventDefault();
+                    sheet.style.transform = `translateY(${dragY}px)`;
+                }
+            }, { passive: false });
+
+            sheet.addEventListener('touchend', () => {
+                if (!isDragging) return;
+
+                const shouldClose = dragY > 120;
+
+                if (shouldClose) {
+                    sheet.classList.remove('sheet-dragging');
+                    sheet.style.transition = 'transform 180ms ease-out';
+                    sheet.style.transform = 'translateY(100%)';
+                    nativeHaptics.pulse('medium');
+                    setTimeout(() => {
+                        sheet.style.transition = '';
+                        sheet.style.transform = '';
+                        closeOverlay();
+                    }, 170);
+                } else {
+                    resetSheet(true);
+                }
+
+                isDragging = false;
+                dragY = 0;
+            }, { passive: true });
+
+            sheet.addEventListener('touchcancel', () => {
+                if (!isDragging) return;
+                resetSheet(true);
+                isDragging = false;
+                dragY = 0;
+            }, { passive: true });
+        });
+    };
+
+    setupModalSheetGestures();
+
+    const modalStateObserver = new MutationObserver((mutations) => {
+        let shouldSync = false;
+        for (const mutation of mutations) {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                shouldSync = true;
+                break;
+            }
+            if (mutation.type === 'childList') {
+                shouldSync = true;
+                break;
+            }
+        }
+        if (shouldSync) {
+            syncBodyModalState();
+            setupModalSheetGestures();
+        }
+    });
+
+    modalStateObserver.observe(document.body, {
+        attributes: true,
+        childList: true,
+        subtree: true,
+        attributeFilter: ['class']
+    });
+    syncBodyModalState();
 
     // Function to re-bind dynamically (since tabs might get re-rendered)
     window.setupDragToScroll = function (containerSelector = '.day-tabs, #home-schedule-list') {

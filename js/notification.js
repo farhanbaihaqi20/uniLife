@@ -1,6 +1,8 @@
 const notificationManager = {
     notifications: [],
     maxNotifications: 50,
+    lastUnreadCount: 0,
+    badgeInitialized: false,
 
     init: function () {
         this.notifications = Storage.getNotifications ? Storage.getNotifications() : [];
@@ -147,10 +149,19 @@ const notificationManager = {
             if (unreadCount > 0) {
                 badge.textContent = unreadCount > 9 ? '9+' : unreadCount;
                 badge.style.display = 'flex';
+
+                if (this.badgeInitialized && unreadCount > this.lastUnreadCount) {
+                    badge.classList.remove('pulse');
+                    void badge.offsetWidth;
+                    badge.classList.add('pulse');
+                }
             } else {
                 badge.style.display = 'none';
             }
         }
+
+        this.lastUnreadCount = unreadCount;
+        this.badgeInitialized = true;
     },
 
     setupNotificationPanel: function () {
@@ -195,6 +206,85 @@ const notificationManager = {
         
         document.addEventListener('click', handleOutsideClick);
         this._outsideClickListener = handleOutsideClick;
+
+        this.setupPanelGestures();
+    },
+
+    setupPanelGestures: function () {
+        const panel = document.getElementById('notification-panel');
+        const handle = document.getElementById('notification-drag-handle');
+        if (!panel || !handle || panel.dataset.gestureBound === '1') return;
+
+        panel.dataset.gestureBound = '1';
+
+        let startY = 0;
+        let dragY = 0;
+        let isDragging = false;
+
+        const resetPanel = (withSpring = false) => {
+            panel.classList.remove('sheet-dragging');
+            if (withSpring) {
+                panel.style.transition = 'transform 240ms cubic-bezier(0.22, 1, 0.36, 1), opacity 0.24s ease';
+                requestAnimationFrame(() => {
+                    panel.style.transform = '';
+                });
+                setTimeout(() => {
+                    panel.style.transition = '';
+                }, 260);
+                return;
+            }
+            panel.style.transform = '';
+            panel.style.transition = '';
+        };
+
+        const closePanel = () => {
+            panel.classList.remove('active');
+            resetPanel(false);
+        };
+
+        handle.addEventListener('touchstart', (e) => {
+            if (!panel.classList.contains('active')) return;
+            if (e.touches.length !== 1) return;
+            startY = e.touches[0].clientY;
+            dragY = 0;
+            isDragging = true;
+            panel.classList.add('sheet-dragging');
+            panel.style.transition = 'none';
+        }, { passive: true });
+
+        handle.addEventListener('touchmove', (e) => {
+            if (!isDragging || !panel.classList.contains('active')) return;
+            const currentY = e.touches[0].clientY;
+            dragY = Math.max(0, currentY - startY);
+
+            if (dragY > 0) {
+                e.preventDefault();
+                panel.style.transform = `translateY(${dragY}px)`;
+            }
+        }, { passive: false });
+
+        handle.addEventListener('touchend', () => {
+            if (!isDragging) return;
+
+            const shouldClose = dragY > 90;
+            if (shouldClose) {
+                panel.style.transition = 'transform 160ms ease-out, opacity 160ms ease-out';
+                panel.style.transform = 'translateY(100%)';
+                setTimeout(() => closePanel(), 150);
+            } else {
+                resetPanel(true);
+            }
+
+            isDragging = false;
+            dragY = 0;
+        }, { passive: true });
+
+        handle.addEventListener('touchcancel', () => {
+            if (!isDragging) return;
+            resetPanel(true);
+            isDragging = false;
+            dragY = 0;
+        }, { passive: true });
     },
 
     renderNotificationPanel: function () {
@@ -215,7 +305,7 @@ const notificationManager = {
         }
 
         listContainer.innerHTML = this.notifications.map(notif => `
-            <div class="notification-item ${notif.isRead ? 'read' : 'unread'}" data-notif-id="${notif.id}">
+            <div class="notification-item ${notif.isRead ? 'read' : 'unread'}" data-notif-id="${notif.id}" data-swipe-left="${i18n.t('common_delete')}" data-swipe-right="${i18n.t('notification_mark_read')}">
                 <div class="notification-content" style="flex: 1; cursor: pointer;" onclick="notificationManager.handleNotificationClick('${notif.id}')">
                     <div class="notification-title">${notif.title}</div>
                     <div class="notification-message">${notif.message}</div>
@@ -227,6 +317,107 @@ const notificationManager = {
                 </div>
             </div>
         `).join('');
+
+        this.setupNotificationItemGestures();
+    },
+
+    setupNotificationItemGestures: function () {
+        const items = document.querySelectorAll('.notification-item');
+        items.forEach((item) => {
+            if (item.dataset.swipeBound === '1') return;
+            item.dataset.swipeBound = '1';
+
+            const notifId = item.dataset.notifId;
+            let startX = 0;
+            let startY = 0;
+            let currentX = 0;
+            let isTracking = false;
+            let hasHorizontalIntent = false;
+
+            const interactiveSelector = 'button, a, input, textarea, select';
+
+            const resetItem = (withSpring = true) => {
+                item.classList.remove('swiping-right', 'swiping-left');
+                item.style.transition = withSpring ? 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1)' : '';
+                item.style.transform = 'translateX(0)';
+                if (withSpring) {
+                    setTimeout(() => {
+                        item.style.transition = '';
+                    }, 240);
+                }
+            };
+
+            const pulse = (pattern = 10) => {
+                if ('vibrate' in navigator) navigator.vibrate(pattern);
+            };
+
+            item.addEventListener('touchstart', (event) => {
+                if (event.touches.length !== 1) return;
+                if (event.target.closest(interactiveSelector)) return;
+
+                const touch = event.touches[0];
+                startX = touch.clientX;
+                startY = touch.clientY;
+                currentX = 0;
+                isTracking = true;
+                hasHorizontalIntent = false;
+                item.style.transition = '';
+            }, { passive: true });
+
+            item.addEventListener('touchmove', (event) => {
+                if (!isTracking) return;
+
+                const touch = event.touches[0];
+                const dx = touch.clientX - startX;
+                const dy = touch.clientY - startY;
+
+                if (!hasHorizontalIntent) {
+                    if (Math.abs(dy) > Math.abs(dx)) {
+                        isTracking = false;
+                        return;
+                    }
+                    if (Math.abs(dx) < 8) return;
+                    hasHorizontalIntent = true;
+                }
+
+                event.preventDefault();
+                currentX = Math.max(-112, Math.min(112, dx));
+                item.style.transform = `translateX(${currentX}px)`;
+                item.classList.toggle('swiping-right', currentX > 18);
+                item.classList.toggle('swiping-left', currentX < -18);
+            }, { passive: false });
+
+            item.addEventListener('touchend', () => {
+                if (!isTracking) {
+                    resetItem(false);
+                    return;
+                }
+
+                const threshold = 82;
+                if (currentX >= threshold) {
+                    item.style.transition = 'transform 160ms ease-out';
+                    item.style.transform = 'translateX(120px)';
+                    pulse([8, 20, 10]);
+                    setTimeout(() => this.markAsRead(notifId), 120);
+                } else if (currentX <= -threshold) {
+                    item.style.transition = 'transform 160ms ease-out';
+                    item.style.transform = 'translateX(-120px)';
+                    pulse([12]);
+                    setTimeout(() => this.deleteNotification(notifId), 120);
+                } else {
+                    resetItem(true);
+                }
+
+                isTracking = false;
+                currentX = 0;
+            }, { passive: true });
+
+            item.addEventListener('touchcancel', () => {
+                isTracking = false;
+                currentX = 0;
+                resetItem(true);
+            }, { passive: true });
+        });
     },
 
     handleNotificationClick: function (notificationId) {
@@ -337,11 +528,18 @@ const notificationManager = {
             
             <!-- Notification Panel -->
             <div id="notification-panel" class="notification-panel">
+                <div id="notification-drag-handle" class="notification-drag-handle" aria-hidden="true"></div>
                 <div class="notification-panel-header">
                     <h3>${i18n.t('notification_title')}</h3>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <button type="button" class="icon-btn" onclick="notificationManager.markAllAsRead()" style="font-size: 0.9rem; width: 28px; height: 28px;"><i class="ph ph-check-circle-duotone"></i></button>
-                        <button type="button" class="icon-btn" onclick="notificationManager.deleteAll()" style="font-size: 0.9rem; width: 28px; height: 28px;"><i class="ph ph-trash"></i></button>
+                    <div class="notification-header-actions">
+                        <button type="button" class="notif-header-btn" onclick="notificationManager.markAllAsRead()">
+                            <i class="ph ph-check-circle"></i>
+                            <span>${i18n.t('notification_mark_all_read')}</span>
+                        </button>
+                        <button type="button" class="notif-header-btn danger" onclick="notificationManager.deleteAll()">
+                            <i class="ph ph-trash"></i>
+                            <span>${i18n.t('notification_delete_all')}</span>
+                        </button>
                     </div>
                 </div>
                 <div class="notification-list">
