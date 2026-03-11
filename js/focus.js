@@ -47,9 +47,6 @@ const focusManager = {
                     this.exitFullscreenMode();
                     return;
                 }
-
-                const summary = document.getElementById('focus-summary-modal');
-                if (summary?.classList.contains('active')) this.closeSessionSummary();
                 return;
             }
 
@@ -866,45 +863,5 @@ const focusManager = {
         btn.innerHTML = `<i class="ph ${icon}"></i><span>${text}</span>`;
     },
 
-    getCurrentTaskLabel: function () {
-        if (!this.currentTaskId || !Storage.getTasks) return '-';
-        const task = Storage.getTasks().find(t => t.id === this.currentTaskId);
-        return task ? task.title : '-';
-    },
 
-    showSessionSummary: function (sessionWasWork) {
-        const modal = document.getElementById('focus-summary-modal');
-        if (!modal) return;
-
-        const title = document.getElementById('focus-summary-title');
-        const subtitle = document.getElementById('focus-summary-subtitle');
-        const duration = document.getElementById('focus-summary-duration');
-        const sessions = document.getElementById('focus-summary-sessions');
-        const minutes = document.getElementById('focus-summary-minutes');
-
-        if (title) title.innerText = i18n.t('focus_summary_title');
-        if (subtitle) {
-            const msg = sessionWasWork ? i18n.t('focus_summary_work_done') : i18n.t('focus_summary_break_done');
-            const taskText = this.getCurrentTaskLabel();
-            subtitle.innerText = `${msg} ${i18n.t('focus_summary_task')} ${taskText}`;
-        }
-
-        if (duration) {
-            const mins = Math.round((sessionWasWork ? this.workDuration : this.breakDuration) / 60);
-            duration.innerText = `${mins} min`;
-        }
-
-        const today = new Date().toISOString().split('T')[0];
-        const todayStat = this.stats.find(s => s.date === today) || { sessions: 0, totalMinutes: 0 };
-
-        if (sessions) sessions.innerText = todayStat.sessions;
-        if (minutes) minutes.innerText = todayStat.totalMinutes;
-
-        modal.classList.add('active');
-    },
-
-    closeSessionSummary: function () {
-        const modal = document.getElementById('focus-summary-modal');
-        if (modal) modal.classList.remove('active');
-    }
 };
