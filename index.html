@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="assets/icon.png">
 
     <title>UniLife Tracker</title>
-    <link rel="stylesheet" href="css/styles.css?v=1.0.3
+    <link rel="stylesheet" href="css/styles.css?v=1.0.3.1
     ">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -41,6 +41,10 @@
                 </div>
             </div>
             <div class="header-actions" style="display:flex; gap:0.5rem; align-items:center;">
+                <!-- Call button -->
+                <button class="icon-btn" id="call-open-btn" onclick="callManager.open()" title="Panggilan Kelas" style="width:38px;height:38px;border:none;background:var(--bg-main);position:relative;">
+                    <i class="ph ph-phone-call"></i>
+                </button>
                 <!-- Notification button will be injected here by notification manager -->
                 <div id="notification-container" style="position: relative;"></div>
             </div>
@@ -1655,7 +1659,7 @@
     "></script>
     <script src="js/calendarExport.js?v=1.0.3
     "></script>
-    <script src="js/notification.js?v=1.0.3
+    <script src="js/notification.js?v=1.0.3.1
     "></script>
     <script src="js/profile.js?v=1.0.3
     "></script>
@@ -1671,6 +1675,7 @@
     "></script>
     <script src="js/budget.js?v=1.0.0"></script>
     <script src="js/sync.js?v=1.0.0"></script>
+    <script src="js/call.js?v=1.0.0"></script>
     <script src="js/app.js?v=1.0.3
     "></script>
 </body>

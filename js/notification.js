@@ -519,36 +519,39 @@ const notificationManager = {
         const container = document.getElementById('notification-container');
         if (!container || document.getElementById('notification-btn')) return; // Already injected
 
-        // Create notification button HTML
-        const notificationHTML = `
+        // Inject button into header container
+        container.innerHTML = `
             <button class="icon-btn" id="notification-btn" type="button" style="width: 38px; height: 38px; border:none; background:var(--bg-main); position: relative;">
                 <i class="ph ph-bell"></i>
                 <span id="notification-badge" class="notification-badge" style="display: none;"></span>
             </button>
-            
-            <!-- Notification Panel -->
-            <div id="notification-panel" class="notification-panel">
-                <div id="notification-drag-handle" class="notification-drag-handle" aria-hidden="true"></div>
-                <div class="notification-panel-header">
-                    <h3>${i18n.t('notification_title')}</h3>
-                    <div class="notification-header-actions">
-                        <button type="button" class="notif-header-btn" onclick="notificationManager.markAllAsRead()">
-                            <i class="ph ph-check-circle"></i>
-                            <span>${i18n.t('notification_mark_all_read')}</span>
-                        </button>
-                        <button type="button" class="notif-header-btn danger" onclick="notificationManager.deleteAll()">
-                            <i class="ph ph-trash"></i>
-                            <span>${i18n.t('notification_delete_all')}</span>
-                        </button>
-                    </div>
-                </div>
-                <div class="notification-list">
-                    <!-- Notifications rendered here -->
-                </div>
-            </div>
         `;
 
-        container.innerHTML = notificationHTML;
+        // Inject panel into body to escape header's backdrop-filter stacking context,
+        // which otherwise breaks position:fixed and causes the panel to be clipped on mobile.
+        const panel = document.createElement('div');
+        panel.id = 'notification-panel';
+        panel.className = 'notification-panel';
+        panel.innerHTML = `
+            <div id="notification-drag-handle" class="notification-drag-handle" aria-hidden="true"></div>
+            <div class="notification-panel-header">
+                <h3>${i18n.t('notification_title')}</h3>
+                <div class="notification-header-actions">
+                    <button type="button" class="notif-header-btn" onclick="notificationManager.markAllAsRead()">
+                        <i class="ph ph-check-circle"></i>
+                        <span>${i18n.t('notification_mark_all_read')}</span>
+                    </button>
+                    <button type="button" class="notif-header-btn danger" onclick="notificationManager.deleteAll()">
+                        <i class="ph ph-trash"></i>
+                        <span>${i18n.t('notification_delete_all')}</span>
+                    </button>
+                </div>
+            </div>
+            <div class="notification-list">
+                <!-- Notifications rendered here -->
+            </div>
+        `;
+        document.body.appendChild(panel);
 
         // Setup panel after injection (only once)
         this.setupNotificationPanel();
