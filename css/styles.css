@@ -666,6 +666,55 @@ body.modal-open {
     color: var(--text-main);
 }
 
+#modal-transfer {
+    align-items: center;
+    padding: 1rem;
+}
+
+.transfer-modal-content {
+    max-width: 420px;
+    width: min(100%, 420px);
+    max-height: min(88vh, 760px);
+    overflow-y: auto;
+    border-radius: var(--radius-lg);
+    text-align: center;
+    padding-bottom: 1.25rem;
+}
+
+#transfer-qr-container {
+    width: min(58vw, 220px);
+    min-width: 0 !important;
+    min-height: 0 !important;
+}
+
+#transfer-qr-container canvas,
+#transfer-qr-container img {
+    display: block;
+    width: 100% !important;
+    height: auto !important;
+}
+
+@media (max-width: 480px) {
+    .transfer-modal-content {
+        max-height: 90vh;
+        border-radius: 16px;
+        padding: 2.2rem 1rem 1rem;
+    }
+
+    #transfer-pin-display {
+        font-size: 2rem !important;
+        letter-spacing: 3px !important;
+    }
+
+    .transfer-pin-row {
+        flex-direction: column;
+    }
+
+    .transfer-pin-row .btn {
+        width: 100%;
+    }
+}
+
 .task-swipe-card {
     position: relative;
     overflow: hidden;
@@ -1960,6 +2009,7 @@ body.modal-open {
 }
 
 @media (max-width: 600px) {
+
     .view-section.active.view-anim-rise,
     .view-section.active.view-anim-slide,
     .view-section.active.view-anim-zoom {
@@ -1972,6 +2022,7 @@ body.modal-open {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
     .view-section.active.view-anim-rise,
     .view-section.active.view-anim-slide,
     .view-section.active.view-anim-zoom,
@@ -1981,6 +2032,7 @@ body.modal-open {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
     .modal-overlay,
     .modal-content,
     .modal-overlay.active .modal-content {
@@ -2495,6 +2547,278 @@ select:focus {
     border-color: var(--primary);
 }
 
+/* ========== BUDGET TRACKER (PREMIUM UI) ========== */
+
+.premium-budget-card {
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease;
+}
+
+.premium-budget-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 30px rgba(236, 72, 153, 0.15);
+}
+
+.budget-month-shell {
+    border: 1px solid var(--border-color);
+    background:
+        radial-gradient(circle at 90% 20%, rgba(236, 72, 153, 0.12), transparent 45%),
+        radial-gradient(circle at 15% 80%, rgba(59, 130, 246, 0.12), transparent 40%),
+        var(--bg-card);
+}
+
+.budget-month-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.budget-month-btn {
+    width: 38px;
+    height: 38px;
+    box-shadow: none;
+    transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.budget-month-btn:hover {
+    transform: translateY(-2px);
+    border-color: rgba(236, 72, 153, 0.45);
+    background: rgba(236, 72, 153, 0.07);
+}
+
+.budget-month-center {
+    text-align: center;
+    flex: 1;
+}
+
+.budget-back-today {
+    font-size: 0.78rem;
+    border-color: rgba(236, 72, 153, 0.35);
+    color: #db2777;
+    background: rgba(236, 72, 153, 0.04);
+}
+
+.budget-back-today:hover {
+    border-color: #ec4899;
+    background: rgba(236, 72, 153, 0.12);
+}
+
+.budget-insight-shell {
+    border: 1px solid rgba(236, 72, 153, 0.2);
+    background:
+        linear-gradient(160deg, rgba(236, 72, 153, 0.07), rgba(59, 130, 246, 0.06)),
+        var(--bg-card);
+}
+
+.budget-insight-live {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #db2777;
+    border: 1px solid rgba(236, 72, 153, 0.4);
+    border-radius: 999px;
+    padding: 0.15rem 0.55rem;
+    background: rgba(236, 72, 153, 0.1);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.budget-insight-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.65rem;
+}
+
+.budget-insight-card {
+    padding: 0.85rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.24s ease, box-shadow 0.24s ease;
+}
+
+.budget-insight-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.budget-insight-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.55px;
+    margin-bottom: 0.3rem;
+}
+
+.budget-insight-card h4 {
+    font-size: 1.05rem;
+    line-height: 1.2;
+    margin-bottom: 0.25rem;
+}
+
+.budget-insight-card small {
+    font-size: 0.73rem;
+    color: var(--text-muted);
+}
+
+.budget-clickable-insight {
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.budget-clickable-insight:hover {
+    border-color: rgba(236, 72, 153, 0.45);
+}
+
+.budget-category-rank-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.8rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+}
+
+.budget-category-rank-badge {
+    min-width: 44px;
+    text-align: center;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #db2777;
+    background: rgba(236, 72, 153, 0.12);
+    padding: 0.2rem 0.4rem;
+}
+
+.budget-cat-card {
+    position: relative;
+    cursor: pointer;
+    display: block;
+}
+
+.budget-cat-card input {
+    display: none;
+}
+
+.budget-cat-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 0.25rem;
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    transition: all 0.2s ease;
+}
+
+.budget-cat-card input:checked+.budget-cat-content {
+    background: rgba(236, 72, 153, 0.08);
+    border-color: #ec4899;
+    box-shadow: 0 4px 12px rgba(236, 72, 153, 0.15);
+}
+
+.budget-cat-card input[name="budget-category-inc"]:checked+.budget-cat-content {
+    background: rgba(16, 185, 129, 0.08);
+    border-color: #10b981;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+}
+
+.budget-cat-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    background: var(--bg-main);
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+}
+
+.budget-cat-card input:checked+.budget-cat-content .budget-cat-icon {
+    background: #ec4899;
+    color: white;
+}
+
+.budget-cat-card input[name="budget-category-inc"]:checked+.budget-cat-content .budget-cat-icon {
+    background: #10b981;
+    color: white;
+}
+
+.budget-cat-content span {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    transition: color 0.2s ease;
+}
+
+.budget-cat-card input:checked+.budget-cat-content span {
+    color: #ec4899;
+}
+
+.budget-cat-card input[name="budget-category-inc"]:checked+.budget-cat-content span {
+    color: #10b981;
+}
+
+.tx-card:hover {
+    transform: translateX(4px) scale(1.02);
+    box-shadow: var(--shadow-md);
+    border-color: rgba(236, 72, 153, 0.3);
+}
+
+#view-budget.budget-month-animating .premium-budget-card,
+#view-budget.budget-month-animating .budget-insight-shell,
+#view-budget.budget-month-animating #budget-transaction-list .tx-card,
+#view-budget.budget-month-animating #budgetChart {
+    animation: budgetFadeSlide 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#budget-transaction-list .tx-card {
+    animation: budgetListRise 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes budgetFadeSlide {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.99);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes budgetListRise {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 680px) {
+    .budget-insight-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .budget-month-shell {
+        padding: 0.85rem;
+    }
+}
+
+/* End Budget Styles */
+
 /* -------------------
    FAB MENU (Floating Action Button) 
    ------------------- */
@@ -3006,12 +3330,8 @@ select:focus {
     color: var(--text-muted);
     font-size: 0.85rem;
     line-height: 1.4;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
+    word-wrap: break-word;
+    word-break: break-word;
 }
 
 /* -------------------

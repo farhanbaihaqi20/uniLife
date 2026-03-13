@@ -72,5 +72,12 @@ const Storage = {
 
     // Attendance (presensi per mata kuliah)
     getAttendanceRecords: () => Storage.get('unilife_attendance_records', []), // Array of { id, scheduleId, semester, meetingNumber, status, reason, timestamp }
-    setAttendanceRecords: (data) => Storage.set('unilife_attendance_records', data)
+    setAttendanceRecords: (data) => Storage.set('unilife_attendance_records', data),
+
+    // Budget Tracker (Student Financials)
+    getBudgetTransactions: () => Storage.get('unilife_budget_transactions', []), // Array of { id, type, amount, category, note, timestamp }
+    setBudgetTransactions: (data) => Storage.set('unilife_budget_transactions', data),
+
+    getBudgetLimit: () => Storage.get('unilife_budget_limit', 0), // Monthly budget limit
+    setBudgetLimit: (data) => Storage.set('unilife_budget_limit', data)
 };

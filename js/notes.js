@@ -303,6 +303,8 @@ const notesManager = {
         toast.style.zIndex = '1000';
         toast.style.fontSize = '0.9rem';
         toast.style.fontWeight = '500';
+        toast.style.maxWidth = 'calc(100vw - 40px)';
+        toast.style.wordWrap = 'break-word';
         toast.innerText = message;
 
         document.body.appendChild(toast);

@@ -170,6 +170,8 @@ const calendarExport = {
         toast.style.zIndex = '1000';
         toast.style.fontSize = '0.9rem';
         toast.style.fontWeight = '500';
+        toast.style.maxWidth = 'calc(100vw - 40px)';
+        toast.style.wordWrap = 'break-word';
         toast.innerHTML = `<i class="ph ph-check-circle" style="margin-right: 0.5rem;"></i>${message}`;
 
         document.body.appendChild(toast);

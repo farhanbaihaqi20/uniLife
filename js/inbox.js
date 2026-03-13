@@ -37,6 +37,12 @@ const inboxManager = {
                             <i class="ph-bold ph-note-pencil"></i>
                         </button>
                     </div>
+                    <div class="fab-menu-item">
+                        <span class="fab-menu-label">Catat Keuangan</span>
+                        <button class="fab-menu-btn" style="background:#ec4899; color:white;" onclick="inboxManager.openBudgetAdd()">
+                            <i class="ph-bold ph-wallet"></i>
+                        </button>
+                    </div>
                 </div>
                 <button class="fab-main" id="fab-main" onclick="inboxManager.toggleFabMenu()">
                     <i class="ph-bold ph-plus"></i>
@@ -97,6 +103,13 @@ const inboxManager = {
         if (modal) {
             modal.classList.add('active');
             document.getElementById('quick-input').focus();
+        }
+    },
+
+    openBudgetAdd: function () {
+        this.closeFabMenu();
+        if (typeof budgetManager !== 'undefined') {
+            budgetManager.openAddModal();
         }
     },
 
@@ -233,6 +246,8 @@ const inboxManager = {
         toast.style.zIndex = '1000';
         toast.style.fontSize = '0.9rem';
         toast.style.fontWeight = '500';
+        toast.style.maxWidth = 'calc(100vw - 40px)';
+        toast.style.wordWrap = 'break-word';
         toast.innerText = message;
 
         document.body.appendChild(toast);

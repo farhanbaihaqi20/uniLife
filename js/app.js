@@ -10,19 +10,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 2. Theme Management
     const settings = Storage.getSettings();
-    
+
     // Helper function to apply theme based on setting
-    window.applyTheme = function(themeSetting) {
+    window.applyTheme = function (themeSetting) {
         let effectiveTheme = themeSetting;
         if (themeSetting === 'system') {
             effectiveTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         }
         document.documentElement.setAttribute('data-theme', effectiveTheme);
     };
-    
+
     // Apply initial theme
     window.applyTheme(settings.theme);
-    
+
     // Listen for system theme changes if using system theme
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
         const currentSettings = Storage.getSettings();
@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
             event.preventDefault();
         }
     });
-    
+
     // Native-like haptic feedback on touch interactions.
     const nativeHaptics = {
         lastPulseAt: 0,
@@ -343,6 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof gradesManager !== 'undefined') gradesManager.init();
     if (typeof tasksManager !== 'undefined') tasksManager.init();
     if (typeof focusManager !== 'undefined') focusManager.init();
+    if (typeof budgetManager !== 'undefined') budgetManager.init();
 
     // 5. Add calendar export buttons after views are loaded
     if (typeof calendarExport !== 'undefined') {
@@ -465,6 +466,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 profileManager.getAttendancePercentage();
             }
         }
+
+        // Budget changed
+        if (!key || key === 'unilife_budget_tx' || key === 'unilife_budget_limit') {
+            if (typeof budgetManager !== 'undefined') {
+                budgetManager.transactions = Storage.getBudgetTransactions();
+                budgetManager.monthlyLimit = Storage.getBudgetLimit();
+                budgetManager.updateDashboard();
+            }
+        }
     });
 
     // 7. Register Service Worker for PWA dengan auto-update
@@ -473,12 +483,12 @@ document.addEventListener('DOMContentLoaded', () => {
             navigator.serviceWorker.register('sw.js')
                 .then(registration => {
                     console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                    
+
                     // Cek update service worker setiap 30 detik
                     setInterval(() => {
                         registration.update();
                     }, 30000);
-                    
+
                     // Auto-reload saat ada update
                     registration.addEventListener('updatefound', () => {
                         const newWorker = registration.installing;
@@ -497,7 +507,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.log('ServiceWorker registration failed: ', err);
                 });
         });
-        
+
         // Reload halaman saat service worker mengambil control
         let refreshing = false;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
