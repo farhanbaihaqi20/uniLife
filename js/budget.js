@@ -125,11 +125,209 @@ const budgetManager = {
         // Update Insights
         this.renderInsights(monthTotals, prevMonthTotals, currentMonthTx);
 
+        // Premium signals
+        this.renderProSignals(monthTotals, prevMonthTotals, currentMonthTx);
+
         // Update Chart
         this.renderChart(currentMonthTx);
 
         // Update Transaction List
         this.renderTransactionList(currentMonthTx);
+    },
+
+    renderProSignals: function (monthTotals, prevMonthTotals, currentMonthTx) {
+        const healthScoreEl = document.getElementById('budget-health-score');
+        const healthNoteEl = document.getElementById('budget-health-note');
+        const forecastEl = document.getElementById('budget-forecast-end');
+        const forecastNoteEl = document.getElementById('budget-forecast-note');
+        const dailySafeEl = document.getElementById('budget-daily-safe');
+        const dailySafeNoteEl = document.getElementById('budget-daily-safe-note');
+        const proTipEl = document.getElementById('budget-pro-tip');
+
+        if (!healthScoreEl || !forecastEl || !dailySafeEl || !proTipEl) return;
+
+        const now = new Date();
+        const isCurrentMonth = this.isCurrentMonthSelected();
+        const monthDays = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth() + 1, 0).getDate();
+        const dayOfMonth = isCurrentMonth ? now.getDate() : monthDays;
+
+        const health = this.calculateHealthScore(monthTotals, prevMonthTotals);
+        healthScoreEl.innerText = `${health.score}/100`;
+        if (healthNoteEl) healthNoteEl.innerText = health.note;
+
+        const forecastExpense = this.calculateForecastExpense(monthTotals.expense, dayOfMonth, monthDays);
+        forecastEl.innerText = this.formatCurrency(forecastExpense);
+        if (forecastNoteEl) {
+            const delta = forecastExpense - monthTotals.expense;
+            forecastNoteEl.innerText = delta > 0
+                ? `Potensi naik ${this.formatCurrency(delta)} hingga akhir bulan`
+                : 'Trend pengeluaran stabil';
+        }
+
+        if (this.monthlyLimit > 0) {
+            const daysLeft = Math.max(1, monthDays - dayOfMonth + 1);
+            const remainingLimit = this.monthlyLimit - monthTotals.expense;
+            const dailySafe = Math.floor(remainingLimit / daysLeft);
+
+            dailySafeEl.innerText = this.formatCurrency(Math.max(0, dailySafe));
+            if (dailySafeNoteEl) {
+                if (remainingLimit < 0) {
+                    dailySafeNoteEl.innerText = 'Limit sudah terlewati, prioritaskan pengeluaran penting dulu';
+                } else {
+                    dailySafeNoteEl.innerText = `${daysLeft} hari tersisa untuk tetap di bawah limit`;
+                }
+            }
+        } else {
+            dailySafeEl.innerText = 'Rp 0';
+            if (dailySafeNoteEl) dailySafeNoteEl.innerText = 'Set limit bulanan untuk aktivasi';
+        }
+
+        const recurringExpense = this.estimateRecurringExpense();
+        const topCat = this.topCategoryEntries && this.topCategoryEntries[0] ? this.topCategoryEntries[0][0] : null;
+        const topCatName = topCat ? (i18n.t('budget_cat_' + topCat) || topCat) : 'belum ada';
+
+        if (health.score >= 80) {
+            proTipEl.innerText = `Kondisi keuangan sehat. Pertahankan ritme ini dan sisihkan minimal 10% dari pemasukan bulan depan.`;
+        } else if (this.monthlyLimit > 0 && monthTotals.expense > this.monthlyLimit) {
+            proTipEl.innerText = `Limit terlampaui. Fokus menahan kategori ${topCatName} dulu dan evaluasi transaksi harian.`;
+        } else if (recurringExpense > 0) {
+            proTipEl.innerText = `Terdeteksi pengeluaran rutin sekitar ${this.formatCurrency(recurringExpense)}/bulan. Pertimbangkan paket langganan yang lebih hemat.`;
+        } else {
+            proTipEl.innerText = `Sinyal premium aktif. Tambah transaksi rutin agar rekomendasi finansial makin akurat.`;
+        }
+    },
+
+    calculateForecastExpense: function (expense, dayOfMonth, monthDays) {
+        if (dayOfMonth <= 0) return expense;
+        if (expense <= 0) return 0;
+        return Math.round((expense / dayOfMonth) * monthDays);
+    },
+
+    calculateHealthScore: function (monthTotals, prevMonthTotals) {
+        let score = 55;
+
+        if (monthTotals.income > 0) {
+            const savingRate = ((monthTotals.income - monthTotals.expense) / monthTotals.income) * 100;
+            if (savingRate >= 30) score += 20;
+            else if (savingRate >= 15) score += 12;
+            else if (savingRate >= 5) score += 6;
+            else if (savingRate < 0) score -= 20;
+        }
+
+        if (this.monthlyLimit > 0) {
+            const usage = (monthTotals.expense / this.monthlyLimit) * 100;
+            if (usage <= 60) score += 15;
+            else if (usage <= 85) score += 8;
+            else if (usage > 100) score -= 18;
+        }
+
+        const trend = monthTotals.expense - prevMonthTotals.expense;
+        if (trend < 0) score += 8;
+        if (trend > 0) score -= 6;
+
+        score = Math.max(0, Math.min(100, Math.round(score)));
+
+        let note = 'Perlu optimasi pengeluaran mingguan';
+        if (score >= 85) note = 'Excellent. Arus kas sangat sehat.';
+        else if (score >= 70) note = 'Bagus. Finansial kamu cukup stabil.';
+        else if (score >= 55) note = 'Cukup aman, masih bisa ditingkatkan.';
+
+        return { score, note };
+    },
+
+    estimateRecurringExpense: function () {
+        const expenseTx = this.transactions.filter(tx => tx.type === 'expense');
+        if (expenseTx.length < 4) return 0;
+
+        const groups = {};
+        expenseTx.forEach((tx) => {
+            const key = `${tx.category}::${(tx.note || '').toLowerCase().trim()}`;
+            const monthKey = this.getTransactionDate(tx).toISOString().slice(0, 7);
+            if (!groups[key]) groups[key] = { months: new Set(), amounts: [] };
+            groups[key].months.add(monthKey);
+            groups[key].amounts.push(Number(tx.amount) || 0);
+        });
+
+        let recurring = 0;
+        Object.values(groups).forEach((entry) => {
+            if (entry.months.size < 2 || entry.amounts.length < 2) return;
+            const avg = entry.amounts.reduce((a, b) => a + b, 0) / entry.amounts.length;
+            if (avg > 0) recurring += avg;
+        });
+
+        return Math.round(recurring);
+    },
+
+    exportCurrentMonthCSV: function () {
+        const currentMonthTx = this.getTransactionsByMonth(this.selectedMonth)
+            .sort((a, b) => this.getTransactionDate(a) - this.getTransactionDate(b));
+
+        if (currentMonthTx.length === 0) {
+            if (typeof inboxManager !== 'undefined') inboxManager.showToast('Tidak ada data bulan ini untuk diekspor');
+            return;
+        }
+
+        const header = ['Tanggal', 'Tipe', 'Kategori', 'Nominal', 'Catatan'];
+        const rows = currentMonthTx.map((tx) => {
+            const date = this.toDateInputValue(this.getTransactionDate(tx));
+            const typeLabel = tx.type === 'income' ? 'Pemasukan' : 'Pengeluaran';
+            const catName = i18n.t('budget_cat_' + tx.category) || tx.category;
+            const safeNote = (tx.note || '').replace(/\"/g, '""');
+            return [date, typeLabel, catName, tx.amount, safeNote];
+        });
+
+        const csvContent = [header, ...rows]
+            .map(row => row.map(v => `"${String(v)}"`).join(','))
+            .join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const monthSlug = this.toDateInputValue(this.selectedMonth).slice(0, 7);
+        const fileName = `unilife-keuangan-${monthSlug}.csv`;
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = fileName;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        URL.revokeObjectURL(url);
+
+        if (typeof inboxManager !== 'undefined') inboxManager.showToast('CSV berhasil diekspor');
+    },
+
+    cloneLastMonthExpenses: function () {
+        const previousMonth = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth() - 1, 1);
+        const previousMonthTx = this.getTransactionsByMonth(previousMonth)
+            .filter(tx => tx.type === 'expense');
+
+        if (previousMonthTx.length === 0) {
+            if (typeof inboxManager !== 'undefined') inboxManager.showToast('Tidak ada pengeluaran bulan lalu untuk di-clone');
+            return;
+        }
+
+        const confirmed = confirm(`Clone ${previousMonthTx.length} pengeluaran dari ${this.getMonthLabel(previousMonth)} ke ${this.getMonthLabel(this.selectedMonth)}?`);
+        if (!confirmed) return;
+
+        const maxDayCurrentMonth = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth() + 1, 0).getDate();
+
+        const clones = previousMonthTx.map((tx) => {
+            const originalDate = this.getTransactionDate(tx);
+            const clonedDay = Math.min(originalDate.getDate(), maxDayCurrentMonth);
+            const clonedDate = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth(), clonedDay, 12, 0, 0);
+
+            return {
+                ...tx,
+                id: (typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                date: clonedDate.toISOString(),
+                note: tx.note ? `${tx.note} (clone)` : 'Auto Clone (bulan lalu)'
+            };
+        });
+
+        this.transactions = [...this.transactions, ...clones];
+        Storage.setBudgetTransactions(this.transactions);
+        window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_tx' } }));
+
+        if (typeof inboxManager !== 'undefined') inboxManager.showToast(`${clones.length} transaksi berhasil di-clone`);
     },
 
     renderMonthHeader: function () {
@@ -199,6 +397,10 @@ const budgetManager = {
         const centerAmount = document.getElementById('budget-chart-center-amount');
         if (!canvas) return;
 
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const textColor = isDark ? '#E2E8F0' : '#1E293B';
+        const tooltipBg = isDark ? 'rgba(15, 23, 42, 0.96)' : 'rgba(15, 23, 42, 0.9)';
+
         const expensesByCategory = this.getExpensesByCategory(currentMonthTx);
         const categories = Object.keys(expensesByCategory);
         const data = Object.values(expensesByCategory);
@@ -218,7 +420,7 @@ const budgetManager = {
             ctx.arc(canvas.width / 2, canvas.height / 2, 70, 0, 2 * Math.PI);
             ctx.fillStyle = 'rgba(0,0,0,0.05)';
             // check dark mode
-            if (document.body.classList.contains('dark-mode')) {
+            if (isDark) {
                 ctx.fillStyle = 'rgba(255,255,255,0.05)';
             }
             ctx.fill();
@@ -238,14 +440,23 @@ const budgetManager = {
         const labels = categories.map(cat => i18n.t('budget_cat_' + cat) || cat);
 
         // Color mapping for categories
-        const colors = {
-            'food': '#f59e0b', // Orange
-            'transport': '#3b82f6', // Blue
-            'education': '#8b5cf6', // Purple
-            'shopping': '#ec4899', // Pink
-            'entertainment': '#14b8a6', // Teal
-            'other': '#94a3b8' // Slate
-        };
+        const colors = isDark
+            ? {
+                'food': '#fbbf24',
+                'transport': '#60a5fa',
+                'education': '#a78bfa',
+                'shopping': '#f472b6',
+                'entertainment': '#2dd4bf',
+                'other': '#cbd5e1'
+            }
+            : {
+                'food': '#f59e0b',
+                'transport': '#3b82f6',
+                'education': '#8b5cf6',
+                'shopping': '#ec4899',
+                'entertainment': '#14b8a6',
+                'other': '#94a3b8'
+            };
 
         const bgColors = categories.map(cat => colors[cat] || colors['other']);
 
@@ -287,16 +498,28 @@ const budgetManager = {
                                     return label;
                                 }
                             },
-                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            backgroundColor: tooltipBg,
                             padding: 12,
+                            titleColor: '#f8fafc',
+                            bodyColor: '#f8fafc',
                             titleFont: { family: 'Inter', size: 13 },
                             bodyFont: { family: 'Inter', size: 12 },
                             cornerRadius: 8,
                             displayColors: true
+                        },
+                        datalabels: {
+                            display: false
                         }
-                    }
+                    },
+                    color: textColor
                 }
             });
+        }
+
+        if (this.currentChart) {
+            this.currentChart.options.plugins.tooltip.backgroundColor = tooltipBg;
+            this.currentChart.options.color = textColor;
+            this.currentChart.update();
         }
     },
 

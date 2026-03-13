@@ -236,8 +236,11 @@ const inboxManager = {
     showToast: function (message) {
         const toast = document.createElement('div');
         toast.style.position = 'fixed';
-        toast.style.bottom = '100px';
-        toast.style.right = '20px';
+        toast.style.top = 'auto';
+        toast.style.bottom = 'calc(86px + env(safe-area-inset-bottom))';
+        toast.style.left = 'max(12px, env(safe-area-inset-left))';
+        toast.style.right = 'max(12px, env(safe-area-inset-right))';
+        toast.style.margin = '0 auto';
         toast.style.background = 'var(--text-main)';
         toast.style.color = 'var(--bg-main)';
         toast.style.padding = '0.75rem 1.25rem';

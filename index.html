@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="assets/icon.png">
 
     <title>UniLife Tracker</title>
-    <link rel="stylesheet" href="css/styles.css?v=1.0.2
+    <link rel="stylesheet" href="css/styles.css?v=1.0.3
     ">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -740,22 +740,30 @@
             </section>
 
             <!-- BUDGET VIEW -->
-            <section id="view-budget" class="view-section">
+            <section id="view-budget" class="view-section budget-premium-view">
                 <div class="section-header">
                     <h2 data-i18n="budget_title">Keuangan</h2>
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <button class="btn btn-outline" onclick="budgetManager.resetBudgetData()"
-                            style="border-radius: 20px; padding: 0.5rem 0.85rem; color: var(--danger); border-color: rgba(239, 68, 68, 0.45); background: rgba(239, 68, 68, 0.05);">
+                    <div class="budget-actions-row">
+                        <button class="btn btn-outline budget-action-btn budget-action-btn-clone" onclick="budgetManager.cloneLastMonthExpenses()"
+                            >
+                            <i class="ph ph-copy"></i> Clone
+                        </button>
+                        <button class="btn btn-outline budget-action-btn budget-action-btn-csv" onclick="budgetManager.exportCurrentMonthCSV()"
+                            >
+                            <i class="ph ph-file-arrow-down"></i> CSV
+                        </button>
+                        <button class="btn btn-outline budget-action-btn budget-action-btn-reset" onclick="budgetManager.resetBudgetData()"
+                            >
                             <i class="ph ph-arrow-counter-clockwise"></i> Reset
                         </button>
-                        <button class="btn btn-primary" onclick="budgetManager.openAddModal()"
-                            style="border-radius: 20px; padding: 0.5rem 1rem;">
+                        <button class="btn btn-primary budget-action-btn budget-action-btn-add" onclick="budgetManager.openAddModal()"
+                            >
                             <i class="ph ph-plus"></i> <span data-i18n="common_add">Tambah</span>
                         </button>
                     </div>
                 </div>
 
-                <div class="card budget-month-shell" style="padding: 0.9rem 1rem; margin-bottom: 1rem;">
+                <div class="card budget-month-shell budget-reveal-card" style="padding: 0.9rem 1rem; margin-bottom: 1rem;">
                     <div class="budget-month-nav">
                         <button type="button" class="icon-btn budget-month-btn" onclick="budgetManager.changeMonth(-1)"
                             aria-label="Bulan sebelumnya">
@@ -778,7 +786,7 @@
                 </div>
 
                 <!-- Balance & Limit Card -->
-                <div class="card premium-budget-card"
+                <div class="card premium-budget-card budget-reveal-card"
                     style="background: linear-gradient(135deg, rgba(236, 72, 153, 0.1), rgba(219, 39, 119, 0.05)); border: 1px solid rgba(236, 72, 153, 0.2); padding: 1.5rem; margin-bottom: 1.5rem; border-radius: var(--radius-lg); position: relative; overflow: hidden;">
                     <div
                         style="position: absolute; right: -20px; top: -20px; font-size: 8rem; color: rgba(236, 72, 153, 0.05); transform: rotate(-15deg); pointer-events: none;">
@@ -848,7 +856,7 @@
                 </div>
 
                 <!-- Expense Chart -->
-                <div class="card" style="padding: 1.5rem; margin-bottom: 1.5rem;">
+                <div class="card budget-chart-shell budget-reveal-card" style="padding: 1.5rem; margin-bottom: 1.5rem;">
                     <h3
                         style="font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
                         <i class="ph-fill ph-pie-chart" style="color: #ec4899;"></i> Analisis Pengeluaran
@@ -865,7 +873,7 @@
                     </div>
                 </div>
 
-                <div class="card budget-insight-shell" style="padding: 1rem; margin-bottom: 1.5rem;">
+                <div class="card budget-insight-shell budget-reveal-card" style="padding: 1rem; margin-bottom: 1.5rem;">
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.8rem;">
                         <h3 style="font-size: 1rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.45rem;">
                             <i class="ph ph-sparkle" style="color: #ec4899;"></i> Insight Bulanan
@@ -889,6 +897,39 @@
                             <h4 id="budget-insight-top-cat">-</h4>
                             <small id="budget-insight-top-value">Belum ada pengeluaran</small>
                         </button>
+                    </div>
+                </div>
+
+                <div class="card budget-pro-signal-shell budget-reveal-card" style="padding: 1rem; margin-bottom: 1.5rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem; gap:0.75rem;">
+                        <h3 style="font-size: 1rem; font-weight: 700; color: var(--text-main); display:flex; align-items:center; gap:0.45rem;">
+                            <i class="ph ph-crown-simple" style="color:#2563eb;"></i> Premium Signals
+                        </h3>
+                        <span class="budget-insight-live" style="color:#2563eb; border-color:rgba(37,99,235,0.4); background:rgba(37,99,235,0.1);">PRO</span>
+                    </div>
+
+                    <div class="budget-insight-grid">
+                        <div class="budget-insight-card">
+                            <p class="budget-insight-label">Health Score</p>
+                            <h4 id="budget-health-score">0/100</h4>
+                            <small id="budget-health-note">Belum ada data cukup</small>
+                        </div>
+                        <div class="budget-insight-card">
+                            <p class="budget-insight-label">Forecast Akhir Bulan</p>
+                            <h4 id="budget-forecast-end">Rp 0</h4>
+                            <small id="budget-forecast-note">Butuh transaksi bulan ini</small>
+                        </div>
+                        <div class="budget-insight-card">
+                            <p class="budget-insight-label">Safe Spend Harian</p>
+                            <h4 id="budget-daily-safe">Rp 0</h4>
+                            <small id="budget-daily-safe-note">Set limit bulanan untuk aktivasi</small>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:0.9rem; border-top:1px solid var(--border-color); padding-top:0.85rem;">
+                        <p id="budget-pro-tip" style="font-size:0.82rem; color: var(--text-main); font-weight:600; line-height:1.45;">
+                            Tip premium akan muncul otomatis berdasarkan pola transaksi kamu.
+                        </p>
                     </div>
                 </div>
 
@@ -1576,6 +1617,17 @@
 
             <div style="border-top: 1px solid var(--border-color); padding-top: 1.5rem; margin-top: 1rem;">
                 <p style="font-size: 0.9rem; margin-bottom: 1rem; font-weight: 600;" data-i18n="transfer_receive_title">Ingin menerima data dari perangkat lain?</p>
+                <button class="btn btn-outline full-width" onclick="syncManager.startQrScanner()"
+                    style="margin-bottom: 0.75rem; border-color: #2563eb; color: #2563eb; background: rgba(37, 99, 235, 0.05);">
+                    <i class="ph ph-camera"></i> Scan QR via Kamera
+                </button>
+                <div id="transfer-scan-container" style="display:none; margin-bottom: 0.8rem;">
+                    <video id="transfer-scan-video" playsinline muted
+                        style="width:100%; max-height: 220px; border-radius: var(--radius-md); background:#0f172a; object-fit: cover;"></video>
+                    <p id="transfer-scan-status" style="font-size:0.78rem; color: var(--text-muted); margin-top:0.5rem; text-align:left;">
+                        Scan QR dari perangkat pengirim untuk isi PIN otomatis.
+                    </p>
+                </div>
                 <div class="transfer-pin-row" style="display: flex; gap: 0.5rem;">
                     <input type="text" id="transfer-pin-input" placeholder="Masukkan 6 Digit PIN" maxlength="6" style="flex: 1; text-align: center; letter-spacing: 3px; font-weight: bold; font-size: 1.1rem; text-transform: uppercase;">
                     <button class="btn btn-primary" onclick="syncManager.receiveData()" data-i18n="transfer_receive_btn">Terima</button>
@@ -1587,39 +1639,39 @@
     <!-- Scripts - Version parameter untuk cache-busting -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-    <script src="js/storage.js?v=1.0.2
+    <script src="js/storage.js?v=1.0.3
     "></script>
-    <script src="js/i18n.js?v=1.0.2
+    <script src="js/i18n.js?v=1.0.3
     "></script>
-    <script src="js/inbox.js?v=1.0.2
+    <script src="js/inbox.js?v=1.0.3
     "></script>
-    <script src="js/notes.js?v=1.0.2
+    <script src="js/notes.js?v=1.0.3
     "></script>
-    <script src="js/presensi.js?v=1.0.2
+    <script src="js/presensi.js?v=1.0.3
     "></script>
-    <script src="js/radar.js?v=1.0.2
+    <script src="js/radar.js?v=1.0.3
     "></script>
-    <script src="js/gradeGoals.js?v=1.0.2
+    <script src="js/gradeGoals.js?v=1.0.3
     "></script>
-    <script src="js/calendarExport.js?v=1.0.2
+    <script src="js/calendarExport.js?v=1.0.3
     "></script>
-    <script src="js/notification.js?v=1.0.2
+    <script src="js/notification.js?v=1.0.3
     "></script>
-    <script src="js/profile.js?v=1.0.2
+    <script src="js/profile.js?v=1.0.3
     "></script>
-    <script src="js/home.js?v=1.0.2
+    <script src="js/home.js?v=1.0.3
     "></script>
-    <script src="js/focus.js?v=1.0.2
+    <script src="js/focus.js?v=1.0.3
     "></script>
-    <script src="js/schedule.js?v=1.0.2
+    <script src="js/schedule.js?v=1.0.3
     "></script>
-    <script src="js/grades.js?v=1.0.2
+    <script src="js/grades.js?v=1.0.3
     "></script>
-    <script src="js/tasks.js?v=1.0.2
+    <script src="js/tasks.js?v=1.0.3
     "></script>
     <script src="js/budget.js?v=1.0.0"></script>
     <script src="js/sync.js?v=1.0.0"></script>
-    <script src="js/app.js?v=1.0.2
+    <script src="js/app.js?v=1.0.3
     "></script>
 </body>
 

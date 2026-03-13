@@ -3,6 +3,12 @@ const syncManager = {
     connection: null,
     pin: '',
     prefix: 'unilife-sync-',
+    scannerStream: null,
+    scannerActive: false,
+    scannerFrameRequest: null,
+    scannerCanvas: null,
+    scannerCanvasCtx: null,
+    scannerBusy: false,
 
     init: function () {
         // Check if there is a receive parameter in the URL
@@ -72,6 +78,26 @@ const syncManager = {
         return this.hasQRCodeSupport();
     },
 
+    ensureJsQrLibrary: async function () {
+        if (typeof window.jsQR === 'function') return true;
+
+        const candidates = [
+            'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js',
+            'https://unpkg.com/jsqr@1.4.0/dist/jsQR.js'
+        ];
+
+        for (const src of candidates) {
+            try {
+                await this.loadScriptOnce(src);
+                if (typeof window.jsQR === 'function') return true;
+            } catch (error) {
+                console.warn(error.message);
+            }
+        }
+
+        return typeof window.jsQR === 'function';
+    },
+
     renderQRCode: function (qrContainer, text, size = 200) {
         if (!qrContainer) return false;
 
@@ -112,6 +138,168 @@ const syncManager = {
         return false;
     },
 
+    setScannerStatus: function (message, isError = false) {
+        const statusEl = document.getElementById('transfer-scan-status');
+        if (!statusEl) return;
+        statusEl.innerText = message;
+        statusEl.style.color = isError ? 'var(--danger)' : 'var(--text-muted)';
+    },
+
+    extractPinFromScannedValue: function (rawValue) {
+        if (!rawValue) return '';
+
+        const trimmed = String(rawValue).trim();
+        if (/^\d{6}$/.test(trimmed)) return trimmed;
+
+        const receiveMatch = trimmed.match(/[?&]receive=(\d{6})/i);
+        if (receiveMatch) return receiveMatch[1];
+
+        const anySixDigit = trimmed.match(/\b(\d{6})\b/);
+        return anySixDigit ? anySixDigit[1] : '';
+    },
+
+    handleScannedPin: function (pin) {
+        if (!pin) return;
+
+        const input = document.getElementById('transfer-pin-input');
+        if (input) input.value = pin;
+
+        this.setScannerStatus('QR berhasil dipindai. Menghubungkan...');
+        this.stopQrScanner();
+        this.receiveData(pin);
+    },
+
+    stopQrScanner: function () {
+        this.scannerActive = false;
+        this.scannerBusy = false;
+
+        if (this.scannerFrameRequest) {
+            cancelAnimationFrame(this.scannerFrameRequest);
+            this.scannerFrameRequest = null;
+        }
+
+        if (this.scannerStream) {
+            this.scannerStream.getTracks().forEach(track => track.stop());
+            this.scannerStream = null;
+        }
+
+        const video = document.getElementById('transfer-scan-video');
+        const container = document.getElementById('transfer-scan-container');
+        if (video) {
+            video.pause();
+            video.srcObject = null;
+        }
+        if (container) container.style.display = 'none';
+    },
+
+    startQrScanner: async function () {
+        const video = document.getElementById('transfer-scan-video');
+        const container = document.getElementById('transfer-scan-container');
+
+        if (!video || !container) return;
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            this.setScannerStatus('Kamera tidak didukung di perangkat/browser ini.', true);
+            return;
+        }
+
+        try {
+            this.stopQrScanner();
+            container.style.display = 'block';
+            this.setScannerStatus('Arahkan kamera ke QR code UniLife...');
+
+            this.scannerStream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: { ideal: 'environment' },
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                },
+                audio: false
+            });
+
+            video.srcObject = this.scannerStream;
+            await video.play();
+
+            this.scannerActive = true;
+            this.scannerBusy = false;
+
+            if ('BarcodeDetector' in window) {
+                const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+
+                const scanWithBarcodeDetector = async () => {
+                    if (!this.scannerActive) return;
+
+                    if (!this.scannerBusy && video.readyState >= 2) {
+                        this.scannerBusy = true;
+                        try {
+                            const barcodes = await detector.detect(video);
+                            if (Array.isArray(barcodes) && barcodes.length > 0) {
+                                const pin = this.extractPinFromScannedValue(barcodes[0].rawValue || '');
+                                if (pin) {
+                                    this.handleScannedPin(pin);
+                                    return;
+                                }
+                            }
+                        } catch (error) {
+                            console.warn('BarcodeDetector scan failed:', error);
+                        } finally {
+                            this.scannerBusy = false;
+                        }
+                    }
+
+                    this.scannerFrameRequest = requestAnimationFrame(scanWithBarcodeDetector);
+                };
+
+                this.scannerFrameRequest = requestAnimationFrame(scanWithBarcodeDetector);
+                return;
+            }
+
+            const jsQrReady = await this.ensureJsQrLibrary();
+            if (!jsQrReady) {
+                this.setScannerStatus('Scanner QR tidak tersedia di browser ini. Gunakan input PIN manual.', true);
+                return;
+            }
+
+            this.scannerCanvas = this.scannerCanvas || document.createElement('canvas');
+            this.scannerCanvasCtx = this.scannerCanvas.getContext('2d', { willReadFrequently: true });
+
+            const scanWithJsQr = () => {
+                if (!this.scannerActive) return;
+
+                if (video.readyState >= 2) {
+                    const width = video.videoWidth;
+                    const height = video.videoHeight;
+                    if (width > 0 && height > 0) {
+                        this.scannerCanvas.width = width;
+                        this.scannerCanvas.height = height;
+                        this.scannerCanvasCtx.drawImage(video, 0, 0, width, height);
+
+                        const imageData = this.scannerCanvasCtx.getImageData(0, 0, width, height);
+                        const qrCode = window.jsQR(imageData.data, width, height, {
+                            inversionAttempts: 'dontInvert'
+                        });
+
+                        if (qrCode && qrCode.data) {
+                            const pin = this.extractPinFromScannedValue(qrCode.data);
+                            if (pin) {
+                                this.handleScannedPin(pin);
+                                return;
+                            }
+                        }
+                    }
+                }
+
+                this.scannerFrameRequest = requestAnimationFrame(scanWithJsQr);
+            };
+
+            this.scannerFrameRequest = requestAnimationFrame(scanWithJsQr);
+        } catch (error) {
+            console.error('Failed to start QR scanner:', error);
+            this.stopQrScanner();
+            this.setScannerStatus('Tidak bisa mengakses kamera. Izinkan akses kamera lalu coba lagi.', true);
+        }
+    },
+
     openTransferModal: async function () {
         this.pin = this.generatePIN();
         const modal = document.getElementById('modal-transfer');
@@ -125,6 +313,8 @@ const syncManager = {
         if (statusContainer) statusContainer.style.display = 'block';
         if (statusText) statusText.innerText = i18n.t('transfer_status_waiting') || 'Menunggu koneksi dari penerima...';
         if (statusIcon) statusIcon.className = 'ph ph-spinner ph-spin';
+        this.stopQrScanner();
+        this.setScannerStatus('Scan QR dari perangkat pengirim untuk isi PIN otomatis.');
         
         // Generate QR Code
         if (qrContainer) {
@@ -146,6 +336,8 @@ const syncManager = {
     closeTransferModal: function () {
         const modal = document.getElementById('modal-transfer');
         if (modal) modal.classList.remove('active');
+
+        this.stopQrScanner();
         
         if (this.peer) {
             this.peer.destroy();

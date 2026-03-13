@@ -2549,13 +2549,76 @@ select:focus {
 
 /* ========== BUDGET TRACKER (PREMIUM UI) ========== */
 
+.budget-premium-view {
+    --budget-accent: #ec4899;
+    --budget-accent-soft: rgba(236, 72, 153, 0.12);
+    --budget-ink-soft: color-mix(in srgb, var(--text-main) 78%, transparent);
+}
+
+.budget-premium-view .card {
+    border: 1px solid color-mix(in srgb, var(--border-color) 88%, var(--budget-accent-soft));
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.budget-premium-view .section-header h2 {
+    letter-spacing: 0.2px;
+}
+
+.budget-actions-row {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem !important;
+}
+
+.budget-action-btn {
+    border-radius: 999px;
+    padding: 0.52rem 0.88rem;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease, filter 0.22s ease;
+}
+
+.budget-action-btn:hover {
+    transform: translateY(-1px);
+    filter: saturate(1.08);
+}
+
+.budget-action-btn-clone {
+    color: #2563eb !important;
+    border-color: rgba(37, 99, 235, 0.45) !important;
+    background: rgba(37, 99, 235, 0.06) !important;
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.12);
+}
+
+.budget-action-btn-csv {
+    color: #0f766e !important;
+    border-color: rgba(13, 148, 136, 0.45) !important;
+    background: rgba(13, 148, 136, 0.06) !important;
+    box-shadow: 0 6px 16px rgba(13, 148, 136, 0.12);
+}
+
+.budget-action-btn-reset {
+    color: var(--danger) !important;
+    border-color: rgba(239, 68, 68, 0.45) !important;
+    background: rgba(239, 68, 68, 0.05) !important;
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.1);
+}
+
+.budget-action-btn-add {
+    border-radius: 999px;
+    padding: 0.52rem 1rem;
+    box-shadow: 0 8px 18px rgba(59, 130, 246, 0.28);
+}
+
 .premium-budget-card {
     transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease;
+    backdrop-filter: blur(6px);
+    border: 1px solid color-mix(in srgb, var(--budget-accent) 20%, var(--border-color)) !important;
 }
 
 .premium-budget-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 12px 30px rgba(236, 72, 153, 0.15);
+    box-shadow: 0 14px 34px rgba(236, 72, 153, 0.2);
 }
 
 .budget-month-shell {
@@ -2564,6 +2627,7 @@ select:focus {
         radial-gradient(circle at 90% 20%, rgba(236, 72, 153, 0.12), transparent 45%),
         radial-gradient(circle at 15% 80%, rgba(59, 130, 246, 0.12), transparent 40%),
         var(--bg-card);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
 }
 
 .budget-month-nav {
@@ -2596,6 +2660,7 @@ select:focus {
     border-color: rgba(236, 72, 153, 0.35);
     color: #db2777;
     background: rgba(236, 72, 153, 0.04);
+    font-weight: 700;
 }
 
 .budget-back-today:hover {
@@ -2608,6 +2673,20 @@ select:focus {
     background:
         linear-gradient(160deg, rgba(236, 72, 153, 0.07), rgba(59, 130, 246, 0.06)),
         var(--bg-card);
+}
+
+.budget-pro-signal-shell {
+    border: 1px solid rgba(37, 99, 235, 0.26);
+    background:
+        radial-gradient(circle at 88% 18%, rgba(37, 99, 235, 0.12), transparent 48%),
+        radial-gradient(circle at 12% 82%, rgba(16, 185, 129, 0.08), transparent 44%),
+        var(--bg-card);
+}
+
+.budget-chart-shell {
+    border: 1px solid color-mix(in srgb, var(--budget-accent) 18%, var(--border-color));
+    background:
+        linear-gradient(180deg, color-mix(in srgb, var(--bg-card) 92%, white 8%) 0%, var(--bg-card) 100%);
 }
 
 .budget-insight-live {
@@ -2654,6 +2733,7 @@ select:focus {
     font-size: 1.05rem;
     line-height: 1.2;
     margin-bottom: 0.25rem;
+    color: var(--text-main);
 }
 
 .budget-insight-card small {
@@ -2772,6 +2852,134 @@ select:focus {
     border-color: rgba(236, 72, 153, 0.3);
 }
 
+.budget-reveal-card {
+    opacity: 0;
+    transform: translateY(16px) scale(0.995);
+}
+
+.view-section.active.budget-premium-view .budget-reveal-card {
+    animation: budgetCardReveal 0.46s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.view-section.active.budget-premium-view .budget-reveal-card:nth-of-type(1) {
+    animation-delay: 0.04s;
+}
+
+.view-section.active.budget-premium-view .budget-reveal-card:nth-of-type(2) {
+    animation-delay: 0.1s;
+}
+
+.view-section.active.budget-premium-view .budget-reveal-card:nth-of-type(3) {
+    animation-delay: 0.16s;
+}
+
+.view-section.active.budget-premium-view .budget-reveal-card:nth-of-type(4) {
+    animation-delay: 0.22s;
+}
+
+.view-section.active.budget-premium-view .budget-reveal-card:nth-of-type(5) {
+    animation-delay: 0.28s;
+}
+
+@keyframes budgetCardReveal {
+    from {
+        opacity: 0;
+        transform: translateY(16px) scale(0.995);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+[data-theme="dark"] .budget-premium-view {
+    --budget-accent: #f472b6;
+    --budget-accent-soft: rgba(244, 114, 182, 0.14);
+}
+
+[data-theme="dark"] .budget-premium-view .card {
+    border-color: color-mix(in srgb, var(--border-color) 72%, rgba(148, 163, 184, 0.2));
+    box-shadow: 0 12px 28px rgba(2, 6, 23, 0.48);
+}
+
+[data-theme="dark"] .budget-action-btn-clone {
+    color: #bfdbfe !important;
+    border-color: rgba(147, 197, 253, 0.5) !important;
+    background: rgba(59, 130, 246, 0.2) !important;
+}
+
+[data-theme="dark"] .budget-action-btn-csv {
+    color: #99f6e4 !important;
+    border-color: rgba(45, 212, 191, 0.5) !important;
+    background: rgba(13, 148, 136, 0.24) !important;
+}
+
+[data-theme="dark"] .budget-action-btn-reset {
+    color: #fecaca !important;
+    border-color: rgba(248, 113, 113, 0.5) !important;
+    background: rgba(185, 28, 28, 0.2) !important;
+}
+
+[data-theme="dark"] .budget-action-btn-add {
+    background: linear-gradient(135deg, #3b82f6, #6366f1) !important;
+    border-color: transparent !important;
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .premium-budget-card {
+    background: linear-gradient(135deg, rgba(244, 114, 182, 0.2), rgba(37, 99, 235, 0.15)) !important;
+    border-color: rgba(244, 114, 182, 0.3) !important;
+}
+
+[data-theme="dark"] .budget-month-shell {
+    background:
+        radial-gradient(circle at 90% 20%, rgba(244, 114, 182, 0.2), transparent 45%),
+        radial-gradient(circle at 15% 80%, rgba(59, 130, 246, 0.22), transparent 40%),
+        var(--bg-card);
+}
+
+[data-theme="dark"] .budget-month-btn:hover {
+    border-color: rgba(244, 114, 182, 0.45);
+    background: rgba(244, 114, 182, 0.14);
+}
+
+[data-theme="dark"] .budget-back-today {
+    color: #f9a8d4;
+    border-color: rgba(249, 168, 212, 0.42);
+    background: rgba(244, 114, 182, 0.16);
+}
+
+[data-theme="dark"] .budget-insight-shell {
+    border-color: rgba(244, 114, 182, 0.35);
+    background:
+        linear-gradient(160deg, rgba(244, 114, 182, 0.16), rgba(59, 130, 246, 0.12)),
+        var(--bg-card);
+}
+
+[data-theme="dark"] .budget-pro-signal-shell {
+    border-color: rgba(147, 197, 253, 0.34);
+    background:
+        radial-gradient(circle at 88% 18%, rgba(147, 197, 253, 0.18), transparent 48%),
+        radial-gradient(circle at 12% 82%, rgba(45, 212, 191, 0.12), transparent 44%),
+        var(--bg-card);
+}
+
+[data-theme="dark"] .budget-insight-card {
+    background: color-mix(in srgb, var(--bg-card) 82%, #0f172a 18%);
+    border-color: rgba(148, 163, 184, 0.26);
+}
+
+[data-theme="dark"] .budget-insight-card small,
+[data-theme="dark"] .budget-insight-label {
+    color: #cbd5e1;
+}
+
+[data-theme="dark"] .budget-chart-shell {
+    border-color: rgba(244, 114, 182, 0.3);
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.7), rgba(22, 32, 50, 0.95));
+}
+
 #view-budget.budget-month-animating .premium-budget-card,
 #view-budget.budget-month-animating .budget-insight-shell,
 #view-budget.budget-month-animating #budget-transaction-list .tx-card,
@@ -2814,6 +3022,25 @@ select:focus {
 
     .budget-month-shell {
         padding: 0.85rem;
+    }
+
+    #view-budget .section-header>div {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .budget-action-btn {
+        font-size: 0.78rem;
+        padding: 0.48rem 0.76rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .budget-reveal-card,
+    .view-section.active.budget-premium-view .budget-reveal-card {
+        animation: none !important;
+        opacity: 1;
+        transform: none;
     }
 }
 
@@ -3429,7 +3656,7 @@ select:focus {
         left: 0;
         width: 100%;
         border-radius: 18px 18px 0 0;
-        max-height: min(72vh, 620px);
+        max-height: min(calc(100dvh - max(64px, env(safe-area-inset-top))), 620px);
         transform: translateY(100%);
         transition: transform 0.24s ease, opacity 0.24s ease, visibility 0.24s;
         padding-bottom: env(safe-area-inset-bottom);
