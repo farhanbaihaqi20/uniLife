@@ -10,18 +10,18 @@ Ubah nomor versi di **3 tempat** (gunakan format semantic: `MAJOR.MINOR.PATCH`):
 
 #### A. File `sw.js` (Baris 2):
 ```javascript
-const CACHE_VERSION = '1.0.2'; // ← Update nomor ini
+const CACHE_VERSION = '1.4'; // ← Update nomor ini
 ```
 
 #### B. File `index.html` (Baris ~15):
 ```html
-<link rel="stylesheet" href="css/styles.css?v=1.0.2">
+<link rel="stylesheet" href="css/styles.css?v=1.4">
 ```
 
 #### C. File `index.html` (Baris ~1060-1075):
 ```html
-<script src="js/storage.js?v=1.0.2"></script>
-<script src="js/i18n.js?v=1.0.2"></script>
+<script src="js/storage.js?v=1.4"></script>
+<script src="js/i18n.js?v=1.4"></script>
 <!-- ...dan seterusnya untuk semua script -->
 ```
 
