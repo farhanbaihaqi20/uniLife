@@ -1,5 +1,7 @@
 const profileManager = {
     profile: {},
+    currentSharePreset: 'aurora',
+    currentShareSize: 'story',
 
     init: function () {
         this.profile = Storage.getProfile();
@@ -36,6 +38,555 @@ const profileManager = {
         setTimeout(() => {
             this.openModal();
         }, 300);
+    },
+
+    openShareProfileModal: function () {
+        const modal = document.getElementById('modal-profile-share');
+        if (!modal) return;
+
+        const fullNameToggle = document.getElementById('share-profile-show-fullname');
+        const balanceToggle = document.getElementById('share-profile-show-balance');
+        if (fullNameToggle) fullNameToggle.checked = false;
+        if (balanceToggle) balanceToggle.checked = false;
+
+        this.currentSharePreset = 'aurora';
+        this.setSharePreset(this.currentSharePreset, true);
+        this.currentShareSize = 'story';
+        this.setShareSize(this.currentShareSize, true);
+
+        this.updateDashboardStats();
+        this.updateShareProfilePreview();
+        modal.classList.add('active');
+    },
+
+    closeShareProfileModal: function () {
+        const modal = document.getElementById('modal-profile-share');
+        if (modal) modal.classList.remove('active');
+    },
+
+    setSharePreset: function (preset, silentUpdate = false) {
+        const validPreset = ['aurora', 'light', 'midnight'].includes(preset) ? preset : 'aurora';
+        this.currentSharePreset = validPreset;
+
+        const buttons = ['aurora', 'light', 'midnight'];
+        buttons.forEach((name) => {
+            const btn = document.getElementById(`share-preset-${name}`);
+            if (!btn) return;
+            const isActive = name === validPreset;
+            if (isActive) {
+                btn.style.borderColor = 'rgba(59,130,246,0.45)';
+                btn.style.background = 'linear-gradient(135deg, rgba(59,130,246,0.18), rgba(14,165,233,0.12))';
+                btn.style.color = '#2563eb';
+            } else {
+                btn.style.borderColor = 'var(--border-color)';
+                btn.style.background = 'var(--bg-main)';
+                btn.style.color = 'var(--text-main)';
+            }
+        });
+
+        if (!silentUpdate) this.updateShareProfilePreview();
+    },
+
+    setShareSize: function (size, silentUpdate = false) {
+        const validSize = ['story', 'portrait', 'square'].includes(size) ? size : 'story';
+        this.currentShareSize = validSize;
+
+        const buttons = ['story', 'portrait', 'square'];
+        buttons.forEach((name) => {
+            const btn = document.getElementById(`share-size-${name}`);
+            if (!btn) return;
+            const isActive = name === validSize;
+            if (isActive) {
+                btn.style.borderColor = 'rgba(59,130,246,0.45)';
+                btn.style.background = 'linear-gradient(135deg, rgba(59,130,246,0.18), rgba(14,165,233,0.12))';
+                btn.style.color = '#2563eb';
+            } else {
+                btn.style.borderColor = 'var(--border-color)';
+                btn.style.background = 'var(--bg-main)';
+                btn.style.color = 'var(--text-main)';
+            }
+        });
+
+        if (!silentUpdate) this.updateShareProfilePreview();
+    },
+
+    getShareSizeConfig: function (size = this.currentShareSize) {
+        const map = {
+            story: { key: 'story', width: 1080, height: 1920, aspectRatio: '9 / 16', previewMinHeight: '520px', fileSuffix: 'story' },
+            portrait: { key: 'portrait', width: 1080, height: 1350, aspectRatio: '4 / 5', previewMinHeight: '460px', fileSuffix: 'portrait' },
+            square: { key: 'square', width: 1080, height: 1080, aspectRatio: '1 / 1', previewMinHeight: '420px', fileSuffix: 'square' }
+        };
+        return map[size] || map.story;
+    },
+
+    getShareTheme: function (preset) {
+        const map = {
+            aurora: {
+                cardBackground: 'linear-gradient(160deg, rgba(15, 23, 42, 0.84), rgba(20, 36, 66, 0.78))',
+                outerBackground: 'radial-gradient(circle at 82% 14%, rgba(56, 189, 248, 0.24), transparent 38%), radial-gradient(circle at 18% 86%, rgba(59, 130, 246, 0.28), transparent 44%), linear-gradient(160deg, #0b1020, #101a33 60%, #0f172a)',
+                badgeBackground: 'rgba(37,99,235,0.2)',
+                badgeBorder: 'rgba(59,130,246,0.5)',
+                badgeText: '#bfdbfe'
+            },
+            light: {
+                cardBackground: 'linear-gradient(160deg, rgba(255, 255, 255, 0.97), rgba(248, 250, 252, 0.94))',
+                outerBackground: 'radial-gradient(circle at 84% 14%, rgba(59, 130, 246, 0.18), transparent 38%), radial-gradient(circle at 14% 86%, rgba(14, 165, 233, 0.12), transparent 40%), linear-gradient(160deg, #f8fbff, #eef6ff 58%, #f5f8ff)',
+                badgeBackground: 'rgba(37, 99, 235, 0.08)',
+                badgeBorder: 'rgba(37, 99, 235, 0.35)',
+                badgeText: '#1d4ed8'
+            },
+            midnight: {
+                cardBackground: 'linear-gradient(165deg, rgba(3, 7, 18, 0.88), rgba(17, 24, 39, 0.84))',
+                outerBackground: 'radial-gradient(circle at 88% 12%, rgba(99, 102, 241, 0.2), transparent 40%), radial-gradient(circle at 10% 84%, rgba(34, 197, 94, 0.15), transparent 40%), linear-gradient(170deg, #050814, #0b1324 62%, #121827)',
+                badgeBackground: 'rgba(15, 23, 42, 0.45)',
+                badgeBorder: 'rgba(148, 163, 184, 0.45)',
+                badgeText: '#e2e8f0'
+            }
+        };
+        return map[preset] || map.aurora;
+    },
+
+    getShareLevel: function (ipkText) {
+        const ipk = parseFloat(String(ipkText || '0').replace(',', '.'));
+        if (ipk >= 3.8) return i18n.t('profile_share_level_elite');
+        if (ipk >= 3.5) return i18n.t('profile_share_level_rising');
+        return i18n.t('profile_share_level_grind');
+    },
+
+    getShareProfileSnapshot: function (options = {}) {
+        const readText = (id, fallback = '-') => {
+            const el = document.getElementById(id);
+            return el && el.innerText ? el.innerText.trim() : fallback;
+        };
+
+        const showFullName = !!options.showFullName;
+        const showBalance = !!options.showBalance;
+        const displayName = showFullName
+            ? (this.profile.fullName || this.profile.nickname || 'Mahasiswa')
+            : (this.profile.nickname || this.profile.fullName || 'Mahasiswa');
+
+        return {
+            name: displayName,
+            semester: this.profile.semester ? `Semester ${this.profile.semester}` : '-',
+            photoBase64: this.profile.photoBase64 || '',
+            initial: (this.profile.nickname || this.profile.fullName || 'U').charAt(0).toUpperCase(),
+            preset: this.currentSharePreset,
+            ipk: readText('profile-ipk-display', '0.00'),
+            tasksDone: readText('profile-completed-tasks', '0'),
+            tasksRatio: readText('profile-completed-ratio', '0 dari 0 tugas'),
+            attendancePercent: readText('profile-attendance-percent', '0%'),
+            attendanceRatio: readText('profile-attendance-ratio', '0 dari 16 pertemuan'),
+            focus: readText('profile-total-focus-time', '0h'),
+            streak: readText('profile-streak-count', '0'),
+            balance: readText('profile-total-balance', 'Rp 0'),
+            level: this.getShareLevel(readText('profile-ipk-display', '0.00')),
+            website: 'unilife.my.id',
+            size: this.currentShareSize,
+            generatedAt: new Date().toLocaleDateString(i18n.locale(), { day: 'numeric', month: 'long', year: 'numeric' }),
+            showBalance
+        };
+    },
+
+    updateShareProfilePreview: function () {
+        const preview = document.getElementById('share-profile-preview');
+        if (!preview) return;
+
+        const showFullName = !!document.getElementById('share-profile-show-fullname')?.checked;
+        const showBalance = !!document.getElementById('share-profile-show-balance')?.checked;
+        const data = this.getShareProfileSnapshot({ showFullName, showBalance });
+        const theme = this.getShareTheme(data.preset);
+        const sizeConfig = this.getShareSizeConfig(data.size);
+        const isLight = data.preset === 'light';
+
+        const colorMain = isLight ? '#0f172a' : '#f8fafc';
+        const colorMuted = isLight ? '#475569' : '#cbd5e1';
+        const colorLabel = isLight ? '#1d4ed8' : '#93c5fd';
+        const levelBg = isLight ? 'rgba(37, 99, 235, 0.08)' : 'rgba(59, 130, 246, 0.12)';
+        const levelBorder = isLight ? 'rgba(37, 99, 235, 0.22)' : 'rgba(96, 165, 250, 0.3)';
+        const levelLabelColor = isLight ? '#1e40af' : '#bfdbfe';
+        const footerColor = isLight ? '#64748b' : '#94a3b8';
+        const footerBorder = isLight ? 'rgba(148,163,184,0.3)' : 'rgba(148,163,184,0.25)';
+        const shadow = isLight ? '0 14px 26px rgba(37, 99, 235, 0.16)' : '0 16px 32px rgba(2, 6, 23, 0.45)';
+
+        preview.style.aspectRatio = sizeConfig.aspectRatio;
+        preview.style.minHeight = sizeConfig.previewMinHeight;
+
+        const esc = (value) => String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+
+        const balanceHtml = data.showBalance
+            ? `<div style="padding:0.75rem; border-radius: 12px; background: ${isLight ? 'rgba(16, 185, 129, 0.07)' : 'rgba(45, 212, 191, 0.08)'}; border:1px solid ${isLight ? 'rgba(16, 185, 129, 0.24)' : 'rgba(45, 212, 191, 0.3)'}; display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.76rem; color:${isLight ? '#0f766e' : '#7dd3fc'};">Total Saldo</span>
+                <strong style="font-size:0.96rem; color:${isLight ? '#064e3b' : '#ecfeff'};">${esc(data.balance)}</strong>
+               </div>`
+            : '';
+
+        const avatarHtml = data.photoBase64
+            ? `<div style="width:56px; height:56px; border-radius:50%; border:2px solid rgba(147, 197, 253, 0.55); background-image:url('${esc(data.photoBase64)}'); background-size:cover; background-position:center;"></div>`
+            : `<div style="width:56px; height:56px; border-radius:50%; border:2px solid rgba(147, 197, 253, 0.55); background: linear-gradient(135deg, rgba(59,130,246,0.35), rgba(14,165,233,0.3)); display:flex; align-items:center; justify-content:center; color:#f8fafc; font-weight:700; font-size:1rem;">${esc(data.initial)}</div>`;
+
+        preview.innerHTML = `
+            <div style="height: 100%; min-height: 520px; padding: 1rem; background:${theme.outerBackground};">
+                <div style="height:100%; border-radius: 18px; padding: 1rem; border: 1px solid ${isLight ? 'rgba(37, 99, 235, 0.2)' : 'rgba(125, 211, 252, 0.25)'}; background: ${theme.cardBackground}; box-shadow: ${shadow}; display:flex; flex-direction:column; gap:0.9rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.75rem;">
+                        <div style="display:flex; align-items:center; gap:0.7rem;">
+                            ${avatarHtml}
+                            <div>
+                            <p style="font-size:0.7rem; letter-spacing:1px; text-transform:uppercase; color:${colorLabel};">Unilife Snapshot</p>
+                            <h4 style="font-size:1.2rem; color:${colorMain}; margin-top:0.2rem;">${esc(data.name)}</h4>
+                            <p style="font-size:0.8rem; color:${colorMuted}; margin-top:0.2rem;">${esc(data.semester)}</p>
+                            </div>
+                        </div>
+                        <span style="font-size:0.7rem; padding:0.35rem 0.55rem; border-radius:999px; border:1px solid ${theme.badgeBorder}; color:${theme.badgeText}; background: ${theme.badgeBackground};">${esc(i18n.t('profile_share_badge'))}</span>
+                    </div>
+
+                    <div style="padding:0.6rem 0.75rem; border-radius: 12px; background: ${levelBg}; border:1px solid ${levelBorder}; display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:0.74rem; color:${levelLabelColor};">${esc(i18n.t('profile_share_level_title'))}</span>
+                        <strong style="font-size:0.88rem; color:${colorMain};">${esc(data.level)}</strong>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.55rem;">
+                        <div style="padding:0.75rem; border-radius:12px; background: ${isLight ? 'rgba(37, 99, 235, 0.08)' : 'rgba(59, 130, 246, 0.1)'}; border:1px solid ${isLight ? 'rgba(37, 99, 235, 0.25)' : 'rgba(96, 165, 250, 0.35)'};">
+                            <small style="font-size:0.72rem; color:${isLight ? '#1d4ed8' : '#bfdbfe'};">IPK</small>
+                            <p style="font-size:1.1rem; color:${colorMain}; font-weight:700; margin-top:0.25rem;">${esc(data.ipk)}</p>
+                        </div>
+                        <div style="padding:0.75rem; border-radius:12px; background: ${isLight ? 'rgba(16, 185, 129, 0.08)' : 'rgba(16, 185, 129, 0.1)'}; border:1px solid ${isLight ? 'rgba(16, 185, 129, 0.24)' : 'rgba(52, 211, 153, 0.35)'};">
+                            <small style="font-size:0.72rem; color:${isLight ? '#047857' : '#a7f3d0'};">Tugas</small>
+                            <p style="font-size:1.1rem; color:${colorMain}; font-weight:700; margin-top:0.25rem;">${esc(data.tasksDone)}</p>
+                            <p style="font-size:0.68rem; color:${isLight ? '#065f46' : '#d1fae5'}; margin-top:0.15rem;">${esc(data.tasksRatio)}</p>
+                        </div>
+                        <div style="padding:0.75rem; border-radius:12px; background: ${isLight ? 'rgba(14, 165, 233, 0.08)' : 'rgba(14, 165, 233, 0.1)'}; border:1px solid ${isLight ? 'rgba(14, 165, 233, 0.24)' : 'rgba(56, 189, 248, 0.35)'};">
+                            <small style="font-size:0.72rem; color:${isLight ? '#0369a1' : '#bae6fd'};">Kehadiran</small>
+                            <p style="font-size:1.1rem; color:${colorMain}; font-weight:700; margin-top:0.25rem;">${esc(data.attendancePercent)}</p>
+                            <p style="font-size:0.68rem; color:${isLight ? '#075985' : '#e0f2fe'}; margin-top:0.15rem;">${esc(data.attendanceRatio)}</p>
+                        </div>
+                        <div style="padding:0.75rem; border-radius:12px; background: ${isLight ? 'rgba(245, 158, 11, 0.08)' : 'rgba(245, 158, 11, 0.1)'}; border:1px solid ${isLight ? 'rgba(245, 158, 11, 0.24)' : 'rgba(251, 191, 36, 0.35)'};">
+                            <small style="font-size:0.72rem; color:${isLight ? '#b45309' : '#fde68a'};">Total Fokus</small>
+                            <p style="font-size:1.1rem; color:${colorMain}; font-weight:700; margin-top:0.25rem;">${esc(data.focus)}</p>
+                        </div>
+                    </div>
+
+                    <div style="padding:0.75rem; border-radius: 12px; background: ${isLight ? 'rgba(251, 191, 36, 0.08)' : 'rgba(251, 191, 36, 0.08)'}; border:1px solid ${isLight ? 'rgba(245, 158, 11, 0.24)' : 'rgba(251, 191, 36, 0.28)'}; display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:0.76rem; color:${isLight ? '#92400e' : '#fef3c7'};">Streak Hari</span>
+                        <strong style="font-size:1rem; color:${isLight ? '#78350f' : '#fff7ed'};">${esc(data.streak)} hari</strong>
+                    </div>
+
+                    ${balanceHtml}
+
+                    <div style="margin-top:0.35rem; display:flex; justify-content:space-between; align-items:center; gap:0.5rem; font-size:0.68rem; color:${footerColor}; border-top:1px solid ${footerBorder}; padding-top:0.75rem;">
+                        <span>Generated ${esc(data.generatedAt)}</span>
+                        <span>#UNILIFE • ${esc(data.website)}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
+    downloadShareProfileCard: async function () {
+        try {
+            const showFullName = !!document.getElementById('share-profile-show-fullname')?.checked;
+            const showBalance = !!document.getElementById('share-profile-show-balance')?.checked;
+            const data = this.getShareProfileSnapshot({ showFullName, showBalance });
+            const theme = this.getShareTheme(data.preset);
+            const sizeConfig = this.getShareSizeConfig(data.size);
+            const isLight = data.preset === 'light';
+
+            const exportMainText = isLight ? '#0f172a' : '#f8fafc';
+            const exportMutedText = isLight ? '#475569' : '#cbd5e1';
+            const exportLabelText = isLight ? '#1d4ed8' : '#93c5fd';
+            const exportPanelFill = isLight ? 'rgba(255, 255, 255, 0.92)' : 'rgba(15, 23, 42, 0.82)';
+            const exportPanelStroke = isLight ? 'rgba(37, 99, 235, 0.28)' : 'rgba(125, 211, 252, 0.32)';
+            const exportFooterText = isLight ? '#64748b' : '#94a3b8';
+            const exportFooterLine = isLight ? 'rgba(148, 163, 184, 0.34)' : 'rgba(148, 163, 184, 0.24)';
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 1080;
+            canvas.height = 1920;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+        const roundRect = (x, y, w, h, r) => {
+            const rr = Math.min(r, w / 2, h / 2);
+            ctx.beginPath();
+            ctx.moveTo(x + rr, y);
+            ctx.arcTo(x + w, y, x + w, y + h, rr);
+            ctx.arcTo(x + w, y + h, x, y + h, rr);
+            ctx.arcTo(x, y + h, x, y, rr);
+            ctx.arcTo(x, y, x + w, y, rr);
+            ctx.closePath();
+        };
+
+        const truncate = (text, maxLen) => {
+            const value = String(text || '');
+            return value.length > maxLen ? `${value.slice(0, maxLen - 1)}...` : value;
+        };
+
+        const loadImage = (src) => new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = reject;
+            img.src = src;
+        });
+
+        const presetGradients = {
+            aurora: ['#090f1e', '#0f1c37', '#0b1224'],
+            light: ['#fff7ed', '#ffedd5', '#ffe4e6'],
+            midnight: ['#030712', '#0b1324', '#121827']
+        };
+        const presetGlowA = {
+            aurora: 'rgba(56, 189, 248, 0.35)',
+            light: 'rgba(251, 191, 36, 0.34)',
+            midnight: 'rgba(99, 102, 241, 0.3)'
+        };
+        const presetGlowB = {
+            aurora: 'rgba(59, 130, 246, 0.28)',
+            light: 'rgba(248, 113, 113, 0.22)',
+            midnight: 'rgba(34, 197, 94, 0.2)'
+        };
+        const gradStops = presetGradients[data.preset] || presetGradients.aurora;
+
+        const bgGrad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        bgGrad.addColorStop(0, gradStops[0]);
+        bgGrad.addColorStop(0.55, gradStops[1]);
+        bgGrad.addColorStop(1, gradStops[2]);
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const glow1 = ctx.createRadialGradient(870, 260, 20, 870, 260, 360);
+        glow1.addColorStop(0, presetGlowA[data.preset] || presetGlowA.aurora);
+        glow1.addColorStop(1, 'rgba(56, 189, 248, 0)');
+        ctx.fillStyle = glow1;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const glow2 = ctx.createRadialGradient(220, 1560, 20, 220, 1560, 420);
+        glow2.addColorStop(0, presetGlowB[data.preset] || presetGlowB.aurora);
+        glow2.addColorStop(1, 'rgba(59, 130, 246, 0)');
+        ctx.fillStyle = glow2;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const panelX = 72;
+        const panelY = 92;
+        const panelW = canvas.width - (panelX * 2);
+        const contentBottom = data.showBalance ? 1130 : 978;
+        const panelH = Math.min(canvas.height - (panelY * 2), Math.max(contentBottom + 170, 1240));
+        roundRect(panelX, panelY, panelW, panelH, 44);
+        ctx.fillStyle = exportPanelFill;
+        ctx.fill();
+        ctx.strokeStyle = exportPanelStroke;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        roundRect(panelX + panelW - 236, panelY + 42, 170, 46, 22);
+        ctx.fillStyle = theme.badgeBackground;
+        ctx.fill();
+        ctx.strokeStyle = theme.badgeBorder;
+        ctx.stroke();
+        ctx.fillStyle = theme.badgeText;
+        ctx.font = '600 22px Inter, sans-serif';
+        ctx.fillText(i18n.t('profile_share_badge').toUpperCase(), panelX + panelW - 220, panelY + 72);
+
+        const avatarX = panelX + 108;
+        const avatarY = panelY + 106;
+        const avatarR = 44;
+        const nameX = avatarX + avatarR + 24;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(avatarX, avatarY, avatarR, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        if (data.photoBase64) {
+            try {
+                const img = await loadImage(data.photoBase64);
+                // Keep avatar centered by cropping source image to a centered square first.
+                const sourceSize = Math.min(img.width, img.height);
+                const sourceX = (img.width - sourceSize) / 2;
+                const sourceY = (img.height - sourceSize) / 2;
+                ctx.drawImage(
+                    img,
+                    sourceX,
+                    sourceY,
+                    sourceSize,
+                    sourceSize,
+                    avatarX - avatarR,
+                    avatarY - avatarR,
+                    avatarR * 2,
+                    avatarR * 2
+                );
+            } catch (error) {
+                ctx.fillStyle = 'rgba(37, 99, 235, 0.4)';
+                ctx.fillRect(avatarX - avatarR, avatarY - avatarR, avatarR * 2, avatarR * 2);
+            }
+        } else {
+            const avatarGrad = ctx.createLinearGradient(avatarX - avatarR, avatarY - avatarR, avatarX + avatarR, avatarY + avatarR);
+            avatarGrad.addColorStop(0, 'rgba(59,130,246,0.45)');
+            avatarGrad.addColorStop(1, 'rgba(14,165,233,0.45)');
+            ctx.fillStyle = avatarGrad;
+            ctx.fillRect(avatarX - avatarR, avatarY - avatarR, avatarR * 2, avatarR * 2);
+        }
+        ctx.restore();
+        ctx.beginPath();
+        ctx.arc(avatarX, avatarY, avatarR, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.strokeStyle = 'rgba(147, 197, 253, 0.7)';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        if (!data.photoBase64) {
+            ctx.fillStyle = exportMainText;
+            ctx.font = '700 36px Inter, sans-serif';
+            ctx.fillText((data.initial || 'U').charAt(0), avatarX - 12, avatarY + 12);
+        }
+
+        ctx.fillStyle = exportLabelText;
+        ctx.font = '600 30px Inter, sans-serif';
+        ctx.fillText('UNILIFE SNAPSHOT', nameX, panelY + 82);
+
+        ctx.fillStyle = exportMainText;
+        ctx.font = '700 62px Inter, sans-serif';
+        ctx.fillText(truncate(data.name, 20), nameX, panelY + 168);
+
+        ctx.fillStyle = exportMutedText;
+        ctx.font = '500 34px Inter, sans-serif';
+        ctx.fillText(data.semester, nameX, panelY + 216);
+
+        roundRect(panelX + 52, panelY + 232, panelW - 104, 76, 18);
+        ctx.fillStyle = 'rgba(59, 130, 246, 0.12)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(96, 165, 250, 0.3)';
+        ctx.stroke();
+        ctx.fillStyle = isLight ? '#1e40af' : '#bfdbfe';
+        ctx.font = '600 24px Inter, sans-serif';
+        ctx.fillText(i18n.t('profile_share_level_title'), panelX + 80, panelY + 278);
+        ctx.fillStyle = exportMainText;
+        ctx.font = '700 30px Inter, sans-serif';
+        ctx.fillText(data.level, panelX + panelW - 330, panelY + 278);
+
+        const drawStat = (x, y, title, value, sub, tone) => {
+            roundRect(x, y, 430, 220, 28);
+            ctx.fillStyle = tone.bg;
+            ctx.fill();
+            ctx.strokeStyle = tone.border;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.fillStyle = tone.title;
+            ctx.font = '600 28px Inter, sans-serif';
+            ctx.fillText(title, x + 28, y + 52);
+
+            ctx.fillStyle = exportMainText;
+            ctx.font = '700 56px Inter, sans-serif';
+            ctx.fillText(truncate(value, 13), x + 28, y + 126);
+
+            if (sub) {
+                ctx.fillStyle = tone.sub;
+                ctx.font = '500 24px Inter, sans-serif';
+                ctx.fillText(truncate(sub, 26), x + 28, y + 172);
+            }
+        };
+
+        drawStat(panelX + 52, panelY + 334, 'IPK', data.ipk, '', {
+            bg: isLight ? 'rgba(37, 99, 235, 0.08)' : 'rgba(59, 130, 246, 0.14)',
+            border: isLight ? 'rgba(37, 99, 235, 0.25)' : 'rgba(96, 165, 250, 0.38)',
+            title: isLight ? '#1d4ed8' : '#bfdbfe',
+            sub: isLight ? '#1e3a8a' : '#dbeafe'
+        });
+        drawStat(panelX + 502, panelY + 334, 'Tugas', data.tasksDone, data.tasksRatio, {
+            bg: isLight ? 'rgba(16, 185, 129, 0.08)' : 'rgba(16, 185, 129, 0.14)',
+            border: isLight ? 'rgba(16, 185, 129, 0.24)' : 'rgba(52, 211, 153, 0.4)',
+            title: isLight ? '#047857' : '#a7f3d0',
+            sub: isLight ? '#065f46' : '#d1fae5'
+        });
+        drawStat(panelX + 52, panelY + 584, 'Kehadiran', data.attendancePercent, data.attendanceRatio, {
+            bg: isLight ? 'rgba(14, 165, 233, 0.08)' : 'rgba(14, 165, 233, 0.14)',
+            border: isLight ? 'rgba(14, 165, 233, 0.24)' : 'rgba(56, 189, 248, 0.38)',
+            title: isLight ? '#0369a1' : '#bae6fd',
+            sub: isLight ? '#075985' : '#e0f2fe'
+        });
+        drawStat(panelX + 502, panelY + 584, 'Total Fokus', data.focus, '', {
+            bg: isLight ? 'rgba(245, 158, 11, 0.08)' : 'rgba(245, 158, 11, 0.14)',
+            border: isLight ? 'rgba(245, 158, 11, 0.24)' : 'rgba(251, 191, 36, 0.35)',
+            title: isLight ? '#b45309' : '#fde68a',
+            sub: isLight ? '#92400e' : '#fef3c7'
+        });
+
+        roundRect(panelX + 52, panelY + 846, panelW - 104, 132, 24);
+        ctx.fillStyle = 'rgba(251, 191, 36, 0.1)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(251, 191, 36, 0.32)';
+        ctx.stroke();
+        ctx.fillStyle = isLight ? '#92400e' : '#fef3c7';
+        ctx.font = '600 28px Inter, sans-serif';
+        ctx.fillText('Streak Hari', panelX + 84, panelY + 900);
+        ctx.fillStyle = isLight ? '#78350f' : '#fff7ed';
+        ctx.font = '700 46px Inter, sans-serif';
+        ctx.fillText(`${data.streak} hari`, panelX + panelW - 320, panelY + 910);
+
+        if (data.showBalance) {
+            roundRect(panelX + 52, panelY + 998, panelW - 104, 132, 24);
+            ctx.fillStyle = 'rgba(45, 212, 191, 0.1)';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(45, 212, 191, 0.35)';
+            ctx.stroke();
+            ctx.fillStyle = '#99f6e4';
+            ctx.font = '600 28px Inter, sans-serif';
+            ctx.fillText('Total Saldo', panelX + 84, panelY + 1052);
+            ctx.fillStyle = '#ecfeff';
+            ctx.font = '700 42px Inter, sans-serif';
+            ctx.fillText(truncate(data.balance, 19), panelX + 84, panelY + 1102);
+        }
+
+        ctx.strokeStyle = exportFooterLine;
+        ctx.beginPath();
+        ctx.moveTo(panelX + 52, panelY + panelH - 116);
+        ctx.lineTo(panelX + panelW - 52, panelY + panelH - 116);
+        ctx.stroke();
+
+        ctx.fillStyle = exportFooterText;
+        ctx.font = '500 24px Inter, sans-serif';
+        ctx.fillText(`Generated ${data.generatedAt}`, panelX + 52, panelY + panelH - 68);
+        ctx.fillText(`#UNILIFE  |  ${data.website}`, panelX + panelW - 370, panelY + panelH - 68);
+
+        let outputCanvas = canvas;
+        if (!(sizeConfig.width === 1080 && sizeConfig.height === 1920)) {
+            outputCanvas = document.createElement('canvas');
+            outputCanvas.width = sizeConfig.width;
+            outputCanvas.height = sizeConfig.height;
+            const outCtx = outputCanvas.getContext('2d');
+            if (outCtx) {
+                outCtx.fillStyle = isLight ? '#f8fafc' : '#0b1224';
+                outCtx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
+                const fitScale = Math.min(outputCanvas.width / canvas.width, outputCanvas.height / canvas.height);
+                const drawW = canvas.width * fitScale;
+                const drawH = canvas.height * fitScale;
+                const drawX = (outputCanvas.width - drawW) / 2;
+                const drawY = (outputCanvas.height - drawH) / 2;
+                outCtx.drawImage(canvas, drawX, drawY, drawW, drawH);
+            }
+        }
+
+            const link = document.createElement('a');
+            const stamp = new Date().toISOString().slice(0, 10);
+            link.download = `unilife-profile-${sizeConfig.fileSuffix}-${stamp}.png`;
+            link.href = outputCanvas.toDataURL('image/png');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            if (typeof inboxManager !== 'undefined') {
+                inboxManager.showToast(i18n.t('profile_share_saved'));
+            }
+        } catch (error) {
+            console.error('downloadShareProfileCard error:', error);
+            if (typeof inboxManager !== 'undefined') {
+                inboxManager.showToast('Gagal menyimpan gambar. Coba lagi.');
+            } else {
+                alert('Gagal menyimpan gambar. Coba lagi.');
+            }
+        }
     },
 
     skipWelcome: function () {

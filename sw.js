@@ -1,5 +1,5 @@
 // PENTING: Increment versi ini setiap kali ada update code!
-const CACHE_VERSION = '1.4'; // v1.4 - Full Release dengan Premium Polish
+const CACHE_VERSION = '1.6'; // v1.6 - Match export header text with avatar layout
 const CACHE_NAME = `unilife-tracker-v${CACHE_VERSION}`;
 
 // Static assets yang jarang berubah (agresif caching)git

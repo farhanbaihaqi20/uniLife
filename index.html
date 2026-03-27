@@ -589,6 +589,18 @@
                     </div>
                 </div>
 
+                <!-- Quick Profile Actions (Instagram-like) -->
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.25rem;">
+                    <button class="btn btn-outline" onclick="profileManager.openModal()"
+                        style="border: 1px solid rgba(37, 99, 235, 0.32); color: #2563eb; background: rgba(37, 99, 235, 0.06);">
+                        <i class="ph ph-pencil-simple"></i> <span data-i18n="profile_edit">Edit Profil</span>
+                    </button>
+                    <button class="btn btn-outline" onclick="profileManager.openShareProfileModal()"
+                        style="border: 1px solid rgba(37, 99, 235, 0.4); color: #2563eb; background: rgba(37, 99, 235, 0.06);">
+                        <i class="ph ph-share-network"></i> <span data-i18n="profile_share_profile">Share Profil</span>
+                    </button>
+                </div>
+
                 <!-- Stats Grid -->
                 <div class="stats-grid" style="margin-bottom: 2rem;">
                     <!-- IPK Card -->
@@ -711,10 +723,6 @@
 
                 <!-- Action Buttons -->
                 <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 2rem;">
-                    <button class="btn btn-outline full-width" onclick="profileManager.openModal()"
-                        style="border: 1px solid var(--border-color); color: var(--text-main);">
-                        <i class="ph ph-pencil-simple"></i> <span data-i18n="profile_edit">Edit Profil</span>
-                    </button>
                     <button class="btn btn-outline full-width" onclick="profileManager.openSettingsModal()"
                         style="border: 1px solid var(--border-color); color: var(--text-main);">
                         <i class="ph ph-gear"></i> <span data-i18n="profile_settings">Pengaturan</span>
@@ -1278,6 +1286,60 @@
                 <button type="submit" class="btn btn-primary full-width mt-4" data-i18n="modal_save_profile">Simpan
                     Profil</button>
             </form>
+        </div>
+    </div>
+
+    <!-- Share Profile Modal -->
+    <div class="modal-overlay" id="modal-profile-share">
+        <div class="modal-content" style="max-height: 88vh; overflow-y: auto;">
+            <button class="modal-close" onclick="profileManager.closeShareProfileModal()"><i class="ph ph-x"></i></button>
+            <h3 data-i18n="profile_share_title">Share Profil Pencapaian</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem; margin-bottom: 1rem;"
+                data-i18n="profile_share_subtitle">Buat kartu pencapaian premium siap upload ke story.</p>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-bottom: 1rem;">
+                <label style="display:flex; align-items:center; gap:0.5rem; padding:0.65rem; border:1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-main);">
+                    <input id="share-profile-show-fullname" type="checkbox" onchange="profileManager.updateShareProfilePreview()">
+                    <span style="font-size:0.82rem; color:var(--text-main);" data-i18n="profile_share_opt_fullname">Nama Lengkap</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:0.5rem; padding:0.65rem; border:1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-main);">
+                    <input id="share-profile-show-balance" type="checkbox" onchange="profileManager.updateShareProfilePreview()">
+                    <span style="font-size:0.82rem; color:var(--text-main);" data-i18n="profile_share_opt_balance">Tampilkan Saldo</span>
+                </label>
+            </div>
+
+            <div style="margin-bottom: 0.95rem;">
+                <p style="font-size:0.78rem; color:var(--text-muted); margin-bottom:0.45rem;" data-i18n="profile_share_theme_title">Preset Tema</p>
+                <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
+                    <button type="button" id="share-preset-aurora" onclick="profileManager.setSharePreset('aurora')"
+                        style="padding:0.48rem; border-radius:10px; border:1px solid rgba(59,130,246,0.45); background:linear-gradient(135deg, rgba(59,130,246,0.18), rgba(14,165,233,0.12)); color:#2563eb; font-size:0.74rem; font-weight:600;">Aurora</button>
+                    <button type="button" id="share-preset-light" onclick="profileManager.setSharePreset('light')"
+                        style="padding:0.48rem; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-main); color:var(--text-main); font-size:0.74rem; font-weight:600;">Light</button>
+                    <button type="button" id="share-preset-midnight" onclick="profileManager.setSharePreset('midnight')"
+                        style="padding:0.48rem; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-main); color:var(--text-main); font-size:0.74rem; font-weight:600;">Midnight</button>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+                <p style="font-size:0.78rem; color:var(--text-muted); margin-bottom:0.45rem;" data-i18n="profile_share_size_title">Preset Ukuran</p>
+                <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
+                    <button type="button" id="share-size-story" onclick="profileManager.setShareSize('story')"
+                        style="padding:0.48rem; border-radius:10px; border:1px solid rgba(59,130,246,0.45); background:linear-gradient(135deg, rgba(59,130,246,0.18), rgba(14,165,233,0.12)); color:#2563eb; font-size:0.74rem; font-weight:600;" data-i18n="profile_share_size_story">Story 9:16</button>
+                    <button type="button" id="share-size-portrait" onclick="profileManager.setShareSize('portrait')"
+                        style="padding:0.48rem; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-main); color:var(--text-main); font-size:0.74rem; font-weight:600;" data-i18n="profile_share_size_portrait">Portrait 4:5</button>
+                    <button type="button" id="share-size-square" onclick="profileManager.setShareSize('square')"
+                        style="padding:0.48rem; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-main); color:var(--text-main); font-size:0.74rem; font-weight:600;" data-i18n="profile_share_size_square">Square 1:1</button>
+                </div>
+            </div>
+
+            <div id="share-profile-preview" style="width:100%; min-height: 520px; border-radius: var(--radius-md); overflow: hidden; border: 1px solid rgba(59, 130, 246, 0.25); background: #0b1224;"></div>
+
+            <div style="display:flex; gap:0.75rem; margin-top: 1rem;">
+                <button class="btn btn-outline" style="flex:1;" onclick="profileManager.closeShareProfileModal()" data-i18n="common_close">Tutup</button>
+                <button class="btn btn-primary" style="flex:1;" onclick="profileManager.downloadShareProfileCard()">
+                    <i class="ph ph-download-simple"></i> <span data-i18n="profile_share_save_image">Simpan Gambar</span>
+                </button>
+            </div>
         </div>
     </div>
 
