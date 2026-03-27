@@ -1,13 +1,16 @@
 const budgetManager = {
     transactions: [],
     monthlyLimit: 0,
+    baseBalance: 0,
     currentChart: null,
     selectedMonth: null,
     topCategoryEntries: [],
+    monthAnimationTimer: null,
 
     init: function () {
         this.transactions = Storage.getBudgetTransactions();
         this.monthlyLimit = Storage.getBudgetLimit();
+        this.baseBalance = Storage.getBudgetBaseBalance();
         this.selectedMonth = this.getInitialSelectedMonth();
         this.updateDashboard();
     },
@@ -105,6 +108,7 @@ const budgetManager = {
         const previousMonth = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth() - 1, 1);
         const previousMonthTx = this.getTransactionsByMonth(previousMonth);
         const totals = this.calculateTotals(this.transactions); // Total overall balance
+        const totalBalanceWithManual = totals.balance + this.baseBalance;
         const monthTotals = this.calculateTotals(currentMonthTx); // Monthly stats for limit/chart
         const prevMonthTotals = this.calculateTotals(previousMonthTx);
 
@@ -113,9 +117,11 @@ const budgetManager = {
         const elIncome = document.getElementById('budget-total-income');
         const elExpense = document.getElementById('budget-total-expense');
 
-        if (elBalance) elBalance.innerText = this.formatCurrency(totals.balance);
+        if (elBalance) elBalance.innerText = this.formatCurrency(totalBalanceWithManual);
         if (elIncome) elIncome.innerText = this.formatCurrency(monthTotals.income);
         if (elExpense) elExpense.innerText = this.formatCurrency(monthTotals.expense);
+
+        this.renderManualBalanceInfo();
 
         this.renderMonthHeader();
 
@@ -389,6 +395,18 @@ const budgetManager = {
                 elLimitAdvice.style.color = 'var(--success)';
             }
         }
+    },
+
+    renderManualBalanceInfo: function () {
+        const infoEl = document.getElementById('budget-manual-balance-info');
+        if (!infoEl) return;
+
+        if (this.baseBalance === 0) {
+            infoEl.innerText = i18n.t('budget_manual_balance_unset') || 'Saldo awal belum diatur';
+            return;
+        }
+
+        infoEl.innerText = `${i18n.t('budget_manual_balance_prefix') || 'Saldo awal'}: ${this.formatCurrency(this.baseBalance)}`;
     },
 
     renderChart: function (currentMonthTx) {
@@ -698,9 +716,19 @@ const budgetManager = {
         const section = document.getElementById('view-budget');
         if (!section) return;
 
+        if (this.monthAnimationTimer) {
+            clearTimeout(this.monthAnimationTimer);
+            this.monthAnimationTimer = null;
+        }
+
         section.classList.remove('budget-month-animating');
         void section.offsetWidth;
         section.classList.add('budget-month-animating');
+
+        this.monthAnimationTimer = setTimeout(() => {
+            section.classList.remove('budget-month-animating');
+            this.monthAnimationTimer = null;
+        }, 500);
     },
 
     toDateInputValue: function (value) {
@@ -730,6 +758,31 @@ const budgetManager = {
         document.getElementById('budget-limit-input').value = this.monthlyLimit > 0 ? this.monthlyLimit : '';
         document.getElementById('modal-budget-limit').classList.add('active');
         setTimeout(() => document.getElementById('budget-limit-input').focus(), 100);
+    },
+
+    openBalanceModal: function () {
+        document.getElementById('budget-balance-input').value = this.baseBalance;
+        document.getElementById('modal-budget-balance').classList.add('active');
+        setTimeout(() => document.getElementById('budget-balance-input').focus(), 100);
+    },
+
+    closeBalanceModal: function () {
+        document.getElementById('modal-budget-balance').classList.remove('active');
+    },
+
+    saveBaseBalance: function (e) {
+        e.preventDefault();
+        const rawValue = document.getElementById('budget-balance-input').value;
+        const parsed = parseInt(rawValue, 10);
+
+        this.baseBalance = Number.isFinite(parsed) ? parsed : 0;
+        Storage.setBudgetBaseBalance(this.baseBalance);
+        window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_base_balance' } }));
+
+        this.closeBalanceModal();
+        if (typeof inboxManager !== 'undefined') {
+            inboxManager.showToast(i18n.t('budget_manual_balance_saved') || 'Saldo awal berhasil disimpan');
+        }
     },
 
     closeLimitModal: function () {
@@ -796,13 +849,16 @@ const budgetManager = {
 
         this.transactions = [];
         this.monthlyLimit = 0;
+        this.baseBalance = 0;
         this.topCategoryEntries = [];
         this.selectedMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
         Storage.setBudgetTransactions([]);
         Storage.setBudgetLimit(0);
+        Storage.setBudgetBaseBalance(0);
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_tx' } }));
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_limit' } }));
+        window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_base_balance' } }));
 
         this.closeTopCategoriesModal();
         if (typeof inboxManager !== 'undefined') inboxManager.showToast('Catatan keuangan berhasil di-reset');

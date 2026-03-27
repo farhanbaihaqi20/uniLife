@@ -7,6 +7,47 @@ const gradesManager = {
         'C': 2.0, 'D': 1.0, 'E': 0.0
     },
 
+    isCourseGraded: function (course) {
+        const hasValidGrade = typeof course.grade === 'string' && Object.prototype.hasOwnProperty.call(this.gradeScale, course.grade);
+        const hasFinalScore = course.finalScore !== undefined && course.finalScore !== null && course.finalScore !== '';
+
+        if (course.isFinalEntered === false) return false;
+
+        if (!hasValidGrade || !hasFinalScore) return false;
+
+        const parsedFinalScore = parseFloat(course.finalScore);
+        if (!Number.isFinite(parsedFinalScore)) return false;
+
+        // Legacy data guard: auto-created linked courses used to be stored as E/0 before user entered any grade.
+        const isLegacyPlaceholder = !!course.linkedScheduleId && parsedFinalScore === 0 && course.grade === 'E' && course.isFinalEntered !== true;
+        return !isLegacyPlaceholder;
+    },
+
+    getActiveSemesterNumber: function () {
+        if (typeof profileManager === 'undefined' || !profileManager.profile) return null;
+        const activeSemester = profileManager.profile.semester;
+        return activeSemester ? String(activeSemester) : null;
+    },
+
+    getSemesterForActiveProfile: function () {
+        const activeSemester = this.getActiveSemesterNumber();
+        if (!activeSemester) return null;
+
+        return this.semesters.find(sem => {
+            const semName = String(sem.name || '').toLowerCase().trim();
+            return semName === `semester ${activeSemester}` || semName.startsWith(`semester ${activeSemester} `);
+        }) || null;
+    },
+
+    getCourseChartSemester: function () {
+        const activeSemester = this.getSemesterForActiveProfile();
+        if (activeSemester && activeSemester.courses && activeSemester.courses.some(c => this.isCourseGraded(c))) {
+            return activeSemester;
+        }
+
+        return [...this.semesters].reverse().find(s => s.courses && s.courses.some(c => this.isCourseGraded(c))) || null;
+    },
+
     init: function () {
         this.semesters = Storage.getGrades();
         this.renderStats(); // Also renders charts
@@ -20,6 +61,7 @@ const gradesManager = {
 
         this.semesters.forEach(sem => {
             sem.courses.forEach(course => {
+                if (!this.isCourseGraded(course)) return;
                 totalSks += course.sks;
                 totalPoints += (course.sks * this.gradeScale[course.grade]);
             });
@@ -37,6 +79,7 @@ const gradesManager = {
         let totalPoints = 0;
 
         semester.courses.forEach(course => {
+            if (!this.isCourseGraded(course)) return;
             totalSks += course.sks;
             totalPoints += (course.sks * this.gradeScale[course.grade]);
         });
@@ -67,7 +110,7 @@ const gradesManager = {
         const ipsData = [];
         this.semesters.forEach(sem => {
             labels.push(sem.name.length > 10 ? sem.name.substring(0, 8) + '...' : sem.name);
-            ipsData.push(this.calculateSemesterStats(sem).ips);
+            ipsData.push(parseFloat(this.calculateSemesterStats(sem).ips));
         });
 
         this.ipkChartInstance = new Chart(ctxIpk, {
@@ -96,15 +139,21 @@ const gradesManager = {
         // 2. Simple Bar Chart for Final Course Grades
         if (this.courseChartInstance) this.courseChartInstance.destroy();
 
-        // Find latest semester that has courses with final scores
-        const latestSemWithCourses = [...this.semesters].reverse().find(s => s.courses && s.courses.some(c => c.finalScore !== undefined));
+        // Follow active profile semester first; fallback to latest semester that has graded courses.
+        const chartSemester = this.getCourseChartSemester();
+        const compareNote = document.querySelector('[data-i18n="grades_course_compare_note"]');
+        if (compareNote) {
+            compareNote.innerText = chartSemester
+                ? `${i18n.t('grades_course_compare_note')} (${chartSemester.name})`
+                : i18n.t('grades_course_compare_note');
+        }
 
         const courseLabels = [];
         const finalScores = [];
 
-        if (latestSemWithCourses) {
-            latestSemWithCourses.courses.forEach(c => {
-                if (c.finalScore !== undefined) {
+        if (chartSemester) {
+            chartSemester.courses.forEach(c => {
+                if (this.isCourseGraded(c)) {
                     courseLabels.push(c.name.length > 15 ? c.name.substring(0, 15) + '...' : c.name);
                     finalScores.push(parseFloat(c.finalScore));
                 }
@@ -223,9 +272,9 @@ const gradesManager = {
                                     <div style="display:flex; align-items:center; gap: 1.25rem;">
                                         <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; width: 60px;">
                                             <div style="width: 48px; height: 48px; border-radius: 12px; background: ${bgLight}; border: 1px solid ${themeColor}; color: ${themeColor}; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.25rem; margin-bottom:0.35rem;">
-                                                ${course.grade}
+                                                ${course.grade || '-'}
                                             </div>
-                                            <div style="font-size:0.85rem; font-weight:600; color:var(--text-main);">${course.finalScore ? parseFloat(course.finalScore).toFixed(2).replace('.', ',') : '-'}</div>
+                                            <div style="font-size:0.85rem; font-weight:600; color:var(--text-main);">${course.finalScore !== undefined && course.finalScore !== null && course.finalScore !== '' ? parseFloat(course.finalScore).toFixed(2).replace('.', ',') : '-'}</div>
                                         </div>
                                         <div style="display:flex; flex-direction:column; gap:0.35rem; border-left: 1px solid var(--border-color); padding-left: 1rem;">
                                             <button class="icon-btn" onclick="gradesManager.openEditCourseModal('${sem.id}', '${course.id}')" style="width:32px;height:32px;border:none;box-shadow:none;background:var(--bg-main);color:var(--text-main); border-radius:8px; transition:all 0.2s;">
@@ -314,7 +363,9 @@ const gradesManager = {
         const name = document.getElementById('grade-name').value;
         const sks = parseInt(document.getElementById('grade-sks').value);
 
-        const finalScore = parseFloat(document.getElementById('grade-final').value) || 0;
+        const finalScoreRaw = document.getElementById('grade-final').value;
+        const finalScore = parseFloat(finalScoreRaw);
+        if (!Number.isFinite(finalScore)) return;
 
         let gradeStr = 'E';
         if (finalScore >= 85) gradeStr = 'A';
@@ -344,6 +395,7 @@ const gradesManager = {
                 sks,
                 finalScore: finalScore.toFixed(1),
                 grade: gradeStr,
+                isFinalEntered: true,
                 linkedScheduleId: extId || null // Keep extId if it exists
             };
 
@@ -422,7 +474,7 @@ const gradesManager = {
         document.getElementById('active-semester-id').value = semId;
         document.getElementById('grade-name').value = course.name;
         document.getElementById('grade-sks').value = course.sks;
-        if (course.finalScore) {
+        if (course.finalScore !== undefined && course.finalScore !== null && course.finalScore !== '') {
             document.getElementById('grade-final').value = course.finalScore;
         }
 

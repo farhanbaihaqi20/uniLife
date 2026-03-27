@@ -131,7 +131,7 @@ const i18n = {
             'grades_add_semester': 'Semester',
             'grades_saved_semesters': 'Semester Tersimpan',
             'grades_ipk_cumulative': 'IPK Kumulatif:',
-            'grades_course_compare_note': 'Perbandingan skor akhir dari semester terisi paling baru.',
+            'grades_course_compare_note': 'Perbandingan skor akhir berdasarkan semester aktif.',
             'grades_chart_ips_label': 'IPS per Semester',
             'grades_chart_final_label': 'Nilai Akhir',
             'grades_empty_semesters': 'Belum ada data semester.',
@@ -297,7 +297,10 @@ const i18n = {
             'profile_stats_courses': 'Mata Kuliah',
             'profile_stats_completed': 'Tugas Selesai',
             'profile_stats_focus': 'Total Fokus',
+            'profile_stats_balance': 'Total Saldo',
             'profile_stats_attendance': 'Kehadiran',
+            'profile_stats_completed_ratio': '{done} dari {total} tugas',
+            'profile_stats_attendance_ratio': '{present} dari 16 pertemuan',
 
             // Budget / Finances
             'budget_title': 'Keuangan',
@@ -327,6 +330,13 @@ const i18n = {
             'budget_cat_allowance': 'Uang Saku',
             'budget_cat_salary': 'Gaji',
             'budget_cat_bonus': 'Bonus',
+            'budget_manual_balance_edit': 'Edit Saldo',
+            'budget_manual_balance_set': 'Atur Saldo Awal',
+            'budget_manual_balance_hint': 'Isi saldo awal agar total saldo tidak harus dimulai dari transaksi.',
+            'budget_manual_balance_label': 'Saldo Awal (Rp)',
+            'budget_manual_balance_unset': 'Saldo awal belum diatur',
+            'budget_manual_balance_prefix': 'Saldo awal',
+            'budget_manual_balance_saved': 'Saldo awal berhasil disimpan',
             'home_quick_budget': 'Keuangan',
             
             // Account Transfer
@@ -475,7 +485,7 @@ const i18n = {
             'grades_add_semester': 'Semester',
             'grades_saved_semesters': 'Saved Semesters',
             'grades_ipk_cumulative': 'Cumulative GPA:',
-            'grades_course_compare_note': 'Comparison of final scores from the latest filled semester.',
+            'grades_course_compare_note': 'Comparison of final scores based on the active semester.',
             'grades_chart_ips_label': 'GPA per Semester',
             'grades_chart_final_label': 'Final Score',
             'grades_empty_semesters': 'No semester data yet.',
@@ -641,7 +651,10 @@ const i18n = {
             'profile_stats_courses': 'Courses',
             'profile_stats_completed': 'Completed Tasks',
             'profile_stats_focus': 'Total Focus',
+            'profile_stats_balance': 'Total Balance',
             'profile_stats_attendance': 'Attendance',
+            'profile_stats_completed_ratio': '{done} of {total} tasks',
+            'profile_stats_attendance_ratio': '{present} of 16 meetings',
 
             // Budget / Finances
             'budget_title': 'Finances',
@@ -671,6 +684,13 @@ const i18n = {
             'budget_cat_allowance': 'Allowance',
             'budget_cat_salary': 'Salary',
             'budget_cat_bonus': 'Bonus',
+            'budget_manual_balance_edit': 'Edit Balance',
+            'budget_manual_balance_set': 'Set Initial Balance',
+            'budget_manual_balance_hint': 'Set an initial balance so your total balance does not need to start from transactions.',
+            'budget_manual_balance_label': 'Initial Balance (Rp)',
+            'budget_manual_balance_unset': 'Initial balance is not set yet',
+            'budget_manual_balance_prefix': 'Initial balance',
+            'budget_manual_balance_saved': 'Initial balance saved',
             'home_quick_budget': 'Finance',
             
             // Account Transfer

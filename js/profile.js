@@ -170,13 +170,54 @@ const profileManager = {
         this.renderUrgentTasks();
     },
 
-    updateDashboardStats: function () {
-        // Get IPK
-        if (typeof gradesManager !== 'undefined') {
-            const stats = gradesManager.calculateOverallStats();
-            const ipkEl = document.getElementById('profile-ipk-display');
-            if (ipkEl) ipkEl.innerText = stats.ipk;
+    getActiveSemester: function () {
+        return String(this.profile.semester || 1);
+    },
+
+    getActiveSemesterSchedules: function () {
+        const activeSemester = this.getActiveSemester();
+        const schedules = Storage.getSchedules ? Storage.getSchedules() : [];
+        return schedules.filter(s => String(s.semester || 1) === activeSemester);
+    },
+
+    getIpkFromStorage: function () {
+        const semesters = Storage.getGrades ? Storage.getGrades() : [];
+
+        if (typeof gradesManager === 'undefined' || !gradesManager.gradeScale) {
+            return '0.00';
         }
+
+        let totalSks = 0;
+        let totalPoints = 0;
+
+        semesters.forEach(sem => {
+            (sem.courses || []).forEach(course => {
+                const isGraded = typeof gradesManager.isCourseGraded === 'function'
+                    ? gradesManager.isCourseGraded(course)
+                    : (course.grade && course.finalScore !== undefined && course.finalScore !== null && course.finalScore !== '');
+
+                if (!isGraded) return;
+
+                const sks = Number(course.sks) || 0;
+                const point = gradesManager.gradeScale[course.grade];
+                if (!Number.isFinite(point)) return;
+
+                totalSks += sks;
+                totalPoints += (sks * point);
+            });
+        });
+
+        const ipk = totalSks === 0 ? 0 : (totalPoints / totalSks);
+        return ipk.toFixed(2);
+    },
+
+    updateDashboardStats: function () {
+        const activeSemesterSchedules = this.getActiveSemesterSchedules();
+        const formatRupiah = (amount) => `Rp ${Number(amount || 0).toLocaleString('id-ID')}`;
+
+        // Get IPK directly from latest storage data so profile stat always stays in sync.
+        const ipkEl = document.getElementById('profile-ipk-display');
+        if (ipkEl) ipkEl.innerText = this.getIpkFromStorage();
 
         // Get pending tasks
         if (typeof tasksManager !== 'undefined') {
@@ -193,19 +234,21 @@ const profileManager = {
 
             const pendingEl = document.getElementById('profile-pending-tasks');
             const completedEl = document.getElementById('profile-completed-tasks');
+            const completedRatioEl = document.getElementById('profile-completed-ratio');
+            const totalSemesterTasks = pendingTasks.length + completedTasks.length;
             if (pendingEl) pendingEl.innerText = pendingTasks.length;
             if (completedEl) completedEl.innerText = completedTasks.length;
+            if (completedRatioEl) {
+                completedRatioEl.innerText = i18n.tf('profile_stats_completed_ratio', {
+                    done: completedTasks.length,
+                    total: totalSemesterTasks
+                });
+            }
         }
 
         // Get focus stats
         if (typeof focusManager !== 'undefined') {
             const sessions = focusManager.focusSessions || [];
-            const today = new Date().toDateString();
-
-            // Count today's sessions
-            const todaySessions = sessions.filter(s => new Date(s.date).toDateString() === today);
-            const sessionsEl = document.getElementById('profile-focus-sessions');
-            if (sessionsEl) sessionsEl.innerText = todaySessions.length;
 
             // Calculate total focus time in hours
             const totalMinutes = sessions.reduce((sum, s) => sum + (s.duration || 0), 0);
@@ -213,49 +256,91 @@ const profileManager = {
             const timeEl = document.getElementById('profile-total-focus-time');
             if (timeEl) timeEl.innerText = `${totalHours}h`;
 
-            // Calculate streak
-            this.calculateStreak();
         }
+
+        // Budget total balance (transactions + saldo awal)
+        const budgetTransactions = Storage.getBudgetTransactions ? Storage.getBudgetTransactions() : [];
+        const baseBalance = Storage.getBudgetBaseBalance ? Number(Storage.getBudgetBaseBalance()) || 0 : 0;
+        const txBalance = budgetTransactions.reduce((sum, tx) => {
+            const amount = Number(tx.amount) || 0;
+            return sum + (tx.type === 'income' ? amount : -amount);
+        }, 0);
+        const totalBalanceEl = document.getElementById('profile-total-balance');
+        if (totalBalanceEl) totalBalanceEl.innerText = formatRupiah(baseBalance + txBalance);
+
+        // Calculate streak from attendance activity (max once per day).
+        this.calculateStreak();
 
         // Get attendance percentage
         this.getAttendancePercentage();
 
-        // Get course count
-        if (typeof gradesManager !== 'undefined') {
-            const activeSemester = String(this.profile.semester || 1);
-            const currentSem = gradesManager.semesters.find(s => s.name.includes(activeSemester));
-            const courseCount = currentSem ? currentSem.courses.length : 0;
-            const courseEl = document.getElementById('profile-course-count');
-            if (courseEl) courseEl.innerText = courseCount;
-        }
+        // Get course count from active semester schedules so it stays aligned with attendance.
+        const courseEl = document.getElementById('profile-course-count');
+        if (courseEl) courseEl.innerText = activeSemesterSchedules.length;
     },
 
     calculateStreak: function () {
-        if (typeof focusManager === 'undefined') return;
-
-        const sessions = focusManager.focusSessions || [];
-        if (sessions.length === 0) {
+        const attendanceRecords = Storage.getAttendanceRecords ? Storage.getAttendanceRecords() : [];
+        if (!attendanceRecords.length) {
             const streakEl = document.getElementById('profile-streak-count');
             if (streakEl) streakEl.innerText = '0';
             return;
         }
 
-        // Sort sessions by date (newest first)
-        const sortedDates = [...new Set(sessions.map(s => new Date(s.date).toDateString()))].sort((a, b) => new Date(b) - new Date(a));
+        // One activity per day maximum: collect unique local day keys from attendance records.
+        const uniqueDateKeys = [...new Set(attendanceRecords.map(record => {
+            if (record.dateFor) return String(record.dateFor);
+            if (record.timestamp) {
+                const d = new Date(record.timestamp);
+                const month = `${d.getMonth() + 1}`.padStart(2, '0');
+                const day = `${d.getDate()}`.padStart(2, '0');
+                return `${d.getFullYear()}-${month}-${day}`;
+            }
+            return null;
+        }).filter(Boolean))];
+
+        if (!uniqueDateKeys.length) {
+            const streakEl = document.getElementById('profile-streak-count');
+            if (streakEl) streakEl.innerText = '0';
+            return;
+        }
+
+        uniqueDateKeys.sort((a, b) => new Date(b) - new Date(a));
+        const dateSet = new Set(uniqueDateKeys);
 
         let streak = 0;
-        let today = new Date();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
 
-        for (let i = 0; i < sortedDates.length; i++) {
-            const sessionDate = new Date(sortedDates[i]);
-            const expectedDate = new Date(today);
-            expectedDate.setDate(expectedDate.getDate() - i);
+        const toKey = (dateObj) => {
+            const month = `${dateObj.getMonth() + 1}`.padStart(2, '0');
+            const day = `${dateObj.getDate()}`.padStart(2, '0');
+            return `${dateObj.getFullYear()}-${month}-${day}`;
+        };
 
-            if (sessionDate.toDateString() === expectedDate.toDateString()) {
+        // Grace 1 day: if no activity today, allow streak to continue from yesterday.
+        const todayKey = toKey(today);
+        const yesterdayKey = toKey(yesterday);
+        let cursor = dateSet.has(todayKey) ? new Date(today) : (dateSet.has(yesterdayKey) ? new Date(yesterday) : null);
+
+        if (!cursor) {
+            const streakEl = document.getElementById('profile-streak-count');
+            if (streakEl) streakEl.innerText = '0';
+            return;
+        }
+
+        for (let i = 0; i < 365; i++) {
+            const key = toKey(cursor);
+
+            if (dateSet.has(key)) {
                 streak++;
             } else {
                 break;
             }
+
+            cursor.setDate(cursor.getDate() - 1);
         }
 
         const streakEl = document.getElementById('profile-streak-count');
@@ -265,34 +350,49 @@ const profileManager = {
     getAttendancePercentage: function () {
         if (typeof presensiManager === 'undefined') {
             const attendanceEl = document.getElementById('profile-attendance-percent');
+            const attendanceRatioEl = document.getElementById('profile-attendance-ratio');
             if (attendanceEl) attendanceEl.innerText = '-';
+            if (attendanceRatioEl) attendanceRatioEl.innerText = i18n.tf('profile_stats_attendance_ratio', { present: 0 });
             return;
         }
 
-        const allAttendance = Storage.getAttendanceRecords ? Storage.getAttendanceRecords() : [];
-        const activeSemester = String(this.profile.semester || 1);
+        const attendanceEl = document.getElementById('profile-attendance-percent');
+        const attendanceRatioEl = document.getElementById('profile-attendance-ratio');
+        const activeSemester = this.getActiveSemester();
+        const schedules = this.getActiveSemesterSchedules();
+        const allRecords = Storage.getAttendanceRecords ? Storage.getAttendanceRecords() : [];
 
-        if (allAttendance.length === 0) {
-            const attendanceEl = document.getElementById('profile-attendance-percent');
-            if (attendanceEl) attendanceEl.innerText = '0%';
-            return;
-        }
-
-        let totalMeetings = 0;
-        let attended = 0;
-
-        allAttendance.forEach(course => {
-            if (String(course.semester || 1) === activeSemester) {
-                if (course.records && Array.isArray(course.records)) {
-                    totalMeetings += course.records.length;
-                    attended += course.records.filter(r => r.status === 'hadir').length;
-                }
+        if (schedules.length === 0) {
+            if (attendanceEl) {
+                attendanceEl.innerText = '0%';
+                attendanceEl.title = 'Rata-rata hadir: 0.0 dari 16 pertemuan per mata kuliah';
             }
+            if (attendanceRatioEl) attendanceRatioEl.innerText = i18n.tf('profile_stats_attendance_ratio', { present: 0 });
+            return;
+        }
+
+        let totalPresentMeetings = 0;
+
+        schedules.forEach(schedule => {
+            const presentCount = allRecords.filter(rec => {
+                const recSemester = String(rec.semester || schedule.semester || 1);
+                return rec.scheduleId === schedule.id && recSemester === activeSemester && rec.status === 'hadir';
+            }).length;
+
+            totalPresentMeetings += Math.min(16, presentCount);
         });
 
-        const percentage = totalMeetings === 0 ? 0 : Math.round((attended / totalMeetings) * 100);
-        const attendanceEl = document.getElementById('profile-attendance-percent');
-        if (attendanceEl) attendanceEl.innerText = `${percentage}%`;
+        const averagePresent = totalPresentMeetings / schedules.length;
+        const percentage = Math.round((averagePresent / 16) * 100);
+        const compactPresent = Number(averagePresent.toFixed(1)).toString();
+
+        if (attendanceEl) {
+            attendanceEl.innerText = `${percentage}%`;
+            attendanceEl.title = `Rata-rata hadir: ${averagePresent.toFixed(1)} dari 16 pertemuan per mata kuliah`;
+        }
+        if (attendanceRatioEl) {
+            attendanceRatioEl.innerText = i18n.tf('profile_stats_attendance_ratio', { present: compactPresent });
+        }
     },
 
     renderUrgentTasks: function () {

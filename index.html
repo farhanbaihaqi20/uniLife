@@ -215,7 +215,7 @@
                         Nilai Akhir Mata Kuliah</h3>
                     <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;"
                         data-i18n="grades_course_compare_note">Perbandingan skor
-                        akhir dari semester terisi paling baru.</div>
+                        akhir berdasarkan semester aktif.</div>
                     <div style="height: 250px; position: relative;">
                         <canvas id="courseChart"></canvas>
                     </div>
@@ -630,16 +630,16 @@
                         </div>
                     </div>
 
-                    <!-- Focus Sessions Card -->
+                    <!-- Total Balance Card -->
                     <div class="stat-card"
-                        style="background: linear-gradient(135deg, rgba(168, 85, 247, 0.08), rgba(139, 92, 246, 0.12)); border: 1px solid rgba(168, 85, 247, 0.2);">
+                        style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(59, 130, 246, 0.12)); border: 1px solid rgba(37, 99, 235, 0.2);">
                         <div class="stat-icon"
-                            style="background: linear-gradient(135deg, #a855f7, #8b5cf6); color: white;">
-                            <i class="ph ph-timer"></i>
+                            style="background: linear-gradient(135deg, #2563eb, #3b82f6); color: white;">
+                            <i class="ph ph-wallet"></i>
                         </div>
                         <div class="stat-info">
-                            <h3 style="font-size: 0.85rem; color: var(--text-muted);">Sesi Fokus</h3>
-                            <p class="stat-value" id="profile-focus-sessions" style="color: #a855f7;">0</p>
+                            <h3 style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="profile_stats_balance">Total Saldo</h3>
+                            <p class="stat-value" id="profile-total-balance" style="color: #2563eb;">Rp 0</p>
                         </div>
                     </div>
                 </div>
@@ -687,6 +687,7 @@
                                     Selesai</span></p>
                             <p id="profile-completed-tasks"
                                 style="font-size: 1.5rem; font-weight: 700; color: var(--success);">0</p>
+                            <small id="profile-completed-ratio" style="display:block; margin-top:0.2rem; font-size:0.72rem; color: var(--text-muted);">0 dari 0 tugas</small>
                         </div>
                         <div
                             style="padding: 1rem; background: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
@@ -703,6 +704,7 @@
                                     data-i18n="profile_stats_attendance">Kehadiran</span></p>
                             <p id="profile-attendance-percent"
                                 style="font-size: 1.5rem; font-weight: 700; color: #0284C7;">-</p>
+                            <small id="profile-attendance-ratio" style="display:block; margin-top:0.2rem; font-size:0.72rem; color: var(--text-muted);">0 dari 16 pertemuan</small>
                         </div>
                     </div>
                 </div>
@@ -802,6 +804,16 @@
                     <h3 id="budget-total-balance"
                         style="font-size: 2rem; font-weight: 700; color: var(--text-main); margin-bottom: 1.5rem; letter-spacing: -0.5px;">
                         Rp 0</h3>
+
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; margin-top:-0.9rem; margin-bottom:1.2rem;">
+                        <p id="budget-manual-balance-info" style="font-size:0.78rem; color: var(--text-muted); font-weight:500;">
+                            Saldo awal belum diatur
+                        </p>
+                        <button type="button" onclick="budgetManager.openBalanceModal()"
+                            style="background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.35); color: #2563eb; font-size: 0.75rem; font-weight: 600; border-radius: 999px; padding: 0.35rem 0.65rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.3rem; white-space: nowrap;">
+                            <i class="ph ph-pencil-simple"></i> <span data-i18n="budget_manual_balance_edit">Edit Saldo</span>
+                        </button>
+                    </div>
 
                     <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
                         <div
@@ -1265,6 +1277,32 @@
                 </div>
                 <button type="submit" class="btn btn-primary full-width mt-4" data-i18n="modal_save_profile">Simpan
                     Profil</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Budget Limit Modal -->
+    <div class="modal-overlay" id="modal-budget-balance">
+        <div class="modal-content">
+            <button class="modal-close" onclick="budgetManager.closeBalanceModal()"><i class="ph ph-x"></i></button>
+            <h3 data-i18n="budget_manual_balance_set">Atur Saldo Awal</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem; margin-bottom: 1.25rem;"
+                data-i18n="budget_manual_balance_hint">Isi saldo awal agar total saldo tidak harus dimulai dari transaksi.</p>
+
+            <form id="form-budget-balance" onsubmit="budgetManager.saveBaseBalance(event)">
+                <div class="form-group">
+                    <label data-i18n="budget_manual_balance_label">Saldo Awal (Rp)</label>
+                    <input type="number" id="budget-balance-input" required placeholder="Contoh: 2500000"
+                        style="font-size: 1.5rem; font-weight: 700; padding: 1rem; color: #2563eb; background: rgba(37, 99, 235, 0.06); border-color: rgba(37, 99, 235, 0.3);">
+                </div>
+                <div style="display:flex; justify-content: space-between; margin-top: 0.5rem;">
+                    <button type="button" class="btn btn-outline"
+                        onclick="document.getElementById('budget-balance-input').value = '0'"
+                        style="padding: 0.3rem 0.6rem; font-size: 0.75rem; border-radius: 20px;">Reset ke 0</button>
+                </div>
+                <button type="submit" class="btn btn-primary full-width mt-4"
+                    style="background: #2563eb; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.35);"
+                    data-i18n="common_save">Simpan</button>
             </form>
         </div>
     </div>

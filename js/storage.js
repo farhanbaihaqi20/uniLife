@@ -79,5 +79,8 @@ const Storage = {
     setBudgetTransactions: (data) => Storage.set('unilife_budget_transactions', data),
 
     getBudgetLimit: () => Storage.get('unilife_budget_limit', 0), // Monthly budget limit
-    setBudgetLimit: (data) => Storage.set('unilife_budget_limit', data)
+    setBudgetLimit: (data) => Storage.set('unilife_budget_limit', data),
+
+    getBudgetBaseBalance: () => Storage.get('unilife_budget_base_balance', 0), // Manual/initial balance adjustment
+    setBudgetBaseBalance: (data) => Storage.set('unilife_budget_base_balance', data)
 };

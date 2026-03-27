@@ -214,8 +214,9 @@ const scheduleManager = {
                             id: uuidv4(),
                             name: scheduleData.name,
                             sks: scheduleData.sks,
-                            finalScore: 0,
-                            grade: 'E',
+                            finalScore: null,
+                            grade: '',
+                            isFinalEntered: false,
                             linkedScheduleId: scheduleData.id
                         });
                     }
@@ -494,8 +495,13 @@ const scheduleManager = {
                 alert(i18n.t('schedule_need_semester_for_grade'));
                 return;
             }
-            // Ask which semester or pick latest
-            linkedSemId = gradesManager.semesters[gradesManager.semesters.length - 1].id;
+            // Prefer semester that matches this schedule's semester.
+            const scheduleSemester = String(schedule.semester || 1);
+            const semesterName = `Semester ${scheduleSemester}`;
+            const matchedSemester = gradesManager.semesters.find(s =>
+                String(s.name || '').toLowerCase() === semesterName.toLowerCase()
+            );
+            linkedSemId = (matchedSemester || gradesManager.semesters[gradesManager.semesters.length - 1]).id;
         }
 
         if (linkedSemId) {

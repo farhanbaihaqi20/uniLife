@@ -403,13 +403,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 scheduleManager.renderScheduleList();
             }
             if (typeof deadlineRadar !== 'undefined') deadlineRadar.renderRadar();
+            if (typeof profileManager !== 'undefined') {
+                profileManager.updateDashboardStats();
+            }
         }
 
         // Grades / Goals changed
         if (!key || key === 'unilife_grades' || key === 'unilife_grade_goals') {
             if (typeof gradesManager !== 'undefined') {
-                gradesManager.grades = Storage.getGrades();
-                gradesManager.renderGradesList();
+                gradesManager.semesters = Storage.getGrades();
+                gradesManager.renderStats();
+                gradesManager.renderSemesters();
             }
             // Update profile dashboard
             if (typeof profileManager !== 'undefined') {
@@ -463,16 +467,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof homeManager !== 'undefined') homeManager.renderTodaySchedule();
             // Update profile dashboard
             if (typeof profileManager !== 'undefined') {
-                profileManager.getAttendancePercentage();
+                profileManager.updateDashboardStats();
             }
         }
 
         // Budget changed
-        if (!key || key === 'unilife_budget_tx' || key === 'unilife_budget_limit') {
+        if (!key || key === 'unilife_budget_tx' || key === 'unilife_budget_limit' || key === 'unilife_budget_base_balance') {
             if (typeof budgetManager !== 'undefined') {
                 budgetManager.transactions = Storage.getBudgetTransactions();
                 budgetManager.monthlyLimit = Storage.getBudgetLimit();
+                budgetManager.baseBalance = Storage.getBudgetBaseBalance();
                 budgetManager.updateDashboard();
+            }
+            if (typeof profileManager !== 'undefined') {
+                profileManager.updateDashboardStats();
             }
         }
     });
