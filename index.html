@@ -732,10 +732,16 @@
                         <i class="ph ph-trash"></i> <span data-i18n="profile_reset_data">Hapus Akun / Reset Data</span>
                     </button>
 
-                    <button class="btn btn-outline full-width" onclick="syncManager.openTransferModal()"
-                        style="border: 1px solid var(--primary); color: white; background: var(--primary); margin-top: 1rem;">
-                        <i class="ph ph-qr-code"></i> <span data-i18n="profile_transfer_qr">Transfer Akun via QR Code</span>
-                    </button>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 1rem;">
+                        <button class="btn btn-outline" onclick="syncManager.openTransferModalAsSender()"
+                            style="border: 1px solid var(--primary); color: white; background: var(--primary);">
+                            <i class="ph ph-share-network"></i> <span data-i18n="profile_transfer_sender">Pengirim</span>
+                        </button>
+                        <button class="btn btn-outline" onclick="syncManager.openTransferModalAsReceiver()"
+                            style="border: 1px solid var(--primary); color: white; background: var(--primary);">
+                            <i class="ph ph-download-simple"></i> <span data-i18n="profile_transfer_receiver">Penerima</span>
+                        </button>
+                    </div>
 
                     <div
                         style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
@@ -1719,7 +1725,7 @@
                 <p id="transfer-status-text" style="font-size: 0.9rem; font-weight: 500;">Menunggu koneksi dari penerima...</p>
             </div>
 
-            <div style="border-top: 1px solid var(--border-color); padding-top: 1.5rem; margin-top: 1rem;">
+            <div id="transfer-pin-input-container" style="border-top: 1px solid var(--border-color); padding-top: 1.5rem; margin-top: 1rem;">
                 <p style="font-size: 0.9rem; margin-bottom: 1rem; font-weight: 600;" data-i18n="transfer_receive_title">Ingin menerima data dari perangkat lain?</p>
                 <button class="btn btn-outline full-width" onclick="syncManager.startQrScanner()"
                     style="margin-bottom: 0.75rem; border-color: #2563eb; color: #2563eb; background: rgba(37, 99, 235, 0.05);">

@@ -1,5 +1,5 @@
 // PENTING: Increment versi ini setiap kali ada update code!
-const CACHE_VERSION = '1.7'; // v1.7 - Fix profile mobile responsive layout
+const CACHE_VERSION = '1.9'; // v1.9 - Split transfer to sender and receiver roles
 const CACHE_NAME = `unilife-tracker-v${CACHE_VERSION}`;
 
 // Static assets yang jarang berubah (agresif caching)git

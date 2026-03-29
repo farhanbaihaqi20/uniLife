@@ -300,7 +300,7 @@ const syncManager = {
         }
     },
 
-    openTransferModal: async function () {
+    openTransferModalAsSender: async function () {
         this.pin = this.generatePIN();
         const modal = document.getElementById('modal-transfer');
         const pinDisplay = document.getElementById('transfer-pin-display');
@@ -308,15 +308,20 @@ const syncManager = {
         const statusContainer = document.getElementById('transfer-status-container');
         const statusText = document.getElementById('transfer-status-text');
         const statusIcon = document.getElementById('transfer-status-icon');
+        const scannerContainer = document.getElementById('transfer-scan-container');
+        const inputContainer = document.getElementById('transfer-pin-input-container');
         
+        // Setup untuk mode PENGIRIM
         if (pinDisplay) pinDisplay.innerText = this.pin;
         if (statusContainer) statusContainer.style.display = 'block';
         if (statusText) statusText.innerText = i18n.t('transfer_status_waiting') || 'Menunggu koneksi dari penerima...';
         if (statusIcon) statusIcon.className = 'ph ph-spinner ph-spin';
-        this.stopQrScanner();
-        this.setScannerStatus('Scan QR dari perangkat pengirim untuk isi PIN otomatis.');
+        if (scannerContainer) scannerContainer.style.display = 'none'; // Jangan tampilkan scanner untuk pengirim
+        if (inputContainer) inputContainer.style.display = 'none'; // Jangan tampilkan input PIN untuk pengirim
         
-        // Generate QR Code
+        this.stopQrScanner();
+        
+        // Generate QR Code untuk pengirim
         if (qrContainer) {
             const receiveUrl = window.location.origin + window.location.pathname + '?receive=' + this.pin;
             const libraryReady = await this.ensureQRCodeLibrary();
@@ -331,6 +336,35 @@ const syncManager = {
         this.initSender();
 
         if (modal) modal.classList.add('active');
+    },
+
+    openTransferModalAsReceiver: async function () {
+        const modal = document.getElementById('modal-transfer');
+        const pinDisplay = document.getElementById('transfer-pin-display');
+        const qrContainer = document.getElementById('transfer-qr-container');
+        const statusContainer = document.getElementById('transfer-status-container');
+        const scannerContainer = document.getElementById('transfer-scan-container');
+        const inputContainer = document.getElementById('transfer-pin-input-container');
+        
+        // Setup untuk mode PENERIMA
+        if (pinDisplay) pinDisplay.innerText = '';
+        if (statusContainer) statusContainer.style.display = 'none'; // Jangan tampilkan status awal
+        if (qrContainer) qrContainer.innerHTML = ''; // Kosongkan QR container
+        if (scannerContainer) scannerContainer.style.display = 'block'; // Tampilkan scanner
+        if (inputContainer) inputContainer.style.display = 'block'; // Tampilkan input PIN
+        
+        this.stopQrScanner();
+        this.setScannerStatus('Arahkan kamera ke QR code atau masukkan 6 digit PIN.', false);
+        
+        // Start QR Scanner untuk penerima
+        this.startQrScanner();
+
+        if (modal) modal.classList.add('active');
+    },
+
+    openTransferModal: async function () {
+        // Legacy fallback ke mode sender
+        this.openTransferModalAsSender();
     },
 
     closeTransferModal: function () {
@@ -350,6 +384,16 @@ const syncManager = {
         
         const statusContainer = document.getElementById('transfer-status-container');
         if (statusContainer) statusContainer.style.display = 'none';
+        
+        const pinDisplay = document.getElementById('transfer-pin-display');
+        if (pinDisplay) pinDisplay.innerText = '------';
+        
+        const qrContainer = document.getElementById('transfer-qr-container');
+        if (qrContainer) qrContainer.innerHTML = '';
+        
+        const statusIcon = document.getElementById('transfer-status-icon');
+        if (statusIcon) statusIcon.className = 'ph ph-spinner ph-spin';
+        if (statusIcon) statusIcon.style.color = 'var(--primary)';
         
         const input = document.getElementById('transfer-pin-input');
         if (input) input.value = '';
