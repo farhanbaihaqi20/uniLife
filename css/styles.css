@@ -1812,9 +1812,9 @@ body.modal-open {
     font-size: 1.5rem;
     font-weight: 700;
     color: var(--text-main);
-    word-break: break-word;
-    overflow-wrap: break-word;
-    hyphens: auto;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* -------------------

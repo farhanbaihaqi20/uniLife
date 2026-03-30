@@ -53,18 +53,23 @@ const presensiManager = {
         const hadir = records.filter(r => r.status === 'hadir').length;
         const izin = records.filter(r => r.status === 'izin').length;
         const tidakHadir = records.filter(r => r.status === 'tidak_hadir').length;
+        const tidakTerlaksana = records.filter(r => r.status === 'tidak_terlaksana').length;
         const countedPresent = hadir + izin;
-        const percent = Math.round((countedPresent / this.totalMeetings) * 100);
-        const minimumMeetings = Math.ceil((this.minimumPercent / 100) * this.totalMeetings);
+        // Calculate percent based on total meetings minus the ones marked as not held
+        const effectiveMeetings = this.totalMeetings - tidakTerlaksana;
+        const percent = effectiveMeetings > 0 ? Math.round((countedPresent / effectiveMeetings) * 100) : 0;
+        const minimumMeetings = Math.ceil((this.minimumPercent / 100) * effectiveMeetings);
 
         return {
             records,
             hadir,
             izin,
             tidakHadir,
+            tidakTerlaksana,
             countedPresent,
             percent,
             minimumMeetings,
+            effectiveMeetings,
             remaining: Math.max(0, this.totalMeetings - records.length)
         };
     },
@@ -200,12 +205,13 @@ const presensiManager = {
                 this.toggleReasonInput();
             }
         } else {
-            // New entry - default to hadir
-            document.querySelectorAll('input[name="attendance-status"]').forEach((radio, index) => {
-                radio.checked = index === 0;
+            // New entry - default to tidak_hadir if from today's class, else hadir
+            const defaultStatus = isFromTodayClass ? 'tidak_hadir' : 'hadir';
+            document.querySelectorAll('input[name="attendance-status"]').forEach((radio) => {
+                radio.checked = radio.value === defaultStatus;
             });
             document.getElementById('attendance-reason-wrap').style.display = 'none';
-            document.getElementById('attendance-material-wrap').style.display = 'block';
+            document.getElementById('attendance-material-wrap').style.display = isFromTodayClass ? 'none' : 'block';
             document.getElementById('attendance-reason').value = '';
             document.getElementById('attendance-material-title').value = '';
         }
@@ -280,8 +286,10 @@ const presensiManager = {
 
         const isIzin = selected.value === 'izin';
         const isHadir = selected.value === 'hadir';
+        const isTidakTerlaksana = selected.value === 'tidak_terlaksana';
+        
         wrap.style.display = isIzin ? 'block' : 'none';
-        document.getElementById('attendance-material-wrap').style.display = isHadir ? 'block' : 'none';
+        document.getElementById('attendance-material-wrap').style.display = (isHadir && !isTidakTerlaksana) ? 'block' : 'none';
         if (!isIzin) document.getElementById('attendance-reason').value = '';
         if (!isHadir) document.getElementById('attendance-material-title').value = '';
     },
@@ -481,8 +489,7 @@ const presensiManager = {
                 <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:0.75rem; font-size:0.78rem; color:var(--text-muted);">
                     <span><i class="ph ph-check" style="color:var(--success)"></i> Hadir: ${summary.hadir}</span>
                     <span><i class="ph ph-hand-coins" style="color:var(--warning)"></i> Izin: ${summary.izin}</span>
-                    <span><i class="ph ph-x" style="color:var(--danger)"></i> Tidak hadir: ${summary.tidakHadir}</span>
-                    <span><i class="ph ph-flag"></i> Minimal: ${summary.minimumMeetings}</span>
+                    <span><i class="ph ph-x" style="color:var(--danger)"></i> Tidak hadir: ${summary.tidakHadir}</span>                    ${summary.tidakTerlaksana > 0 ? `<span><i class=\"ph ph-prohibit\" style=\"color:var(--muted)\"></i> Tidak terlaksana: ${summary.tidakTerlaksana}</span>` : ''}                    <span><i class="ph ph-flag"></i> Minimal: ${summary.minimumMeetings}</span>
                 </div>
             `;
 
@@ -499,8 +506,9 @@ const presensiManager = {
             acc.hadir += summary.hadir;
             acc.izin += summary.izin;
             acc.tidakHadir += summary.tidakHadir;
+            acc.tidakTerlaksana += summary.tidakTerlaksana;
             return acc;
-        }, { hadir: 0, izin: 0, tidakHadir: 0 });
+        }, { hadir: 0, izin: 0, tidakHadir: 0, tidakTerlaksana: 0 });
 
         container.innerHTML = `
             <div class="stat-card">
@@ -517,13 +525,22 @@ const presensiManager = {
                     <p class="stat-value">${totals.izin}</p>
                 </div>
             </div>
-            <div class="stat-card" style="grid-column: 1 / -1;">
+            <div class="stat-card">
                 <div class="stat-icon" style="background: rgba(239,68,68,0.12); color: var(--danger);"><i class="ph ph-x"></i></div>
                 <div class="stat-info">
                     <h3>Total Tidak Hadir</h3>
                     <p class="stat-value">${totals.tidakHadir}</p>
                 </div>
             </div>
+            ${totals.tidakTerlaksana > 0 ? `
+            <div class="stat-card" style="grid-column: 1 / -1;">
+                <div class="stat-icon" style="background: rgba(107,114,128,0.12); color: var(--text-muted);"><i class="ph ph-prohibit"></i></div>
+                <div class="stat-info">
+                    <h3>Total Kelas Tidak Terlaksana</h3>
+                    <p class="stat-value">${totals.tidakTerlaksana}</p>
+                </div>
+            </div>
+            ` : ''}
         `;
     },
 
@@ -577,7 +594,7 @@ const presensiManager = {
 
         document.getElementById('attendance-course-recap-title').innerText = schedule.name;
         document.getElementById('attendance-course-recap-subtitle').innerText = `${this.getDayLabel(schedule.day)} • ${schedule.start} - ${schedule.end}`;
-        document.getElementById('attendance-course-recap-summary').innerText = `Hadir: ${summary.hadir} • Izin: ${summary.izin} • Tidak hadir: ${summary.tidakHadir} • ${summary.percent}%`;
+        document.getElementById('attendance-course-recap-summary').innerText = `Hadir: ${summary.hadir} • Izin: ${summary.izin} • Tidak hadir: ${summary.tidakHadir}${summary.tidakTerlaksana > 0 ? ` • Tidak terlaksana: ${summary.tidakTerlaksana}` : ''} • ${summary.percent}%`;
 
         list.innerHTML = '';
         if (summary.records.length === 0) {
@@ -631,12 +648,14 @@ const presensiManager = {
     getStatusLabel: function (status) {
         if (status === 'hadir') return 'Hadir';
         if (status === 'izin') return 'Izin';
+        if (status === 'tidak_terlaksana') return 'Kelas Tidak Terlaksana';
         return 'Tidak Hadir';
     },
 
     getStatusColor: function (status) {
         if (status === 'hadir') return 'var(--success)';
         if (status === 'izin') return 'var(--warning)';
+        if (status === 'tidak_terlaksana') return 'var(--text-muted)';
         return 'var(--danger)';
     },
 

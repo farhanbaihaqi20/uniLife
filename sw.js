@@ -1,5 +1,5 @@
 // PENTING: Increment versi ini setiap kali ada update code!
-const CACHE_VERSION = '1.9'; // v1.9 - Split transfer to sender and receiver roles
+const CACHE_VERSION = '1.0'; // v1.0 - UniLife Complete App
 const CACHE_NAME = `unilife-tracker-v${CACHE_VERSION}`;
 
 // Static assets yang jarang berubah (agresif caching)git

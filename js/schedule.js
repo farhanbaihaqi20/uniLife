@@ -33,23 +33,19 @@ const scheduleManager = {
             };
             container.appendChild(btn);
         });
+
     },
 
     renderScheduleList: function () {
         const container = document.getElementById('schedule-list');
         if (!container) return;
 
+        const activeSemester = typeof profileManager !== 'undefined'
+            ? String(profileManager.profile.semester || 1)
+            : '1';
+        const contextSchedules = this.schedules.filter(s => String(s.semester || 1) === activeSemester);
+
         container.innerHTML = '';
-
-        // Get active semester from profile, default to 1 (coerce to string so comparison is robust)
-        const activeSemester = typeof profileManager !== 'undefined' ? String(profileManager.profile.semester || 1) : '1';
-
-        // Filter by active semester first, then by selected day.
-        // If a schedule lacks a semester (legacy), treat it as '1'.
-        const contextSchedules = this.schedules.filter(s => {
-            const schSem = String(s.semester || 1);
-            return schSem === activeSemester;
-        });
         const daySchedules = contextSchedules.filter(s => s.day == this.currentActiveTab);
 
         // Sort by start time
@@ -472,22 +468,22 @@ const scheduleManager = {
 
         if (!schedule) return;
 
-        // Check attendance percentage
-        if (typeof Storage !== 'undefined' && typeof Storage.getAttendanceRecords === 'function') {
-            const attendanceRecords = Storage.getAttendanceRecords();
-            const courseAttendance = attendanceRecords.filter(rec => rec.scheduleId === schId);
-            const hadirCount = courseAttendance.filter(rec => rec.status === 'hadir').length;
-            const attendancePercentage = (hadirCount / 16) * 100;
+            // Check attendance percentage using updated presensiManager logic (excludes "tidak_terlaksana")
+            if (typeof presensiManager !== 'undefined' && typeof presensiManager.getSummaryBySchedule === 'function') {
+                const summary = presensiManager.getSummaryBySchedule(schId);
+                const attendancePercentage = summary.percent;
+                const countedPresent = summary.countedPresent;
+                const effectiveMeetings = summary.effectiveMeetings;
 
-            if (attendancePercentage < 75) {
-                const shouldProceed = confirm(
-                    `⚠️ PERINGATAN\n\n` +
-                    `Presensi Anda untuk mata kuliah "${schedule.name}" saat ini ${Math.floor(attendancePercentage)}% (${hadirCount}/16 pertemuan).\n\n` +
-                    `Minimal 75% (12/16 pertemuan) diperlukan untuk input nilai. Apakah Anda yakin ingin melanjutkan?`
-                );
-                if (!shouldProceed) return;
+                if (attendancePercentage < 75) {
+                    const shouldProceed = confirm(
+                        `⚠️ PERINGATAN\n\n` +
+                        `Presensi Anda untuk mata kuliah "${schedule.name}" saat ini ${Math.floor(attendancePercentage)}% (${countedPresent}/${effectiveMeetings} pertemuan).\n\n` +
+                        `Minimal 75% diperlukan untuk input nilai. Apakah Anda yakin ingin melanjutkan?`
+                    );
+                    if (!shouldProceed) return;
+                }
             }
-        }
 
         let linkedSemId = null;
         if (typeof gradesManager !== 'undefined') {

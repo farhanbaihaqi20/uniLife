@@ -319,6 +319,7 @@ const i18n = {
             'profile_stats_attendance': 'Kehadiran',
             'profile_stats_completed_ratio': '{done} dari {total} tugas',
             'profile_stats_attendance_ratio': '{present} dari 16 pertemuan',
+            'attendance_class_not_held': 'Kelas Tidak Terlaksana',
 
             // Budget / Finances
             'budget_title': 'Keuangan',
@@ -358,6 +359,8 @@ const i18n = {
             'home_quick_budget': 'Keuangan',
             
             // Account Transfer
+            'profile_transfer_sender': 'Pengirim',
+            'profile_transfer_receiver': 'Penerima',
             'profile_transfer_qr': 'Transfer Akun via QR Code',
             'transfer_title': 'Transfer Akun',
             'transfer_desc': 'Pindahkan data ke HP atau Perangkat lain dengan scan QR Code ini.',
@@ -690,8 +693,7 @@ const i18n = {
             'profile_stats_balance': 'Total Balance',
             'profile_stats_attendance': 'Attendance',
             'profile_stats_completed_ratio': '{done} of {total} tasks',
-            'profile_stats_attendance_ratio': '{present} of 16 meetings',
-
+            'profile_stats_attendance_ratio': '{present} of 16 meetings',            'attendance_class_not_held': 'Class Not Held',
             // Budget / Finances
             'budget_title': 'Finances',
             'budget_balance': 'Total Balance',
@@ -730,6 +732,8 @@ const i18n = {
             'home_quick_budget': 'Finance',
             
             // Account Transfer
+            'profile_transfer_sender': 'Sender',
+            'profile_transfer_receiver': 'Receiver',
             'profile_transfer_qr': 'Transfer Account via QR Code',
             'transfer_title': 'Transfer Account',
             'transfer_desc': 'Move your data to a Phone or another Device by scanning this QR Code.',
