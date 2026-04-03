@@ -4216,3 +4216,507 @@ select:focus {
         transform: translateY(0);
     }
 }
+
+/* ============================
+   BBM MODULE (iOS Premium)
+   ============================ */
+.bbm-section {
+    display: block;
+    padding-bottom: 1.25rem;
+}
+
+.bbm-section-header {
+    margin-bottom: 1rem;
+}
+
+.bbm-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.bbm-subtitle {
+    margin-top: 0.2rem;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+}
+
+.bbm-btn-add {
+    border-radius: 16px;
+}
+
+.bbm-card {
+    background: var(--bg-card);
+    border: 1px solid color-mix(in srgb, var(--border-color) 92%, transparent);
+    border-radius: 22px;
+    padding: 1.15rem;
+    margin-bottom: 1rem;
+    box-shadow: rgba(0, 0, 0, 0.05) 0 4px 20px;
+    transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+
+.bbm-card:hover {
+    transform: translateY(-1px);
+    box-shadow: rgba(0, 0, 0, 0.08) 0 8px 24px;
+}
+
+.bbm-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.9rem;
+}
+
+.bbm-card-head h3 {
+    font-size: 1.02rem;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+}
+
+.bbm-chip-btn,
+.bbm-icon-btn {
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-main) 75%, var(--bg-card));
+    color: var(--text-main);
+    border-radius: 14px;
+    font-size: 0.78rem;
+    padding: 0.36rem 0.7rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+    transition: all 200ms ease;
+}
+
+.bbm-icon-btn {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 12px;
+}
+
+.bbm-chip-btn:hover,
+.bbm-icon-btn:hover {
+    border-color: color-mix(in srgb, var(--primary) 38%, var(--border-color));
+    color: var(--primary);
+}
+
+.bbm-grid-two {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 1rem;
+}
+
+.bbm-month-pill {
+    font-size: 0.72rem;
+    font-weight: 600;
+    border-radius: 999px;
+    padding: 0.24rem 0.65rem;
+    border: 1px solid color-mix(in srgb, var(--primary) 35%, var(--border-color));
+    color: var(--primary);
+    background: color-mix(in srgb, var(--primary-light) 80%, var(--bg-card));
+}
+
+.bbm-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+}
+
+.bbm-summary-item {
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-main) 70%, var(--bg-card));
+    padding: 0.68rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.bbm-summary-item span {
+    font-size: 0.74rem;
+    color: var(--text-muted);
+}
+
+.bbm-summary-item strong {
+    font-size: 0.96rem;
+    letter-spacing: -0.01em;
+}
+
+.bbm-summary-item-wide {
+    grid-column: 1 / -1;
+}
+
+.bbm-budget-value {
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin-bottom: 0.7rem;
+}
+
+.bbm-progress-wrap {
+    width: 100%;
+    height: 12px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bg-main) 82%, var(--bg-card));
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.bbm-progress-bar {
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #22c55e 0%, #16a34a 42%, #f59e0b 74%, #ef4444 100%);
+    transition: width 200ms ease;
+}
+
+.bbm-budget-meta {
+    margin-top: 0.55rem;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.bbm-trend-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.24rem 0.58rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    transition: all 200ms ease;
+}
+
+.bbm-trend-hemat {
+    color: #0f766e;
+    border-color: rgba(15, 118, 110, 0.24);
+    background: rgba(20, 184, 166, 0.14);
+}
+
+.bbm-trend-stabil {
+    color: #2563eb;
+    border-color: rgba(37, 99, 235, 0.25);
+    background: rgba(59, 130, 246, 0.15);
+}
+
+.bbm-trend-boros {
+    color: #b91c1c;
+    border-color: rgba(185, 28, 28, 0.23);
+    background: rgba(239, 68, 68, 0.14);
+}
+
+.bbm-price-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.52rem;
+}
+
+.bbm-price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 0.6rem 0.76rem;
+    background: color-mix(in srgb, var(--bg-main) 70%, var(--bg-card));
+    font-size: 0.86rem;
+}
+
+.bbm-price-row strong {
+    font-size: 0.88rem;
+}
+
+.bbm-select {
+    border-radius: 12px;
+    padding: 0.45rem 0.66rem;
+    border: 1px solid var(--border-color);
+    background: var(--bg-main);
+    color: var(--text-main);
+    font-size: 0.82rem;
+}
+
+.bbm-mini-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.55rem;
+    margin-bottom: 0.85rem;
+}
+
+.bbm-mini-summary > div {
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 0.58rem 0.66rem;
+    background: color-mix(in srgb, var(--bg-main) 70%, var(--bg-card));
+}
+
+.bbm-mini-summary span {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.bbm-mini-summary strong {
+    font-size: 0.84rem;
+    letter-spacing: -0.01em;
+}
+
+.bbm-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.56rem;
+}
+
+.bbm-history-day {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    padding: 0.2rem 0.1rem;
+}
+
+.bbm-history-item {
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 0.68rem 0.75rem;
+    background: color-mix(in srgb, var(--bg-main) 72%, var(--bg-card));
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.6rem;
+}
+
+.bbm-history-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.55rem;
+}
+
+.bbm-history-top strong {
+    font-size: 0.92rem;
+}
+
+.bbm-history-top span {
+    font-size: 0.88rem;
+    font-weight: 650;
+}
+
+.bbm-history-meta {
+    margin-top: 0.23rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.48rem;
+    font-size: 0.74rem;
+    color: var(--text-muted);
+}
+
+.bbm-history-note {
+    margin-top: 0.35rem;
+    font-size: 0.78rem;
+    color: var(--text-main);
+    line-height: 1.42;
+}
+
+.bbm-history-actions {
+    display: flex;
+    gap: 0.4rem;
+    align-items: flex-start;
+}
+
+.bbm-icon-btn-danger {
+    color: var(--danger);
+    border-color: color-mix(in srgb, var(--danger) 30%, var(--border-color));
+}
+
+.bbm-modal-content {
+    border-radius: 22px;
+    box-shadow: rgba(0, 0, 0, 0.05) 0 4px 20px;
+}
+
+.bbm-modal-note {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-top: 0.2rem;
+    margin-bottom: 1rem;
+}
+
+.bbm-modal-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin-top: 1rem;
+}
+
+.bbm-modal-actions .btn {
+    flex: 1;
+    border-radius: 16px;
+}
+
+.bbm-btn-danger {
+    flex: 0 0 auto !important;
+    width: 52px;
+    color: var(--danger);
+    border-color: color-mix(in srgb, var(--danger) 30%, var(--border-color));
+}
+
+.bbm-live-liter {
+    border-radius: 14px;
+    border: 1px dashed color-mix(in srgb, var(--primary) 30%, var(--border-color));
+    background: color-mix(in srgb, var(--primary-light) 75%, var(--bg-card));
+    padding: 0.65rem 0.75rem;
+    margin-top: -0.1rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.82rem;
+}
+
+.bbm-live-liter strong {
+    color: var(--primary);
+    font-weight: 700;
+}
+
+.bbm-quick-nominal {
+    margin-top: 0.22rem;
+    margin-bottom: 0.9rem;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.46rem;
+}
+
+.bbm-quick-nominal button {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 0.45rem 0.32rem;
+    background: var(--bg-main);
+    color: var(--text-main);
+    font-weight: 600;
+    font-size: 0.76rem;
+    cursor: pointer;
+    transition: all 200ms ease;
+}
+
+.bbm-quick-nominal button:hover {
+    border-color: color-mix(in srgb, var(--primary) 35%, var(--border-color));
+    color: var(--primary);
+}
+
+.bbm-empty-state {
+    border: 1px dashed var(--border-color);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--bg-main) 75%, var(--bg-card));
+    padding: 1.2rem 1rem;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.bbm-empty-state i {
+    font-size: 1.8rem;
+    opacity: 0.65;
+    display: block;
+    margin-bottom: 0.35rem;
+}
+
+.bbm-vehicle-chip {
+    display: flex;
+    gap: 0.7rem;
+    align-items: center;
+}
+
+.bbm-vehicle-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--primary-light) 85%, var(--bg-card));
+    color: var(--primary);
+    font-size: 1.3rem;
+}
+
+.bbm-vehicle-title {
+    font-size: 0.94rem;
+    font-weight: 650;
+}
+
+.bbm-vehicle-subtitle {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.bbm-home-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.48rem;
+    padding: 1rem 0.35rem;
+    border: none;
+    background: var(--bg-card);
+    cursor: pointer;
+    border-radius: 18px;
+    box-shadow: rgba(0, 0, 0, 0.05) 0 4px 20px;
+    transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.bbm-home-card:hover {
+    transform: translateY(-2px);
+    box-shadow: rgba(0, 0, 0, 0.08) 0 9px 24px;
+}
+
+.bbm-home-card span {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-main);
+    text-align: center;
+}
+
+.bbm-home-card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.24rem;
+}
+
+.bbm-home-card-icon-main {
+    background: rgba(37, 99, 235, 0.12);
+    color: #2563eb;
+}
+
+.bbm-home-card-icon-quick {
+    background: rgba(245, 158, 11, 0.12);
+    color: #d97706;
+}
+
+@media (max-width: 860px) {
+    .bbm-grid-two {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .bbm-card {
+        border-radius: 18px;
+        padding: 1rem;
+    }
+
+    .bbm-summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .bbm-mini-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .bbm-history-item {
+        grid-template-columns: 1fr;
+    }
+
+    .bbm-history-actions {
+        justify-content: flex-end;
+    }
+}
+
