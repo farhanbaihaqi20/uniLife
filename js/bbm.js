@@ -34,10 +34,14 @@
         initialized: false,
         transactions: [],
         prices: { ...BBM_DEFAULT_PRICES },
+        trendChart: null,
+        lastReminderSignature: '',
         setup: {
             vehicleType: '',
             vehicleSubtype: '',
             monthlyBudget: 0,
+            reminderDays: 14,
+            reminderKm: 250,
             setupCompleted: false
         },
         selectedHistoryMonth: '',
@@ -71,6 +75,8 @@
                 vehicleType: '',
                 vehicleSubtype: '',
                 monthlyBudget: 0,
+                reminderDays: 14,
+                reminderKm: 250,
                 setupCompleted: false,
                 ...this.readStore(BBM_KEYS.setup, {})
             };
@@ -122,9 +128,17 @@
                         <h2 class="bbm-title"><i class="ph ph-gas-pump"></i> BBM Tracker</h2>
                         <p class="bbm-subtitle">Pantau pengeluaran BBM dengan cepat dan rapi.</p>
                     </div>
-                    <button type="button" class="btn btn-primary bbm-btn-add" id="bbm-btn-open-form">
-                        <i class="ph ph-plus"></i> Tambah
-                    </button>
+                    <div class="bbm-header-actions">
+                        <button type="button" class="bbm-chip-btn" id="bbm-btn-export-csv">
+                            <i class="ph ph-file-csv"></i> CSV
+                        </button>
+                        <button type="button" class="bbm-chip-btn" id="bbm-btn-backup-json">
+                            <i class="ph ph-download-simple"></i> Backup
+                        </button>
+                        <button type="button" class="btn btn-primary bbm-btn-add" id="bbm-btn-open-form">
+                            <i class="ph ph-plus"></i> Tambah
+                        </button>
+                    </div>
                 </div>
 
                 <div class="bbm-card bbm-vehicle-card" id="bbm-vehicle-card">
@@ -156,6 +170,26 @@
                             <div class="bbm-progress-bar" id="bbm-progress-bar"></div>
                         </div>
                         <div class="bbm-budget-meta" id="bbm-budget-meta">0% terpakai</div>
+                    </div>
+                </div>
+
+                <div class="bbm-grid-two">
+                    <div class="bbm-card bbm-reminder-card">
+                        <div class="bbm-card-head">
+                            <h3>Reminder BBM</h3>
+                            <span class="bbm-reminder-pill" id="bbm-reminder-pill">Aktif</span>
+                        </div>
+                        <div class="bbm-reminder-body" id="bbm-reminder-body"></div>
+                    </div>
+
+                    <div class="bbm-card bbm-chart-card">
+                        <div class="bbm-card-head">
+                            <h3>Tren Bulanan</h3>
+                            <span class="bbm-month-pill">6 Bulan</span>
+                        </div>
+                        <div class="bbm-chart-wrap">
+                            <canvas id="bbm-trend-chart"></canvas>
+                        </div>
                     </div>
                 </div>
 
@@ -303,6 +337,16 @@
                                     <label for="bbm-budget-monthly">Budget Bulanan (Rp)</label>
                                     <input type="number" id="bbm-budget-monthly" min="0" placeholder="Contoh: 500000" required>
                                 </div>
+                                <div class="bbm-setup-grid">
+                                    <div class="form-group">
+                                        <label for="bbm-reminder-days">Reminder Isi (Hari)</label>
+                                        <input type="number" id="bbm-reminder-days" min="1" placeholder="Contoh: 14">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="bbm-reminder-km">Reminder Jarak (Km)</label>
+                                        <input type="number" id="bbm-reminder-km" min="0" placeholder="Contoh: 250">
+                                    </div>
+                                </div>
                                 <div class="bbm-modal-actions">
                                     <button type="submit" class="btn btn-primary full-width">Simpan Setup</button>
                                 </div>
@@ -349,6 +393,8 @@
             document.getElementById('bbm-btn-open-form')?.addEventListener('click', () => this.openFormModal());
             document.getElementById('bbm-btn-open-settings')?.addEventListener('click', () => this.openSettingsModal());
             document.getElementById('bbm-btn-open-setup')?.addEventListener('click', () => this.openSetupModal());
+            document.getElementById('bbm-btn-export-csv')?.addEventListener('click', () => this.exportTransactionsCsv());
+            document.getElementById('bbm-btn-backup-json')?.addEventListener('click', () => this.backupTransactionsJson());
 
             document.getElementById('bbm-history-month')?.addEventListener('change', (event) => {
                 this.selectedHistoryMonth = event.target.value;
@@ -440,6 +486,8 @@
             const vehicleType = document.getElementById('bbm-vehicle-type')?.value || '';
             const vehicleSubtype = document.getElementById('bbm-vehicle-subtype')?.value || '';
             const monthlyBudget = parseInt(document.getElementById('bbm-budget-monthly')?.value || '0', 10) || 0;
+            const reminderDays = parseInt(document.getElementById('bbm-reminder-days')?.value || '14', 10) || 14;
+            const reminderKm = parseInt(document.getElementById('bbm-reminder-km')?.value || '250', 10) || 250;
 
             if (!vehicleType || !vehicleSubtype) {
                 this.notify('Pilih tipe dan subtype kendaraan terlebih dahulu.');
@@ -450,6 +498,8 @@
                 vehicleType,
                 vehicleSubtype,
                 monthlyBudget,
+                reminderDays,
+                reminderKm,
                 setupCompleted: true
             };
 
@@ -585,10 +635,13 @@
             this.renderVehicleCard();
             this.renderSummary();
             this.renderBudget();
+            this.renderReminderCard();
+            this.renderTrendChart();
             this.renderPriceList();
             this.renderFuelOptions();
             this.renderHistoryMonthOptions();
             this.renderHistory();
+            this.evaluateReminder();
         },
 
         renderCurrentMonthPill: function () {
@@ -636,7 +689,9 @@
             const summaryGrid = document.getElementById('bbm-summary-grid');
             if (!summaryGrid) return;
 
-            const monthlyStats = this.getMonthlyStats(this.getCurrentMonthKey());
+            const monthKey = this.getCurrentMonthKey();
+            const monthlyStats = this.getMonthlyStats(monthKey);
+            const monthlyEfficiency = this.getMonthlyEfficiencyStats(monthKey);
             const lastFill = monthlyStats.lastFillDate
                 ? this.formatDateTime(monthlyStats.lastFillDate)
                 : '-';
@@ -657,6 +712,10 @@
                 <div class="bbm-summary-item">
                     <span>Rata-rata Jeda</span>
                     <strong>${monthlyStats.avgGapDays > 0 ? `${monthlyStats.avgGapDays.toFixed(1)} hari` : '-'}</strong>
+                </div>
+                <div class="bbm-summary-item">
+                    <span>Efisiensi Rata-rata</span>
+                    <strong>${monthlyEfficiency.avgKpl > 0 ? `${monthlyEfficiency.avgKpl.toFixed(1)} km/L` : '-'}</strong>
                 </div>
                 <div class="bbm-summary-item bbm-summary-item-wide">
                     <span>Terakhir Isi</span>
@@ -750,6 +809,8 @@
                 .filter((tx) => this.getMonthKey(tx.datetime) === monthKey)
                 .sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
 
+            const efficiencyMap = this.getEfficiencyMap(monthTransactions);
+
             this.renderMiniSummary(monthTransactions);
 
             const list = document.getElementById('bbm-history-list');
@@ -782,6 +843,7 @@
                 }
 
                 const fuelLabel = tx.fuelLabel || this.getFuelLabel(tx.fuelKey);
+                const efficiencyInfo = efficiencyMap[tx.id];
                 rows.push(`
                     <div class="bbm-history-item">
                         <div class="bbm-history-main">
@@ -794,6 +856,7 @@
                                 <span>${(tx.liter || 0).toFixed(2)} L</span>
                                 <span>${tx.odometer ? `ODO ${tx.odometer}` : 'ODO -'}</span>
                             </div>
+                            ${efficiencyInfo ? `<div class="bbm-efficiency-line">${efficiencyInfo.distance.toFixed(0)} km • ${efficiencyInfo.kpl.toFixed(1)} km/L</div>` : ''}
                             ${tx.note ? `<p class="bbm-history-note">${this.escapeHtml(tx.note)}</p>` : ''}
                         </div>
                         <div class="bbm-history-actions">
@@ -888,6 +951,311 @@
             return { label: 'Boros', className: 'bbm-trend-boros' };
         },
 
+        renderReminderCard: function () {
+            const container = document.getElementById('bbm-reminder-body');
+            const pill = document.getElementById('bbm-reminder-pill');
+            if (!container) return;
+
+            const state = this.getReminderState();
+            if (pill) {
+                pill.textContent = state.due ? 'Perlu Isi' : 'Aktif';
+                pill.className = `bbm-reminder-pill ${state.due ? 'bbm-reminder-danger' : 'bbm-reminder-safe'}`;
+            }
+
+            container.innerHTML = `
+                <div class="bbm-reminder-main ${state.due ? 'is-due' : ''}">
+                    <strong>${state.title}</strong>
+                    <p>${state.message}</p>
+                </div>
+                <div class="bbm-reminder-meta">
+                    <span>Patokan: ${state.reminderDays} hari</span>
+                    <span>Jarak: ${state.reminderKm} km</span>
+                    <span>${state.lastFillLabel}</span>
+                </div>
+            `;
+        },
+
+        evaluateReminder: function (silent = false) {
+            const state = this.getReminderState();
+            const signature = `${state.due}|${state.lastTxId}|${state.remainingDays}|${state.lastFillLabel}`;
+
+            if (state.due && !silent && this.lastReminderSignature !== signature) {
+                this.notify(state.title);
+                this.lastReminderSignature = signature;
+            }
+
+            return state;
+        },
+
+        getReminderState: function () {
+            const reminderDays = Math.max(parseInt(this.setup.reminderDays, 10) || 14, 1);
+            const reminderKm = Math.max(parseInt(this.setup.reminderKm, 10) || 250, 0);
+            const lastTx = this.transactions[0] || null;
+
+            if (!lastTx) {
+                return {
+                    due: false,
+                    title: 'Belum ada riwayat BBM',
+                    message: 'Tambah transaksi pertama untuk mengaktifkan reminder otomatis.',
+                    reminderDays,
+                    reminderKm,
+                    remainingDays: reminderDays,
+                    lastTxId: '',
+                    lastFillLabel: '-'
+                };
+            }
+
+            const lastDate = new Date(lastTx.datetime);
+            const now = new Date();
+            const diffDays = Math.max((now.getTime() - lastDate.getTime()) / 86400000, 0);
+            const remainingDays = Math.max(Math.ceil(reminderDays - diffDays), 0);
+            const due = diffDays >= reminderDays;
+
+            const lastFillLabel = `${this.formatDateTime(lastTx.datetime)}${lastTx.odometer ? ` • ODO ${lastTx.odometer}` : ''}`;
+            const title = due ? 'Saatnya isi BBM lagi' : 'Reminder BBM aktif';
+            const message = due
+                ? `Sudah ${Math.floor(diffDays)} hari sejak isi terakhir. Segera lakukan pengisian berikutnya.`
+                : `Perkiraan isi lagi dalam ${remainingDays} hari.`;
+
+            return {
+                due,
+                title,
+                message,
+                reminderDays,
+                reminderKm,
+                remainingDays,
+                lastTxId: lastTx.id,
+                lastFillLabel
+            };
+        },
+
+        getEfficiencyMap: function (rows) {
+            const sortedRows = [...rows].sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+            const map = {};
+
+            for (let i = 1; i < sortedRows.length; i += 1) {
+                const prev = sortedRows[i - 1];
+                const current = sortedRows[i];
+                const prevOdo = Number(prev.odometer);
+                const currentOdo = Number(current.odometer);
+                const prevLiter = Number(prev.liter);
+
+                if (!Number.isFinite(prevOdo) || !Number.isFinite(currentOdo) || !Number.isFinite(prevLiter)) continue;
+                const distance = currentOdo - prevOdo;
+                if (distance <= 0 || prevLiter <= 0) continue;
+
+                map[current.id] = {
+                    distance,
+                    kpl: distance / prevLiter
+                };
+            }
+
+            return map;
+        },
+
+        getMonthlyEfficiencyStats: function (monthKey) {
+            const rows = this.transactions
+                .filter((tx) => this.getMonthKey(tx.datetime) === monthKey)
+                .sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+
+            let totalDistance = 0;
+            let totalFuel = 0;
+            const efficiencyMap = {};
+
+            for (let i = 1; i < rows.length; i += 1) {
+                const prev = rows[i - 1];
+                const current = rows[i];
+                const prevOdo = Number(prev.odometer);
+                const currentOdo = Number(current.odometer);
+                const prevLiter = Number(prev.liter);
+
+                if (!Number.isFinite(prevOdo) || !Number.isFinite(currentOdo) || !Number.isFinite(prevLiter)) continue;
+                const distance = currentOdo - prevOdo;
+                if (distance <= 0 || prevLiter <= 0) continue;
+
+                totalDistance += distance;
+                totalFuel += prevLiter;
+                efficiencyMap[current.id] = {
+                    distance,
+                    kpl: distance / prevLiter
+                };
+            }
+
+            return {
+                avgKpl: totalFuel > 0 ? totalDistance / totalFuel : 0,
+                totalDistance,
+                totalFuel,
+                efficiencyMap
+            };
+        },
+
+        buildMonthlySeries: function (monthsCount = 6) {
+            const labels = [];
+            const spendData = [];
+            const literData = [];
+
+            for (let offset = monthsCount - 1; offset >= 0; offset -= 1) {
+                const date = new Date();
+                date.setMonth(date.getMonth() - offset, 1);
+                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                const stats = this.getMonthlyStats(monthKey);
+                labels.push(date.toLocaleDateString('id-ID', { month: 'short' }));
+                spendData.push(stats.totalMoney);
+                literData.push(Number(stats.totalLiter.toFixed(2)));
+            }
+
+            return { labels, spendData, literData };
+        },
+
+        renderTrendChart: function () {
+            const canvas = document.getElementById('bbm-trend-chart');
+            if (!canvas || typeof Chart === 'undefined') return;
+
+            const context = canvas.getContext('2d');
+            if (!context) return;
+
+            const series = this.buildMonthlySeries(6);
+
+            if (this.trendChart) {
+                this.trendChart.destroy();
+                this.trendChart = null;
+            }
+
+            this.trendChart = new Chart(context, {
+                type: 'bar',
+                data: {
+                    labels: series.labels,
+                    datasets: [
+                        {
+                            label: 'Pengeluaran',
+                            data: series.spendData,
+                            backgroundColor: 'rgba(37, 99, 235, 0.28)',
+                            borderColor: 'rgba(37, 99, 235, 0.95)',
+                            borderWidth: 1,
+                            borderRadius: 12,
+                            yAxisID: 'yMoney'
+                        },
+                        {
+                            label: 'Liter',
+                            data: series.literData,
+                            type: 'line',
+                            borderColor: 'rgba(245, 158, 11, 0.95)',
+                            backgroundColor: 'rgba(245, 158, 11, 0.16)',
+                            tension: 0.38,
+                            pointRadius: 3,
+                            pointHoverRadius: 4,
+                            fill: false,
+                            yAxisID: 'yLiter'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                usePointStyle: true,
+                                boxWidth: 8,
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--text-muted') || '#64748B'
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: (context) => {
+                                    if (context.dataset.label === 'Pengeluaran') {
+                                        return ` ${context.dataset.label}: ${this.formatCurrency(context.parsed.y)}`;
+                                    }
+                                    return ` ${context.dataset.label}: ${Number(context.parsed.y || 0).toFixed(2)} L`;
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: {
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--text-muted') || '#64748B'
+                            }
+                        },
+                        yMoney: {
+                            position: 'left',
+                            grid: {
+                                color: 'rgba(148, 163, 184, 0.12)'
+                            },
+                            ticks: {
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--text-muted') || '#64748B',
+                                callback: (value) => this.formatCurrency(value)
+                            }
+                        },
+                        yLiter: {
+                            position: 'right',
+                            grid: {
+                                drawOnChartArea: false
+                            },
+                            ticks: {
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--text-muted') || '#64748B',
+                                callback: (value) => `${Number(value).toFixed(0)} L`
+                            }
+                        }
+                    }
+                }
+            });
+        },
+
+        exportTransactionsCsv: function () {
+            const header = ['Tanggal', 'Jam', 'BBM', 'Total Bayar', 'Liter', 'Odometer', 'Catatan', 'Vehicle Type', 'Vehicle Subtype'];
+            const rows = this.transactions.map((tx) => {
+                const date = new Date(tx.datetime);
+                return [
+                    date.toLocaleDateString('id-ID'),
+                    date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+                    tx.fuelLabel || this.getFuelLabel(tx.fuelKey),
+                    String(tx.totalBayar || 0),
+                    (Number(tx.liter) || 0).toFixed(2),
+                    tx.odometer ?? '',
+                    tx.note ? String(tx.note).replace(/"/g, '""') : '',
+                    tx.vehicleType || '',
+                    tx.vehicleSubtype || ''
+                ].map((value) => `"${value}"`);
+            });
+
+            const csv = [header.join(','), ...rows.map((row) => row.join(','))].join('\n');
+            this.downloadFile(`bbm-export-${this.getCurrentMonthKey()}.csv`, csv, 'text/csv;charset=utf-8;');
+            this.notify('Export CSV BBM berhasil dibuat.');
+        },
+
+        backupTransactionsJson: function () {
+            const payload = {
+                exportedAt: new Date().toISOString(),
+                setup: this.setup,
+                prices: this.prices,
+                transactions: this.transactions
+            };
+
+            this.downloadFile(`bbm-backup-${this.getCurrentMonthKey()}.json`, JSON.stringify(payload, null, 2), 'application/json;charset=utf-8;');
+            this.notify('Backup JSON BBM berhasil dibuat.');
+        },
+
+        downloadFile: function (filename, content, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = filename;
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 0);
+        },
+
         openSection: function () {
             if (!this.setup.setupCompleted) {
                 this.openSetupModal();
@@ -968,6 +1336,8 @@
             document.getElementById('bbm-vehicle-type').value = this.setup.vehicleType || '';
             document.getElementById('bbm-vehicle-subtype').value = this.setup.vehicleSubtype || '';
             document.getElementById('bbm-budget-monthly').value = this.setup.monthlyBudget || '';
+            document.getElementById('bbm-reminder-days').value = this.setup.reminderDays || 14;
+            document.getElementById('bbm-reminder-km').value = this.setup.reminderKm || 250;
 
             modal.classList.add('active');
         },
