@@ -238,7 +238,11 @@
                 </div>
             `;
 
-            const mainContent = document.querySelector('main.main-content') || document.querySelector('main') || document.body;
+            const mainContent = document.querySelector('main.main-content') || document.querySelector('main');
+            if (!mainContent) {
+                console.warn('BBM section injection skipped: main content container not found.');
+                return;
+            }
             mainContent.appendChild(section);
         },
 

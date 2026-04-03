@@ -81,6 +81,7 @@
 /* Enable smooth scrolling globally */
 html {
     scroll-behavior: smooth;
+    height: 100%;
 }
 
 body {
@@ -95,6 +96,8 @@ body {
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
+    min-height: 100%;
+    overflow: hidden;
 }
 
 input,
@@ -309,6 +312,8 @@ select,
     flex-direction: column;
     height: 100vh;
     height: 100dvh;
+    min-height: 100vh;
+    min-height: 100dvh;
     max-width: 600px;
     margin: 0 auto;
     background: linear-gradient(180deg,
@@ -380,8 +385,11 @@ select,
 /* Main Content area */
 .main-content {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
-    padding: 0 1.5rem calc(var(--nav-height) + 1.5rem);
+    overscroll-behavior-y: contain;
+    /* 80px base nav + safe area + 40px floating center button clearance */
+    padding: 0 1.5rem calc(80px + env(safe-area-inset-bottom) + 40px);
     /* Smooth momentum scrolling for iOS */
     -webkit-overflow-scrolling: touch;
     /* Hide scrollbar for cleaner look in webview */
@@ -4221,7 +4229,6 @@ select:focus {
    BBM MODULE (iOS Premium)
    ============================ */
 .bbm-section {
-    display: block;
     padding-bottom: 1.25rem;
 }
 
