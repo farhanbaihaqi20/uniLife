@@ -914,6 +914,59 @@ const budgetManager = {
         }
     },
 
+    syncFromBbm: function (action, payload) {
+        const bbmId = payload?.relation?.bbm_id || payload?.bbm_id;
+        if (!bbmId) return false;
+
+        this.transactions = Storage.getBudgetTransactions();
+        const index = this.transactions.findIndex((tx) =>
+            tx?.relation?.bbm_id === bbmId || tx?.bbm_id === bbmId || tx?.sourceId === bbmId
+        );
+
+        if (action === 'delete') {
+            if (index > -1) {
+                this.transactions.splice(index, 1);
+                Storage.setBudgetTransactions(this.transactions);
+                window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_tx' } }));
+            }
+            return true;
+        }
+
+        const amount = parseInt(payload?.nominal, 10) || 0;
+        if (amount <= 0) return false;
+
+        const parsedDate = payload?.tanggal ? new Date(payload.tanggal) : new Date();
+        const txDate = Number.isNaN(parsedDate.getTime()) ? new Date().toISOString() : parsedDate.toISOString();
+
+        const linkedTx = {
+            type: 'expense',
+            amount,
+            category: 'transport',
+            note: payload?.catatan || 'Isi BBM',
+            date: txDate,
+            relation: { bbm_id: bbmId },
+            bbm_id: bbmId,
+            source: 'bbm',
+            sourceId: bbmId
+        };
+
+        if (index > -1) {
+            this.transactions[index] = {
+                ...this.transactions[index],
+                ...linkedTx
+            };
+        } else {
+            this.transactions.push({
+                id: (typeof uuidv4 === 'function') ? uuidv4() : Date.now().toString(),
+                ...linkedTx
+            });
+        }
+
+        Storage.setBudgetTransactions(this.transactions);
+        window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_tx' } }));
+        return true;
+    },
+
     saveTransaction: function (e) {
         e.preventDefault();
 

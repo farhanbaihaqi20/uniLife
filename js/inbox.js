@@ -43,6 +43,12 @@ const inboxManager = {
                             <i class="ph-bold ph-wallet"></i>
                         </button>
                     </div>
+                    <div class="fab-menu-item">
+                        <span class="fab-menu-label">Quick Add BBM</span>
+                        <button class="fab-menu-btn" style="background:#2563eb; color:white;" onclick="inboxManager.openBbmQuickAdd()">
+                            <i class="ph-bold ph-gas-pump"></i>
+                        </button>
+                    </div>
                 </div>
                 <button class="fab-main" id="fab-main" onclick="inboxManager.toggleFabMenu()">
                     <i class="ph-bold ph-plus"></i>
@@ -111,6 +117,15 @@ const inboxManager = {
         if (typeof budgetManager !== 'undefined') {
             budgetManager.openAddModal();
         }
+    },
+
+    openBbmQuickAdd: function () {
+        this.closeFabMenu();
+        if (typeof bbmManager !== 'undefined') {
+            bbmManager.openFormModal();
+            return;
+        }
+        this.showToast('Modul BBM belum siap.');
     },
 
     closeQuickCapture: function () {

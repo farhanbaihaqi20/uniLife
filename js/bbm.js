@@ -186,7 +186,7 @@
         },
 
         injectHomeEntryPoints: function () {
-            if (document.getElementById('bbm-home-menu-card') || document.getElementById('bbm-home-quick-add-card')) return;
+            if (document.getElementById('bbm-home-menu-card')) return;
 
             // Penanda: ubah selector parent menu Home di sini jika struktur berbeda (contoh: '.home-grid').
             const homeMenuContainer = document.querySelector('.quick-actions');
@@ -202,18 +202,7 @@
             `;
             menuCard.addEventListener('click', () => this.openSection());
 
-            const quickAddCard = document.createElement('button');
-            quickAddCard.type = 'button';
-            quickAddCard.id = 'bbm-home-quick-add-card';
-            quickAddCard.className = 'card bbm-home-card';
-            quickAddCard.innerHTML = `
-                <div class="bbm-home-card-icon bbm-home-card-icon-quick"><i class="ph ph-drop"></i></div>
-                <span>Quick Add BBM</span>
-            `;
-            quickAddCard.addEventListener('click', () => this.openFormModal());
-
             homeMenuContainer.appendChild(menuCard);
-            homeMenuContainer.appendChild(quickAddCard);
         },
 
         injectModals: function () {
@@ -1025,7 +1014,11 @@
             };
 
             // TODO: Sambungkan ke budget.js disini
-            console.info('[BBM] syncKeuangan placeholder', payload);
+            if (typeof budgetManager !== 'undefined' && typeof budgetManager.syncFromBbm === 'function') {
+                budgetManager.syncFromBbm(action, payload);
+            } else {
+                console.info('[BBM] syncKeuangan placeholder', payload);
+            }
             return payload;
         },
 
