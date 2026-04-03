@@ -45,6 +45,7 @@
             setupCompleted: false
         },
         selectedHistoryMonth: '',
+        selectedLocationFilter: 'all',
         selectedFuelKey: 'pertalite',
 
         init: function () {
@@ -86,6 +87,7 @@
                 .sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
 
             this.selectedHistoryMonth = this.selectedHistoryMonth || this.getCurrentMonthKey();
+            this.selectedLocationFilter = this.selectedLocationFilter || 'all';
         },
 
         readStore: function (key, fallback) {
@@ -135,11 +137,16 @@
                         <button type="button" class="bbm-chip-btn" id="bbm-btn-backup-json">
                             <i class="ph ph-download-simple"></i> Backup
                         </button>
+                        <button type="button" class="bbm-chip-btn" id="bbm-btn-restore-json">
+                            <i class="ph ph-arrow-clockwise"></i> Restore
+                        </button>
                         <button type="button" class="btn btn-primary bbm-btn-add" id="bbm-btn-open-form">
                             <i class="ph ph-plus"></i> Tambah
                         </button>
                     </div>
                 </div>
+
+                <input type="file" id="bbm-restore-input" accept="application/json,.json" style="display:none;">
 
                 <div class="bbm-card bbm-vehicle-card" id="bbm-vehicle-card">
                     <div class="bbm-card-head">
@@ -191,6 +198,22 @@
                             <canvas id="bbm-trend-chart"></canvas>
                         </div>
                     </div>
+                </div>
+
+                <div class="bbm-card bbm-month-map-card">
+                    <div class="bbm-card-head">
+                        <h3>Peta Lokasi BBM Bulanan</h3>
+                        <span class="bbm-month-pill">Ringkas per bulan</span>
+                    </div>
+                    <div class="bbm-month-map" id="bbm-month-map"></div>
+                </div>
+
+                <div class="bbm-card bbm-station-card">
+                    <div class="bbm-card-head">
+                        <h3>SPBU Favorit</h3>
+                        <span class="bbm-month-pill">Konsistensi Nominal</span>
+                    </div>
+                    <div class="bbm-station-body" id="bbm-station-body"></div>
                 </div>
 
                 <div class="bbm-card">
@@ -270,6 +293,12 @@
                                 <div class="form-group">
                                     <label for="bbm-form-fuel">Jenis BBM</label>
                                     <select id="bbm-form-fuel" required></select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="bbm-form-location">Lokasi SPBU (Opsional)</label>
+                                    <input type="text" id="bbm-form-location" list="bbm-location-suggestions" placeholder="Contoh: SPBU Pertamina Jl. Sudirman">
+                                    <datalist id="bbm-location-suggestions"></datalist>
                                 </div>
 
                                 <div class="bbm-live-liter" id="bbm-live-liter">Estimasi Liter: <strong>0.00 L</strong></div>
@@ -398,6 +427,11 @@
 
             document.getElementById('bbm-history-month')?.addEventListener('change', (event) => {
                 this.selectedHistoryMonth = event.target.value;
+                this.renderHistory();
+            });
+
+            document.getElementById('bbm-history-location')?.addEventListener('change', (event) => {
+                this.selectedLocationFilter = event.target.value || 'all';
                 this.renderHistory();
             });
 
@@ -536,6 +570,7 @@
             const datetime = document.getElementById('bbm-form-datetime')?.value || '';
             const totalBayar = parseInt(document.getElementById('bbm-form-total')?.value || '0', 10) || 0;
             const fuelKey = document.getElementById('bbm-form-fuel')?.value || 'pertalite';
+            const location = (document.getElementById('bbm-form-location')?.value || '').trim();
             const odometerRaw = document.getElementById('bbm-form-odometer')?.value || '';
             const note = (document.getElementById('bbm-form-note')?.value || '').trim();
 
@@ -564,6 +599,7 @@
                     totalBayar,
                     fuelKey,
                     fuelLabel: this.getFuelLabel(fuelKey),
+                    location,
                     pricePerLiter,
                     liter,
                     odometer,
@@ -587,6 +623,7 @@
                     totalBayar,
                     fuelKey,
                     fuelLabel: this.getFuelLabel(fuelKey),
+                    location,
                     pricePerLiter,
                     liter,
                     odometer,
@@ -637,8 +674,12 @@
             this.renderBudget();
             this.renderReminderCard();
             this.renderTrendChart();
+            this.renderMonthMap();
+            this.renderStationInsights();
             this.renderPriceList();
             this.renderFuelOptions();
+            this.renderLocationOptions();
+            this.renderLocationSuggestions();
             this.renderHistoryMonthOptions();
             this.renderHistory();
             this.evaluateReminder();
@@ -803,10 +844,67 @@
             select.value = this.selectedHistoryMonth;
         },
 
+        renderLocationOptions: function () {
+            const select = document.getElementById('bbm-history-location');
+            if (!select) return;
+
+            const locations = this.getUniqueLocations();
+            const options = ['<option value="all">Semua Lokasi</option>'];
+
+            locations.forEach((location) => {
+                options.push(`<option value="${this.escapeHtml(location)}">${this.escapeHtml(location)}</option>`);
+            });
+
+            select.innerHTML = options.join('');
+            select.value = this.selectedLocationFilter || 'all';
+        },
+
+        renderLocationSuggestions: function () {
+            const datalist = document.getElementById('bbm-location-suggestions');
+            if (!datalist) return;
+
+            const locations = this.getUniqueLocations();
+            datalist.innerHTML = locations.map((location) => `<option value="${this.escapeHtml(location)}"></option>`).join('');
+        },
+
+        renderMonthMap: function () {
+            const container = document.getElementById('bbm-month-map');
+            if (!container) return;
+
+            const months = this.buildMonthLocationMap(6);
+            if (months.length === 0) {
+                container.innerHTML = `
+                    <div class="bbm-empty-state">
+                        <i class="ph ph-map-trifold"></i>
+                        <p>Tambahkan lokasi SPBU agar peta bulanan tampil.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = months.map((month) => `
+                <div class="bbm-month-map-item">
+                    <div class="bbm-month-map-head">
+                        <strong>${month.label}</strong>
+                        <span>${month.totalTx} transaksi</span>
+                    </div>
+                    <div class="bbm-month-map-location">${this.escapeHtml(month.topLocation || '-')}</div>
+                    <div class="bbm-month-map-meta">
+                        <span>${month.countLocations} lokasi</span>
+                        <span>${month.consistencyLabel}</span>
+                    </div>
+                </div>
+            `).join('');
+        },
+
         renderHistory: function () {
             const monthKey = this.selectedHistoryMonth || this.getCurrentMonthKey();
             const monthTransactions = this.transactions
                 .filter((tx) => this.getMonthKey(tx.datetime) === monthKey)
+                .filter((tx) => {
+                    if (this.selectedLocationFilter === 'all') return true;
+                    return (tx.location || '').trim() === this.selectedLocationFilter;
+                })
                 .sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
 
             const efficiencyMap = this.getEfficiencyMap(monthTransactions);
@@ -855,6 +953,7 @@
                                 <span>${this.formatDateTime(tx.datetime)}</span>
                                 <span>${(tx.liter || 0).toFixed(2)} L</span>
                                 <span>${tx.odometer ? `ODO ${tx.odometer}` : 'ODO -'}</span>
+                                ${tx.location ? `<span>${this.escapeHtml(tx.location)}</span>` : ''}
                             </div>
                             ${efficiencyInfo ? `<div class="bbm-efficiency-line">${efficiencyInfo.distance.toFixed(0)} km • ${efficiencyInfo.kpl.toFixed(1)} km/L</div>` : ''}
                             ${tx.note ? `<p class="bbm-history-note">${this.escapeHtml(tx.note)}</p>` : ''}
@@ -975,6 +1074,50 @@
             `;
         },
 
+        renderStationInsights: function () {
+            const container = document.getElementById('bbm-station-body');
+            if (!container) return;
+
+            const stats = this.getStationInsights(this.getCurrentMonthKey());
+            if (!stats.topLocation) {
+                container.innerHTML = `
+                    <div class="bbm-empty-state">
+                        <i class="ph ph-map-pin"></i>
+                        <p>Isi lokasi SPBU saat menambah transaksi agar insight favorit muncul di sini.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="bbm-station-main">
+                    <div class="bbm-station-pin"><i class="ph ph-map-pin"></i></div>
+                    <div>
+                        <strong>${this.escapeHtml(stats.topLocation)}</strong>
+                        <p>${stats.count}x dipakai • rata-rata ${this.formatCurrency(stats.avgAmount)}</p>
+                    </div>
+                </div>
+                <div class="bbm-station-grid">
+                    <div>
+                        <span>Nominal</span>
+                        <strong>${stats.amountConsistencyLabel}</strong>
+                    </div>
+                    <div>
+                        <span>Rentang</span>
+                        <strong>${this.formatCurrency(stats.minAmount)} - ${this.formatCurrency(stats.maxAmount)}</strong>
+                    </div>
+                    <div>
+                        <span>Total Transaksi</span>
+                        <strong>${stats.count}x</strong>
+                    </div>
+                    <div>
+                        <span>SPBU Lain</span>
+                        <strong>${stats.locationsCount} lokasi</strong>
+                    </div>
+                </div>
+            `;
+        },
+
         evaluateReminder: function (silent = false) {
             const state = this.getReminderState();
             const signature = `${state.due}|${state.lastTxId}|${state.remainingDays}|${state.lastFillLabel}`;
@@ -1087,6 +1230,96 @@
                 totalFuel,
                 efficiencyMap
             };
+        },
+
+        getStationInsights: function (monthKey) {
+            const rows = this.transactions.filter((tx) => this.getMonthKey(tx.datetime) === monthKey && (tx.location || '').trim());
+            const locations = new Map();
+
+            rows.forEach((tx) => {
+                const location = (tx.location || '').trim();
+                if (!location) return;
+
+                const amount = Number(tx.totalBayar) || 0;
+                const entry = locations.get(location) || { count: 0, amounts: [], total: 0 };
+                entry.count += 1;
+                entry.amounts.push(amount);
+                entry.total += amount;
+                locations.set(location, entry);
+            });
+
+            let topLocation = '';
+            let topEntry = null;
+            for (const [location, entry] of locations.entries()) {
+                if (!topEntry || entry.count > topEntry.count || (entry.count === topEntry.count && entry.total > topEntry.total)) {
+                    topLocation = location;
+                    topEntry = entry;
+                }
+            }
+
+            if (!topEntry) {
+                return {
+                    topLocation: '',
+                    count: 0,
+                    avgAmount: 0,
+                    minAmount: 0,
+                    maxAmount: 0,
+                    amountConsistencyLabel: '-',
+                    locationsCount: 0
+                };
+            }
+
+            const avgAmount = topEntry.total / topEntry.count;
+            const minAmount = Math.min(...topEntry.amounts);
+            const maxAmount = Math.max(...topEntry.amounts);
+            const variance = topEntry.amounts.reduce((sum, amount) => sum + Math.pow(amount - avgAmount, 2), 0) / topEntry.count;
+            const stdDev = Math.sqrt(variance);
+            const consistencyRatio = avgAmount > 0 ? (stdDev / avgAmount) * 100 : 0;
+            const amountConsistencyLabel = consistencyRatio <= 8 ? 'Stabil' : consistencyRatio <= 18 ? 'Lumayan Stabil' : 'Variatif';
+
+            return {
+                topLocation,
+                count: topEntry.count,
+                avgAmount,
+                minAmount,
+                maxAmount,
+                amountConsistencyLabel,
+                locationsCount: locations.size
+            };
+        },
+
+        getUniqueLocations: function () {
+            const locations = new Set();
+
+            this.transactions.forEach((tx) => {
+                const location = (tx.location || '').trim();
+                if (location) locations.add(location);
+            });
+
+            return Array.from(locations).sort((a, b) => a.localeCompare(b, 'id'));
+        },
+
+        buildMonthLocationMap: function (monthsCount = 6) {
+            const result = [];
+
+            for (let offset = monthsCount - 1; offset >= 0; offset -= 1) {
+                const date = new Date();
+                date.setMonth(date.getMonth() - offset, 1);
+                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                const monthRows = this.transactions.filter((tx) => this.getMonthKey(tx.datetime) === monthKey);
+                const locationStats = this.getStationInsights(monthKey);
+
+                result.push({
+                    key: monthKey,
+                    label: date.toLocaleDateString('id-ID', { month: 'short', year: '2-digit' }),
+                    totalTx: monthRows.length,
+                    topLocation: locationStats.topLocation,
+                    countLocations: locationStats.locationsCount,
+                    consistencyLabel: locationStats.amountConsistencyLabel
+                });
+            }
+
+            return result.filter((item) => item.totalTx > 0 || item.topLocation);
         },
 
         buildMonthlySeries: function (monthsCount = 6) {
@@ -1211,13 +1444,14 @@
         },
 
         exportTransactionsCsv: function () {
-            const header = ['Tanggal', 'Jam', 'BBM', 'Total Bayar', 'Liter', 'Odometer', 'Catatan', 'Vehicle Type', 'Vehicle Subtype'];
+            const header = ['Tanggal', 'Jam', 'BBM', 'Lokasi SPBU', 'Total Bayar', 'Liter', 'Odometer', 'Catatan', 'Vehicle Type', 'Vehicle Subtype'];
             const rows = this.transactions.map((tx) => {
                 const date = new Date(tx.datetime);
                 return [
                     date.toLocaleDateString('id-ID'),
                     date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
                     tx.fuelLabel || this.getFuelLabel(tx.fuelKey),
+                    tx.location || '',
                     String(tx.totalBayar || 0),
                     (Number(tx.liter) || 0).toFixed(2),
                     tx.odometer ?? '',
@@ -1234,6 +1468,7 @@
 
         backupTransactionsJson: function () {
             const payload = {
+                version: 1,
                 exportedAt: new Date().toISOString(),
                 setup: this.setup,
                 prices: this.prices,
@@ -1242,6 +1477,86 @@
 
             this.downloadFile(`bbm-backup-${this.getCurrentMonthKey()}.json`, JSON.stringify(payload, null, 2), 'application/json;charset=utf-8;');
             this.notify('Backup JSON BBM berhasil dibuat.');
+        },
+
+        handleRestoreFile: function (event) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                try {
+                    const parsed = JSON.parse(String(reader.result || '{}'));
+                    this.restoreFromBackup(parsed);
+                } catch (error) {
+                    console.error('BBM restore parse error', error);
+                    this.notify('File backup tidak valid.');
+                } finally {
+                    event.target.value = '';
+                }
+            };
+            reader.readAsText(file);
+        },
+
+        restoreFromBackup: function (payload) {
+            const normalized = this.normalizeBackupPayload(payload);
+            if (!normalized) {
+                this.notify('Struktur backup tidak dikenali.');
+                return;
+            }
+
+            const confirmed = confirm('Restore backup BBM akan menimpa data BBM saat ini. Lanjutkan?');
+            if (!confirmed) return;
+
+            this.setup = normalized.setup;
+            this.prices = normalized.prices;
+            this.transactions = normalized.transactions.sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
+
+            this.writeStore(BBM_KEYS.setup, this.setup);
+            this.writeStore(BBM_KEYS.prices, this.prices);
+            this.writeStore(BBM_KEYS.transactions, this.transactions);
+
+            this.renderAll();
+            this.notify('Backup BBM berhasil dipulihkan.');
+        },
+
+        normalizeBackupPayload: function (payload) {
+            if (!payload || typeof payload !== 'object') return null;
+
+            const transactions = Array.isArray(payload.transactions) ? payload.transactions : [];
+            const prices = payload.prices && typeof payload.prices === 'object' ? { ...BBM_DEFAULT_PRICES, ...payload.prices } : { ...this.prices };
+            const setup = payload.setup && typeof payload.setup === 'object' ? {
+                vehicleType: '',
+                vehicleSubtype: '',
+                monthlyBudget: 0,
+                reminderDays: 14,
+                reminderKm: 250,
+                setupCompleted: false,
+                ...payload.setup
+            } : { ...this.setup };
+
+            const normalizedTransactions = transactions
+                .filter((item) => item && (item.id || item.datetime) && item.totalBayar)
+                .map((item) => ({
+                    ...item,
+                    id: item.id || ((typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-${Math.random().toString(16).slice(2)}`),
+                    datetime: item.datetime || new Date().toISOString(),
+                    fuelLabel: item.fuelLabel || this.getFuelLabel(item.fuelKey),
+                    location: item.location || '',
+                    liter: Number(item.liter) || 0,
+                    totalBayar: Number(item.totalBayar) || 0,
+                    pricePerLiter: Number(item.pricePerLiter) || 0,
+                    odometer: item.odometer ?? null,
+                    note: item.note || '',
+                    vehicleType: item.vehicleType || setup.vehicleType || '',
+                    vehicleSubtype: item.vehicleSubtype || setup.vehicleSubtype || ''
+                }));
+
+            return {
+                setup,
+                prices,
+                transactions: normalizedTransactions
+            };
         },
 
         downloadFile: function (filename, content, mimeType) {
@@ -1286,6 +1601,7 @@
             const datetimeInput = document.getElementById('bbm-form-datetime');
             const totalInput = document.getElementById('bbm-form-total');
             const fuelInput = document.getElementById('bbm-form-fuel');
+            const locationInput = document.getElementById('bbm-form-location');
             const odoInput = document.getElementById('bbm-form-odometer');
             const noteInput = document.getElementById('bbm-form-note');
             const deleteBtn = document.getElementById('bbm-form-delete');
@@ -1296,6 +1612,7 @@
                 idInput.value = '';
                 datetimeInput.value = this.toDateTimeLocal(new Date());
                 fuelInput.value = this.selectedFuelKey || 'pertalite';
+                if (locationInput) locationInput.value = '';
                 deleteBtn.style.display = 'none';
             } else {
                 const tx = this.transactions.find((item) => item.id === id);
@@ -1306,6 +1623,7 @@
                 datetimeInput.value = this.toDateTimeLocal(new Date(tx.datetime));
                 totalInput.value = tx.totalBayar;
                 fuelInput.value = tx.fuelKey || 'pertalite';
+                if (locationInput) locationInput.value = tx.location || '';
                 odoInput.value = tx.odometer || '';
                 noteInput.value = tx.note || '';
                 deleteBtn.style.display = 'inline-flex';
