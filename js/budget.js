@@ -7,11 +7,14 @@ const budgetManager = {
     selectedMonth: null,
     topCategoryEntries: [],
     monthAnimationTimer: null,
+    recentInterestFundIds: [],
+    interestVisualTimer: null,
 
     init: function () {
         this.accounts = this.normalizeAccounts(Storage.getBudgetAccounts());
         this.migrateLegacyBaseBalance();
         this.transactions = this.normalizeTransactions(Storage.getBudgetTransactions());
+        this.applyPendingAccountInterest();
         Storage.setBudgetTransactions(this.transactions);
         Storage.setBudgetAccounts(this.accounts);
         this.monthlyLimit = Storage.getBudgetLimit();
@@ -108,9 +111,9 @@ const budgetManager = {
 
     getDefaultBudgetAccounts: function () {
         return [
-            { id: 'cash-default', name: 'Cash', type: 'cash', initialBalance: 0 },
-            { id: 'bank-default', name: 'Bank Utama', type: 'banking', initialBalance: 0 },
-            { id: 'ewallet-default', name: 'E-Wallet Utama', type: 'ewallet', initialBalance: 0 }
+            { id: 'cash-default', name: 'Cash', type: 'cash', initialBalance: 0, interestEnabled: false, interestRatePa: 0, interestPayoutFrequency: 'monthly', interestLastAppliedAt: null },
+            { id: 'bank-default', name: 'Bank Utama', type: 'banking', initialBalance: 0, interestEnabled: false, interestRatePa: 0, interestPayoutFrequency: 'monthly', interestLastAppliedAt: null },
+            { id: 'ewallet-default', name: 'E-Wallet Utama', type: 'ewallet', initialBalance: 0, interestEnabled: false, interestRatePa: 0, interestPayoutFrequency: 'monthly', interestLastAppliedAt: null }
         ];
     },
 
@@ -122,15 +125,69 @@ const budgetManager = {
         return 'other';
     },
 
+    normalizeInterestFrequency: function (frequency) {
+        const normalized = String(frequency || '').toLowerCase();
+        return normalized === 'daily' ? 'daily' : 'monthly';
+    },
+
+    normalizeInterestRatePa: function (rate) {
+        const numeric = Number(rate);
+        if (!Number.isFinite(numeric) || numeric <= 0) return 0;
+        return Math.max(0, Math.min(100, numeric));
+    },
+
+    toLocalDateKey: function (value) {
+        const date = value instanceof Date ? value : new Date(value);
+        if (Number.isNaN(date.getTime())) return '';
+        const year = date.getFullYear();
+        const month = `${date.getMonth() + 1}`.padStart(2, '0');
+        const day = `${date.getDate()}`.padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    },
+
+    parseLocalDateKey: function (dateKey) {
+        if (!dateKey || typeof dateKey !== 'string') return null;
+        const parts = dateKey.split('-').map(Number);
+        if (parts.length !== 3 || parts.some(Number.isNaN)) return null;
+        return new Date(parts[0], parts[1] - 1, parts[2]);
+    },
+
+    getStartOfDay: function (value) {
+        const date = value instanceof Date ? new Date(value) : new Date(value);
+        if (Number.isNaN(date.getTime())) return null;
+        return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    },
+
+    getCurrentInterestMarkerDate: function (frequency) {
+        const now = new Date();
+        if (this.normalizeInterestFrequency(frequency) === 'daily') {
+            return this.toLocalDateKey(this.getStartOfDay(now));
+        }
+        return this.toLocalDateKey(new Date(now.getFullYear(), now.getMonth(), 1));
+    },
+
     normalizeAccounts: function (accounts) {
         const source = Array.isArray(accounts) ? accounts : [];
         const cleaned = source
-            .map((account) => ({
-                id: account?.id || ((typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-${Math.random().toString(16).slice(2)}`),
-                name: String(account?.name || '').trim() || 'Sumber Dana',
-                type: this.normalizeAccountType(account?.type),
-                initialBalance: Number(account?.initialBalance) || 0
-            }))
+            .map((account) => {
+                const type = this.normalizeAccountType(account?.type);
+                const rawEnabled = !!account?.interestEnabled;
+                const payoutFrequency = this.normalizeInterestFrequency(account?.interestPayoutFrequency);
+                const ratePa = this.normalizeInterestRatePa(account?.interestRatePa);
+                const marker = this.toLocalDateKey(account?.interestLastAppliedAt);
+                const interestEnabled = type === 'banking' && rawEnabled && ratePa > 0;
+
+                return {
+                    id: account?.id || ((typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-${Math.random().toString(16).slice(2)}`),
+                    name: String(account?.name || '').trim() || 'Sumber Dana',
+                    type,
+                    initialBalance: Number(account?.initialBalance) || 0,
+                    interestEnabled,
+                    interestRatePa: interestEnabled ? ratePa : 0,
+                    interestPayoutFrequency: payoutFrequency,
+                    interestLastAppliedAt: interestEnabled ? (marker || this.getCurrentInterestMarkerDate(payoutFrequency)) : null
+                };
+            })
             .filter((account, index, arr) => arr.findIndex((a) => a.id === account.id) === index);
 
         if (cleaned.length > 0) return cleaned;
@@ -185,6 +242,164 @@ const budgetManager = {
         return balances;
     },
 
+    calculateAccountBalanceAtDate: function (accountId, upToDate, transactions = this.transactions) {
+        const account = this.getAccountById(accountId);
+        if (!account) return 0;
+
+        const limitDate = upToDate instanceof Date ? upToDate : new Date(upToDate);
+        if (Number.isNaN(limitDate.getTime())) return Number(account.initialBalance) || 0;
+
+        let balance = Number(account.initialBalance) || 0;
+        transactions.forEach((tx) => {
+            if (tx.fundSourceId !== accountId) return;
+            const txDate = this.getTransactionDate(tx);
+            if (Number.isNaN(txDate.getTime()) || txDate > limitDate) return;
+
+            const amount = Number(tx.amount) || 0;
+            if (tx.type === 'income') {
+                balance += amount;
+            } else {
+                balance -= amount;
+            }
+        });
+
+        return balance;
+    },
+
+    buildInterestTransaction: function (account, amount, applyDate, interestKey) {
+        return {
+            id: (typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+            type: 'income',
+            amount,
+            category: 'other_income',
+            note: `Bunga ${account.name} (${String(account.interestRatePa).replace('.', ',')}% p.a.)`,
+            date: new Date(applyDate.getFullYear(), applyDate.getMonth(), applyDate.getDate(), 12, 0, 0).toISOString(),
+            fundSourceId: account.id,
+            isInterest: true,
+            isSystemGenerated: true,
+            interestKey,
+            interestFrequency: account.interestPayoutFrequency,
+            source: 'bank_interest'
+        };
+    },
+
+    applyPendingAccountInterest: function () {
+        const now = new Date();
+        const todayStart = this.getStartOfDay(now);
+        if (!todayStart) return false;
+
+        let changed = false;
+        const appendedTransactions = [];
+        const creditedFundIds = new Set();
+        const existingKeys = new Set(
+            (Array.isArray(this.transactions) ? this.transactions : [])
+                .filter(tx => tx?.isInterest && tx?.interestKey)
+                .map(tx => tx.interestKey)
+        );
+
+        this.accounts.forEach((account) => {
+            if (account.type !== 'banking') return;
+            if (!account.interestEnabled) return;
+
+            const rate = this.normalizeInterestRatePa(account.interestRatePa);
+            if (rate <= 0) return;
+
+            const frequency = this.normalizeInterestFrequency(account.interestPayoutFrequency);
+            let marker = this.parseLocalDateKey(account.interestLastAppliedAt);
+
+            if (!marker || Number.isNaN(marker.getTime())) {
+                account.interestLastAppliedAt = this.getCurrentInterestMarkerDate(frequency);
+                changed = true;
+                return;
+            }
+
+            if (frequency === 'daily') {
+                let cursor = this.getStartOfDay(marker);
+                while (cursor < todayStart) {
+                    cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + 1);
+                    const dayKey = this.toLocalDateKey(cursor);
+                    const interestKey = `${account.id}|daily|${dayKey}`;
+                    if (existingKeys.has(interestKey)) continue;
+
+                    const referenceBalance = this.calculateAccountBalanceAtDate(
+                        account.id,
+                        new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate(), 23, 59, 59),
+                        [...this.transactions, ...appendedTransactions]
+                    );
+
+                    if (referenceBalance <= 0) continue;
+
+                    const interestAmount = Math.round((referenceBalance * (rate / 100)) / 365);
+                    if (interestAmount <= 0) continue;
+
+                    appendedTransactions.push(this.buildInterestTransaction(account, interestAmount, cursor, interestKey));
+                    existingKeys.add(interestKey);
+                    creditedFundIds.add(account.id);
+                    changed = true;
+                }
+
+                const newMarker = this.toLocalDateKey(todayStart);
+                if (account.interestLastAppliedAt !== newMarker) {
+                    account.interestLastAppliedAt = newMarker;
+                    changed = true;
+                }
+                return;
+            }
+
+            let monthCursor = new Date(marker.getFullYear(), marker.getMonth(), 1);
+            const currentMonthStart = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1);
+
+            while (monthCursor < currentMonthStart) {
+                const payoutDate = new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 1);
+                const monthKey = `${payoutDate.getFullYear()}-${`${payoutDate.getMonth() + 1}`.padStart(2, '0')}`;
+                const interestKey = `${account.id}|monthly|${monthKey}`;
+
+                if (!existingKeys.has(interestKey)) {
+                    const referenceBalance = this.calculateAccountBalanceAtDate(
+                        account.id,
+                        new Date(payoutDate.getFullYear(), payoutDate.getMonth(), payoutDate.getDate(), 0, 0, 0),
+                        [...this.transactions, ...appendedTransactions]
+                    );
+
+                    if (referenceBalance > 0) {
+                        const interestAmount = Math.round((referenceBalance * (rate / 100)) / 12);
+                        if (interestAmount > 0) {
+                            appendedTransactions.push(this.buildInterestTransaction(account, interestAmount, payoutDate, interestKey));
+                            existingKeys.add(interestKey);
+                            creditedFundIds.add(account.id);
+                            changed = true;
+                        }
+                    }
+                }
+
+                monthCursor = payoutDate;
+            }
+
+            const monthlyMarker = this.toLocalDateKey(currentMonthStart);
+            if (account.interestLastAppliedAt !== monthlyMarker) {
+                account.interestLastAppliedAt = monthlyMarker;
+                changed = true;
+            }
+        });
+
+        if (appendedTransactions.length > 0) {
+            this.transactions = [...this.transactions, ...appendedTransactions];
+        }
+
+        this.recentInterestFundIds = Array.from(creditedFundIds);
+
+        return changed;
+    },
+
+    persistBudgetSilently: function () {
+        try {
+            localStorage.setItem('unilife_budget_transactions', JSON.stringify(this.transactions));
+            localStorage.setItem('unilife_budget_accounts', JSON.stringify(this.accounts));
+        } catch (error) {
+            console.error('Failed to persist budget state silently', error);
+        }
+    },
+
     migrateLegacyBaseBalance: function () {
         const oldBaseBalance = Number(Storage.getBudgetBaseBalance()) || 0;
         const hasAccountsKey = !!localStorage.getItem('unilife_budget_accounts');
@@ -204,6 +419,11 @@ const budgetManager = {
         this.accounts = this.normalizeAccounts(this.accounts);
         this.baseBalance = this.getTotalInitialBalance();
         this.transactions = this.normalizeTransactions(this.transactions);
+        const interestApplied = this.applyPendingAccountInterest();
+        if (interestApplied) {
+            this.persistBudgetSilently();
+            window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_tx' } }));
+        }
 
         const currentMonthTx = this.getTransactionsByMonth(this.selectedMonth);
         const previousMonth = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth() - 1, 1);
@@ -224,6 +444,17 @@ const budgetManager = {
 
         this.renderManualBalanceInfo();
         this.renderFundBreakdown();
+        if (this.interestVisualTimer) {
+            clearTimeout(this.interestVisualTimer);
+            this.interestVisualTimer = null;
+        }
+        if (this.recentInterestFundIds.length > 0) {
+            this.interestVisualTimer = setTimeout(() => {
+                this.recentInterestFundIds = [];
+                this.renderFundBreakdown();
+                this.interestVisualTimer = null;
+            }, 2400);
+        }
 
         this.renderMonthHeader();
 
@@ -512,26 +743,57 @@ const budgetManager = {
         infoEl.innerText = `${this.accounts.length} sumber dana aktif • Saldo awal total: ${this.formatCurrency(this.baseBalance)}`;
     },
 
+    getFundTypeLabel: function (type) {
+        const normalized = this.normalizeAccountType(type);
+        if (normalized === 'cash') return 'Cash';
+        if (normalized === 'banking') return 'Banking';
+        if (normalized === 'ewallet') return 'E-Wallet';
+        return 'Lainnya';
+    },
+
+    getFundInterestVisual: function (account) {
+        if (account?.type !== 'banking') {
+            return { label: this.getFundTypeLabel(account?.type), className: 'budget-fund-badge' };
+        }
+
+        const rate = this.normalizeInterestRatePa(account?.interestRatePa);
+        const frequency = this.normalizeInterestFrequency(account?.interestPayoutFrequency);
+
+        if (account?.interestEnabled && rate > 0) {
+            const rateText = String(rate).replace('.', ',');
+            const freqText = frequency === 'daily' ? 'cair harian' : 'cair bulanan';
+            return {
+                label: `${rateText}% p.a. • ${freqText}`,
+                className: 'budget-fund-badge budget-fund-badge-interest'
+            };
+        }
+
+        return {
+            label: 'Banking • tanpa bunga',
+            className: 'budget-fund-badge budget-fund-badge-muted'
+        };
+    },
+
     renderFundBreakdown: function () {
         const container = document.getElementById('budget-fund-breakdown');
         if (!container) return;
 
         const balances = this.calculateAccountBalances(this.transactions);
         container.innerHTML = '';
+        container.classList.add('budget-fund-grid');
 
         this.accounts.forEach((account) => {
             const value = Number(balances[account.id]) || 0;
             const isMinus = value < 0;
             const chip = document.createElement('div');
-            chip.style.flex = '1';
-            chip.style.minWidth = '130px';
-            chip.style.background = 'var(--bg-main)';
-            chip.style.border = '1px solid var(--border-color)';
-            chip.style.borderRadius = '12px';
-            chip.style.padding = '0.65rem 0.7rem';
+            const interestVisual = this.getFundInterestVisual(account);
+            const hasInterestPulse = this.recentInterestFundIds.includes(account.id);
+            chip.className = `budget-fund-card${isMinus ? ' is-minus' : ''}${hasInterestPulse ? ' has-interest-pulse' : ''}`;
             chip.innerHTML = `
-                <p style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:0.2rem;">${account.name}</p>
-                <p style="font-size:0.95rem; font-weight:700; color:${isMinus ? '#ef4444' : 'var(--text-main)'};">${this.formatCurrency(value)}</p>
+                ${hasInterestPulse ? '<span class="budget-fund-interest-toast">+Bunga cair</span>' : ''}
+                <p class="budget-fund-name">${account.name}</p>
+                <p class="budget-fund-value">${this.formatCurrency(value)}</p>
+                <span class="${interestVisual.className}">${interestVisual.label}</span>
             `;
             container.appendChild(chip);
         });
@@ -936,11 +1198,17 @@ const budgetManager = {
         this.accounts.forEach((account) => {
             const row = document.createElement('div');
             row.className = 'budget-account-row';
+            row.dataset.id = account.id;
             row.style.display = 'grid';
-            row.style.gridTemplateColumns = '1.5fr 1fr 1fr auto';
+            row.style.gridTemplateColumns = '1.4fr 1fr 1fr auto';
             row.style.gap = '0.5rem';
             row.style.alignItems = 'center';
             row.style.marginBottom = '0.5rem';
+
+            const isBanking = account.type === 'banking';
+            const interestEnabled = !!account.interestEnabled;
+            const ratePa = this.normalizeInterestRatePa(account.interestRatePa);
+            const payoutFrequency = this.normalizeInterestFrequency(account.interestPayoutFrequency);
 
             row.innerHTML = `
                 <input type="text" class="budget-account-name" value="${account.name}" data-id="${account.id}" placeholder="Nama sumber dana" required>
@@ -954,7 +1222,46 @@ const budgetManager = {
                 <button type="button" class="btn btn-outline" data-remove-id="${account.id}" style="padding:0.45rem 0.55rem; color: var(--danger); border-color: var(--danger);">
                     <i class="ph ph-trash"></i>
                 </button>
+                <div style="grid-column:1 / -1; display:grid; grid-template-columns:auto 1fr 1fr; gap:0.45rem; align-items:center; padding:0.45rem 0.55rem; border:1px solid var(--border-color); border-radius:10px; background:var(--bg-main);">
+                    <label style="display:inline-flex; align-items:center; gap:0.35rem; font-size:0.76rem; font-weight:600; color:var(--text-main);">
+                        <input type="checkbox" class="budget-account-interest-enabled" ${interestEnabled ? 'checked' : ''} ${isBanking ? '' : 'disabled'}>
+                        Bunga
+                    </label>
+                    <input type="number" class="budget-account-interest-rate" min="0" max="100" step="0.01" placeholder="% p.a" value="${ratePa || ''}" ${isBanking && interestEnabled ? '' : 'disabled'} style="padding:0.45rem 0.55rem; font-size:0.8rem;">
+                    <select class="budget-account-interest-frequency" ${isBanking && interestEnabled ? '' : 'disabled'} style="padding:0.45rem 0.55rem; font-size:0.8rem;">
+                        <option value="daily" ${payoutFrequency === 'daily' ? 'selected' : ''}>Cair harian</option>
+                        <option value="monthly" ${payoutFrequency !== 'daily' ? 'selected' : ''}>Cair bulanan</option>
+                    </select>
+                </div>
             `;
+
+            const typeSelect = row.querySelector('.budget-account-type');
+            const interestToggle = row.querySelector('.budget-account-interest-enabled');
+            const interestRateInput = row.querySelector('.budget-account-interest-rate');
+            const interestFrequencySelect = row.querySelector('.budget-account-interest-frequency');
+
+            const syncInterestAvailability = () => {
+                const type = this.normalizeAccountType(typeSelect?.value);
+                const canUseInterest = type === 'banking';
+                if (interestToggle) {
+                    interestToggle.disabled = !canUseInterest;
+                    if (!canUseInterest) interestToggle.checked = false;
+                }
+
+                const enableFields = canUseInterest && !!interestToggle?.checked;
+                if (interestRateInput) {
+                    interestRateInput.disabled = !enableFields;
+                    if (!enableFields) interestRateInput.value = '';
+                }
+                if (interestFrequencySelect) {
+                    interestFrequencySelect.disabled = !enableFields;
+                    if (!enableFields) interestFrequencySelect.value = 'monthly';
+                }
+            };
+
+            if (typeSelect) typeSelect.onchange = syncInterestAvailability;
+            if (interestToggle) interestToggle.onchange = syncInterestAvailability;
+            syncInterestAvailability();
 
             const removeBtn = row.querySelector(`[data-remove-id="${account.id}"]`);
             if (removeBtn) {
@@ -998,7 +1305,11 @@ const budgetManager = {
             id: (typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
             name: 'Sumber Dana Baru',
             type: 'cash',
-            initialBalance: 0
+            initialBalance: 0,
+            interestEnabled: false,
+            interestRatePa: 0,
+            interestPayoutFrequency: 'monthly',
+            interestLastAppliedAt: null
         });
         this.renderAccountRows();
     },
@@ -1006,16 +1317,49 @@ const budgetManager = {
     saveBaseBalance: function (e) {
         e.preventDefault();
 
-        const names = Array.from(document.querySelectorAll('.budget-account-name'));
-        const types = Array.from(document.querySelectorAll('.budget-account-type'));
-        const initials = Array.from(document.querySelectorAll('.budget-account-initial'));
+        const rows = Array.from(document.querySelectorAll('.budget-account-row'));
+        const previousById = new Map(this.accounts.map((account) => [account.id, account]));
 
-        const nextAccounts = names.map((input, index) => ({
-            id: input.dataset.id,
-            name: String(input.value || '').trim() || 'Sumber Dana',
-            type: this.normalizeAccountType(types[index]?.value),
-            initialBalance: Number(initials[index]?.value) || 0
-        }));
+        const nextAccounts = rows.map((row) => {
+            const id = row.dataset.id;
+            const previous = previousById.get(id) || null;
+
+            const nameInput = row.querySelector('.budget-account-name');
+            const typeInput = row.querySelector('.budget-account-type');
+            const initialInput = row.querySelector('.budget-account-initial');
+            const interestEnabledInput = row.querySelector('.budget-account-interest-enabled');
+            const interestRateInput = row.querySelector('.budget-account-interest-rate');
+            const interestFrequencyInput = row.querySelector('.budget-account-interest-frequency');
+
+            const type = this.normalizeAccountType(typeInput?.value);
+            const ratePa = this.normalizeInterestRatePa(interestRateInput?.value);
+            const frequency = this.normalizeInterestFrequency(interestFrequencyInput?.value);
+            const isBanking = type === 'banking';
+            const rawEnabled = !!interestEnabledInput?.checked;
+            const interestEnabled = isBanking && rawEnabled && ratePa > 0;
+
+            let interestLastAppliedAt = null;
+            if (interestEnabled) {
+                const previousEnabled = previous?.interestEnabled && previous?.type === 'banking';
+                const previousFrequency = this.normalizeInterestFrequency(previous?.interestPayoutFrequency);
+                if (previousEnabled && previousFrequency === frequency && previous?.interestLastAppliedAt) {
+                    interestLastAppliedAt = this.toLocalDateKey(previous.interestLastAppliedAt);
+                } else {
+                    interestLastAppliedAt = this.getCurrentInterestMarkerDate(frequency);
+                }
+            }
+
+            return {
+                id,
+                name: String(nameInput?.value || '').trim() || 'Sumber Dana',
+                type,
+                initialBalance: Number(initialInput?.value) || 0,
+                interestEnabled,
+                interestRatePa: interestEnabled ? ratePa : 0,
+                interestPayoutFrequency: frequency,
+                interestLastAppliedAt
+            };
+        });
 
         this.accounts = this.normalizeAccounts(nextAccounts);
         this.transactions = this.normalizeTransactions(this.transactions);

@@ -2967,6 +2967,172 @@ select:focus {
     color: #ef4444;
 }
 
+.budget-fund-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.65rem;
+    margin-top: 0.8rem;
+}
+
+.budget-fund-card {
+    min-width: 0;
+    border: 1px solid color-mix(in srgb, var(--border-color) 88%, rgba(37, 99, 235, 0.2));
+    border-radius: 14px;
+    padding: 0.65rem 0.7rem;
+    background:
+        radial-gradient(circle at 88% 14%, rgba(59, 130, 246, 0.12), transparent 55%),
+        linear-gradient(165deg, color-mix(in srgb, var(--bg-main) 72%, var(--bg-card)), var(--bg-card));
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 0.22rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.budget-fund-card.has-interest-pulse {
+    animation: budgetInterestPulse 0.95s cubic-bezier(0.16, 1, 0.3, 1) 2;
+}
+
+.budget-fund-card.has-interest-pulse::after {
+    content: '';
+    position: absolute;
+    inset: -40%;
+    background: conic-gradient(from 120deg, rgba(56, 189, 248, 0), rgba(56, 189, 248, 0.38), rgba(16, 185, 129, 0.28), rgba(56, 189, 248, 0));
+    animation: budgetInterestSweep 1.15s ease-in-out 1;
+    pointer-events: none;
+}
+
+.budget-fund-interest-toast {
+    position: absolute;
+    top: 0.45rem;
+    right: 0.45rem;
+    z-index: 2;
+    font-size: 0.6rem;
+    font-weight: 800;
+    letter-spacing: 0.32px;
+    text-transform: uppercase;
+    color: #075985;
+    background: linear-gradient(135deg, rgba(186, 230, 253, 0.92), rgba(125, 211, 252, 0.84));
+    border: 1px solid rgba(14, 116, 144, 0.28);
+    border-radius: 999px;
+    padding: 0.12rem 0.44rem;
+    box-shadow: 0 4px 10px rgba(14, 116, 144, 0.2);
+    animation: budgetInterestToast 2.1s ease forwards;
+    pointer-events: none;
+}
+
+.budget-fund-card.is-minus {
+    border-color: color-mix(in srgb, var(--danger) 42%, var(--border-color));
+    background:
+        radial-gradient(circle at 86% 14%, rgba(239, 68, 68, 0.15), transparent 54%),
+        linear-gradient(165deg, color-mix(in srgb, var(--danger-light) 35%, var(--bg-card)), var(--bg-card));
+}
+
+.budget-fund-name {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.42px;
+    line-height: 1.15;
+}
+
+.budget-fund-value {
+    font-size: 0.96rem;
+    font-weight: 750;
+    color: var(--text-main);
+    line-height: 1.15;
+    word-break: break-word;
+}
+
+.budget-fund-card.is-minus .budget-fund-value {
+    color: var(--danger);
+}
+
+.budget-fund-badge {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    max-width: 100%;
+    font-size: 0.63rem;
+    font-weight: 700;
+    letter-spacing: 0.25px;
+    color: var(--text-muted);
+    border-radius: 999px;
+    padding: 0.16rem 0.5rem;
+    border: 1px solid color-mix(in srgb, var(--border-color) 75%, transparent);
+    background: color-mix(in srgb, var(--bg-card) 84%, var(--bg-main));
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.budget-fund-badge-interest {
+    color: #0369a1;
+    border-color: rgba(14, 116, 144, 0.28);
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.16), rgba(14, 165, 233, 0.08));
+}
+
+@keyframes budgetInterestPulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+    }
+
+    50% {
+        transform: scale(1.02);
+        box-shadow: 0 12px 28px rgba(14, 165, 233, 0.24);
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+    }
+}
+
+@keyframes budgetInterestSweep {
+    0% {
+        transform: translateX(-34%) rotate(0deg);
+        opacity: 0;
+    }
+
+    35% {
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateX(34%) rotate(60deg);
+        opacity: 0;
+    }
+}
+
+@keyframes budgetInterestToast {
+    0% {
+        opacity: 0;
+        transform: translateY(6px) scale(0.92);
+    }
+
+    18% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+    75% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(-4px) scale(0.98);
+    }
+}
+
+.budget-fund-badge-muted {
+    color: var(--text-muted);
+    border-style: dashed;
+}
+
 @keyframes budgetWarningIn {
     from {
         opacity: 0;
@@ -3113,6 +3279,34 @@ select:focus {
     background: linear-gradient(180deg, rgba(15, 23, 42, 0.7), rgba(22, 32, 50, 0.95));
 }
 
+[data-theme="dark"] .budget-fund-card {
+    border-color: color-mix(in srgb, var(--border-color) 75%, rgba(148, 163, 184, 0.3));
+    background:
+        radial-gradient(circle at 88% 14%, rgba(59, 130, 246, 0.22), transparent 58%),
+        linear-gradient(165deg, rgba(15, 23, 42, 0.58), rgba(22, 32, 50, 0.94));
+    box-shadow: 0 10px 22px rgba(2, 6, 23, 0.35);
+}
+
+[data-theme="dark"] .budget-fund-card.is-minus {
+    border-color: color-mix(in srgb, var(--danger) 56%, var(--border-color));
+    background:
+        radial-gradient(circle at 86% 14%, rgba(248, 113, 113, 0.22), transparent 55%),
+        linear-gradient(165deg, rgba(69, 10, 10, 0.28), rgba(22, 32, 50, 0.94));
+}
+
+[data-theme="dark"] .budget-fund-badge-interest {
+    color: #bae6fd;
+    border-color: rgba(56, 189, 248, 0.4);
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.3), rgba(2, 132, 199, 0.16));
+}
+
+[data-theme="dark"] .budget-fund-interest-toast {
+    color: #cffafe;
+    background: linear-gradient(135deg, rgba(14, 116, 144, 0.86), rgba(2, 132, 199, 0.7));
+    border-color: rgba(103, 232, 249, 0.36);
+    box-shadow: 0 5px 14px rgba(8, 47, 73, 0.45);
+}
+
 #view-budget.budget-month-animating .premium-budget-card,
 #view-budget.budget-month-animating .budget-insight-shell,
 #view-budget.budget-month-animating #budget-transaction-list .tx-card,
@@ -3151,6 +3345,10 @@ select:focus {
 @media (max-width: 680px) {
     .budget-insight-grid {
         grid-template-columns: 1fr;
+    }
+
+    .budget-fund-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .budget-flow-summary {
@@ -3196,9 +3394,31 @@ select:focus {
     }
 }
 
+@media (max-width: 420px) {
+    .budget-fund-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .budget-fund-badge {
+        white-space: normal;
+        border-radius: 10px;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .budget-reveal-card,
     .view-section.active.budget-premium-view .budget-reveal-card {
+        animation: none !important;
+        opacity: 1;
+        transform: none;
+    }
+
+    .budget-fund-card.has-interest-pulse,
+    .budget-fund-card.has-interest-pulse::after {
+        animation: none !important;
+    }
+
+    .budget-fund-interest-toast {
         animation: none !important;
         opacity: 1;
         transform: none;
