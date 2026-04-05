@@ -2861,6 +2861,55 @@ select:focus {
     color: #10b981;
 }
 
+.budget-inline-warning {
+    display: none;
+    margin-top: 0.5rem;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--border-color));
+    background: linear-gradient(135deg, color-mix(in srgb, var(--danger) 10%, transparent), color-mix(in srgb, var(--danger) 4%, transparent));
+    color: var(--danger);
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.35;
+    padding: 0.5rem 0.65rem;
+    align-items: flex-start;
+    gap: 0.45rem;
+    box-shadow: 0 6px 14px rgba(239, 68, 68, 0.12);
+}
+
+.budget-inline-warning.is-visible {
+    display: flex;
+    animation: budgetWarningIn 0.2s ease;
+}
+
+.budget-inline-warning::before {
+    content: '!';
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--danger);
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+@keyframes budgetWarningIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 .tx-card:hover {
     transform: translateX(4px) scale(1.02);
     box-shadow: var(--shadow-md);

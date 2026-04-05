@@ -896,20 +896,36 @@ const budgetManager = {
     },
 
     previewFundSourceWarning: function () {
+        const warningEl = document.getElementById('budget-fund-warning');
         const sourceSelect = document.getElementById('budget-fund-source');
         const amountInput = document.getElementById('budget-tx-amount');
         const typeInput = document.querySelector('input[name="budget-type"]:checked');
-        if (!sourceSelect || !amountInput || !typeInput || typeInput.value !== 'expense') return;
+        if (!warningEl || !sourceSelect || !amountInput || !typeInput) return;
+
+        if (typeInput.value !== 'expense') {
+            warningEl.classList.remove('is-visible');
+            warningEl.textContent = '';
+            return;
+        }
 
         const selectedSourceId = sourceSelect.value;
         const amount = parseInt(amountInput.value, 10) || 0;
-        if (amount <= 0) return;
+        if (amount <= 0) {
+            warningEl.classList.remove('is-visible');
+            warningEl.textContent = '';
+            return;
+        }
 
         const balances = this.calculateAccountBalances(this.transactions);
         const currentBalance = Number(balances[selectedSourceId]) || 0;
-        if (currentBalance < amount && typeof inboxManager !== 'undefined') {
-            inboxManager.showToast(`Warning: saldo sumber dana kurang (${this.formatCurrency(currentBalance)}), transaksi tetap bisa dilanjutkan.`);
+        if (currentBalance < amount) {
+            warningEl.classList.add('is-visible');
+            warningEl.textContent = `Saldo sumber dana kurang (${this.formatCurrency(currentBalance)}). Kamu tetap bisa lanjut dan saldo akan minus.`;
+            return;
         }
+
+        warningEl.classList.remove('is-visible');
+        warningEl.textContent = '';
     },
 
     renderAccountRows: function () {
@@ -1075,6 +1091,11 @@ const budgetManager = {
 
     closeAddModal: function () {
         document.getElementById('modal-budget-add').classList.remove('active');
+        const warningEl = document.getElementById('budget-fund-warning');
+        if (warningEl) {
+            warningEl.classList.remove('is-visible');
+            warningEl.textContent = '';
+        }
     },
 
     resetBudgetData: function () {
@@ -1149,6 +1170,8 @@ const budgetManager = {
                 document.querySelector('input[name="budget-category-inc"][value="allowance"]').checked = true;
             }
         }
+
+        this.previewFundSourceWarning();
     },
 
     syncFromBbm: function (action, payload) {
