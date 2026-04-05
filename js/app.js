@@ -52,6 +52,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         if (reducedMotion) return;
 
+        // Avoid replaying full child reveal animation on every navigation,
+        // because opacity resets can look like blink/glitch on mobile GPUs.
+        if (section.dataset.revealAnimated === '1') return;
+
         const revealItems = section.querySelectorAll('.card, .schedule-card, .task-swipe-card, .notification-item, .note-card, .stat-card, .attendance-card, .inbox-item, .home-schedule-card');
         revealItems.forEach((item, index) => {
             item.classList.remove('reveal-in');
@@ -59,6 +63,8 @@ document.addEventListener('DOMContentLoaded', () => {
             item.style.setProperty('--reveal-delay', `${stagger}ms`);
             requestAnimationFrame(() => item.classList.add('reveal-in'));
         });
+
+        section.dataset.revealAnimated = '1';
     };
 
     const pushViewHistory = function (targetId) {
@@ -124,9 +130,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 section.classList.remove('active');
             }
 
-            // Clear any inline transform from gesture interactions.
+            // Clear gesture-related temporary styles/classes to prevent visual artifacts.
+            section.classList.remove('edge-back-peek');
             section.style.transform = '';
             section.style.opacity = '';
+            section.style.boxShadow = '';
+            section.style.transition = '';
         });
 
         currentViewId = targetId || currentViewId;
