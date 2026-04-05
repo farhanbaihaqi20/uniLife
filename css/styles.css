@@ -2898,6 +2898,75 @@ select:focus {
     margin-top: 1px;
 }
 
+.budget-flow-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.8rem;
+    margin-bottom: 1.5rem;
+}
+
+.budget-flow-item {
+    min-width: 0;
+    background: var(--bg-main);
+    padding: 0.75rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+}
+
+.budget-flow-text {
+    min-width: 0;
+}
+
+.budget-flow-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    line-height: 1.15;
+    word-break: break-word;
+}
+
+.budget-flow-amount {
+    font-size: 1rem;
+    font-weight: 700;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+.budget-flow-amount-income {
+    color: #10b981;
+}
+
+.budget-flow-amount-expense {
+    color: #ef4444;
+}
+
+.budget-flow-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.budget-flow-icon-income {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+}
+
+.budget-flow-icon-expense {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
 @keyframes budgetWarningIn {
     from {
         opacity: 0;
@@ -3082,6 +3151,23 @@ select:focus {
 @media (max-width: 680px) {
     .budget-insight-grid {
         grid-template-columns: 1fr;
+    }
+
+    .budget-flow-summary {
+        grid-template-columns: 1fr;
+        gap: 0.65rem;
+    }
+
+    .budget-flow-item {
+        padding: 0.7rem;
+    }
+
+    .budget-flow-label {
+        font-size: 0.68rem;
+    }
+
+    .budget-flow-amount {
+        font-size: 0.98rem;
     }
 
     .budget-month-shell {
