@@ -47,6 +47,7 @@
         selectedHistoryMonth: '',
         selectedLocationFilter: 'all',
         selectedFuelKey: 'pertalite',
+        moreActionsBound: false,
 
         init: function () {
             if (this.initialized) return;
@@ -56,6 +57,7 @@
             this.injectHomeEntryPoints();
             this.injectModals();
             this.bindEvents();
+            this.bindMoreActionsEvents();
             this.renderAll();
 
             if (!this.setup.setupCompleted) {
@@ -131,18 +133,25 @@
                         <p class="bbm-subtitle">Pantau pengeluaran BBM dengan cepat dan rapi.</p>
                     </div>
                     <div class="bbm-header-actions">
-                        <button type="button" class="bbm-chip-btn" id="bbm-btn-export-csv">
-                            <i class="ph ph-file-csv"></i> CSV
-                        </button>
-                        <button type="button" class="bbm-chip-btn" id="bbm-btn-backup-json">
-                            <i class="ph ph-download-simple"></i> Backup
-                        </button>
-                        <button type="button" class="bbm-chip-btn" id="bbm-btn-restore-json">
-                            <i class="ph ph-arrow-clockwise"></i> Restore
-                        </button>
                         <button type="button" class="btn btn-primary bbm-btn-add" id="bbm-btn-open-form">
                             <i class="ph ph-plus"></i> Tambah
                         </button>
+                        <div class="bbm-more-wrapper" id="bbm-more-wrapper">
+                            <button type="button" class="bbm-chip-btn bbm-more-toggle" id="bbm-more-toggle" aria-label="Aksi lainnya" aria-expanded="false">
+                                <i class="ph ph-dots-three-outline"></i>
+                            </button>
+                            <div class="bbm-more-menu" id="bbm-more-menu" role="menu" aria-hidden="true">
+                                <button type="button" class="bbm-chip-btn" id="bbm-btn-export-csv" role="menuitem">
+                                    <i class="ph ph-file-csv"></i> CSV
+                                </button>
+                                <button type="button" class="bbm-chip-btn" id="bbm-btn-backup-json" role="menuitem">
+                                    <i class="ph ph-download-simple"></i> Backup
+                                </button>
+                                <button type="button" class="bbm-chip-btn" id="bbm-btn-restore-json" role="menuitem">
+                                    <i class="ph ph-arrow-clockwise"></i> Restore
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -283,7 +292,7 @@
 
                                 <div class="form-group">
                                     <label for="bbm-form-total">Total Bayar (Rp)</label>
-                                    <input type="number" id="bbm-form-total" min="1" required placeholder="Contoh: 50000">
+                                    <input type="text" inputmode="numeric" id="bbm-form-total" required placeholder="Contoh: 50.000">
                                 </div>
 
                                 <div class="bbm-quick-nominal" id="bbm-quick-nominal">
@@ -368,7 +377,7 @@
                                 </div>
                                 <div class="form-group">
                                     <label for="bbm-budget-monthly">Budget Bulanan (Rp)</label>
-                                    <input type="number" id="bbm-budget-monthly" min="0" placeholder="Contoh: 500000" required>
+                                    <input type="text" inputmode="numeric" id="bbm-budget-monthly" placeholder="Contoh: 500.000" required>
                                 </div>
                                 <div class="bbm-setup-grid">
                                     <div class="form-group">
@@ -398,10 +407,11 @@
 
             const fuelInputs = BBM_FUEL_OPTIONS.map((fuel) => {
                 const value = this.prices[fuel.key] || 0;
+                const formattedValue = this.formatNominalInput(value);
                 return `
                     <div class="form-group">
                         <label for="bbm-price-${fuel.key}">${fuel.label}</label>
-                        <input type="number" id="bbm-price-${fuel.key}" min="1" value="${value}" required>
+                        <input type="text" inputmode="numeric" id="bbm-price-${fuel.key}" value="${formattedValue}" required>
                     </div>
                 `;
             }).join('');
@@ -426,8 +436,20 @@
             document.getElementById('bbm-btn-open-form')?.addEventListener('click', () => this.openFormModal());
             document.getElementById('bbm-btn-open-settings')?.addEventListener('click', () => this.openSettingsModal());
             document.getElementById('bbm-btn-open-setup')?.addEventListener('click', () => this.openSetupModal());
-            document.getElementById('bbm-btn-export-csv')?.addEventListener('click', () => this.exportTransactionsCsv());
-            document.getElementById('bbm-btn-backup-json')?.addEventListener('click', () => this.backupTransactionsJson());
+            document.getElementById('bbm-more-toggle')?.addEventListener('click', (event) => this.toggleMoreActions(event));
+            document.getElementById('bbm-btn-export-csv')?.addEventListener('click', () => {
+                this.exportTransactionsCsv();
+                this.closeMoreActions();
+            });
+            document.getElementById('bbm-btn-backup-json')?.addEventListener('click', () => {
+                this.backupTransactionsJson();
+                this.closeMoreActions();
+            });
+            document.getElementById('bbm-btn-restore-json')?.addEventListener('click', () => {
+                document.getElementById('bbm-restore-input')?.click();
+                this.closeMoreActions();
+            });
+            document.getElementById('bbm-restore-input')?.addEventListener('change', (event) => this.handleRestoreFile(event));
 
             document.getElementById('bbm-history-month')?.addEventListener('change', (event) => {
                 this.selectedHistoryMonth = event.target.value;
@@ -444,7 +466,21 @@
                 this.updateLiveLiterEstimate();
             });
 
-            document.getElementById('bbm-form-total')?.addEventListener('input', () => this.updateLiveLiterEstimate());
+            document.getElementById('bbm-form-total')?.addEventListener('input', (event) => {
+                this.applyNominalInputFormatting(event.target);
+                this.updateLiveLiterEstimate();
+            });
+
+            document.getElementById('bbm-budget-monthly')?.addEventListener('input', (event) => {
+                this.applyNominalInputFormatting(event.target);
+            });
+
+            settingsForm?.addEventListener('input', (event) => {
+                const target = event.target;
+                if (!(target instanceof HTMLInputElement)) return;
+                if (!target.id.startsWith('bbm-price-')) return;
+                this.applyNominalInputFormatting(target);
+            });
 
             document.getElementById('bbm-quick-nominal')?.addEventListener('click', (event) => {
                 const button = event.target.closest('button[data-value]');
@@ -455,9 +491,9 @@
 
                 const value = button.getAttribute('data-value');
                 if (value === 'full') {
-                    amountInput.value = this.getFullTankNominal();
+                    amountInput.value = this.formatNominalInput(this.getFullTankNominal());
                 } else {
-                    amountInput.value = value;
+                    amountInput.value = this.formatNominalInput(value);
                 }
 
                 this.updateLiveLiterEstimate();
@@ -518,12 +554,72 @@
             });
         },
 
+        bindMoreActionsEvents: function () {
+            if (this.moreActionsBound) return;
+
+            document.addEventListener('click', (event) => {
+                const wrapper = document.getElementById('bbm-more-wrapper');
+                if (!wrapper || !wrapper.contains(event.target)) {
+                    this.closeMoreActions();
+                }
+            });
+
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    this.closeMoreActions();
+                }
+            });
+
+            document.addEventListener('scroll', () => {
+                const menu = document.getElementById('bbm-more-menu');
+                if (!menu || !menu.classList.contains('is-open')) return;
+                this.closeMoreActions();
+            }, true);
+
+            this.moreActionsBound = true;
+        },
+
+        toggleMoreActions: function (event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+
+            const menu = document.getElementById('bbm-more-menu');
+            const toggle = document.getElementById('bbm-more-toggle');
+            const wrapper = document.getElementById('bbm-more-wrapper');
+            if (!menu || !toggle || !wrapper) return;
+
+            const isOpen = menu.classList.contains('is-open');
+            if (isOpen) {
+                this.closeMoreActions();
+                return;
+            }
+
+            wrapper.classList.add('is-open');
+            menu.classList.add('is-open');
+            menu.setAttribute('aria-hidden', 'false');
+            toggle.setAttribute('aria-expanded', 'true');
+        },
+
+        closeMoreActions: function () {
+            const menu = document.getElementById('bbm-more-menu');
+            const toggle = document.getElementById('bbm-more-toggle');
+            const wrapper = document.getElementById('bbm-more-wrapper');
+            if (!menu || !toggle || !wrapper) return;
+
+            wrapper.classList.remove('is-open');
+            menu.classList.remove('is-open');
+            menu.setAttribute('aria-hidden', 'true');
+            toggle.setAttribute('aria-expanded', 'false');
+        },
+
         saveSetup: function (event) {
             event.preventDefault();
 
             const vehicleType = document.getElementById('bbm-vehicle-type')?.value || '';
             const vehicleSubtype = document.getElementById('bbm-vehicle-subtype')?.value || '';
-            const monthlyBudget = parseInt(document.getElementById('bbm-budget-monthly')?.value || '0', 10) || 0;
+            const monthlyBudget = this.parseNominalInput(document.getElementById('bbm-budget-monthly')?.value || '0');
             const reminderDays = parseInt(document.getElementById('bbm-reminder-days')?.value || '14', 10) || 14;
             const reminderKm = parseInt(document.getElementById('bbm-reminder-km')?.value || '250', 10) || 250;
 
@@ -553,7 +649,7 @@
             const nextPrices = {};
             for (const fuel of BBM_FUEL_OPTIONS) {
                 const input = document.getElementById(`bbm-price-${fuel.key}`);
-                const value = parseInt(input?.value || '0', 10);
+                const value = this.parseNominalInput(input?.value || '0');
                 nextPrices[fuel.key] = value > 0 ? value : (this.prices[fuel.key] || BBM_DEFAULT_PRICES[fuel.key]);
             }
 
@@ -572,7 +668,7 @@
 
             const id = document.getElementById('bbm-form-id')?.value || '';
             const datetime = document.getElementById('bbm-form-datetime')?.value || '';
-            const totalBayar = parseInt(document.getElementById('bbm-form-total')?.value || '0', 10) || 0;
+            const totalBayar = this.parseNominalInput(document.getElementById('bbm-form-total')?.value || '0');
             const fuelKey = document.getElementById('bbm-form-fuel')?.value || 'pertalite';
             const location = (document.getElementById('bbm-form-location')?.value || '').trim();
             const odometerRaw = document.getElementById('bbm-form-odometer')?.value || '';
@@ -1616,6 +1712,7 @@
                 idInput.value = '';
                 datetimeInput.value = this.toDateTimeLocal(new Date());
                 fuelInput.value = this.selectedFuelKey || 'pertalite';
+                totalInput.value = '';
                 if (locationInput) locationInput.value = '';
                 deleteBtn.style.display = 'none';
             } else {
@@ -1625,7 +1722,7 @@
                 title.textContent = 'Edit Transaksi BBM';
                 idInput.value = tx.id;
                 datetimeInput.value = this.toDateTimeLocal(new Date(tx.datetime));
-                totalInput.value = tx.totalBayar;
+                totalInput.value = this.formatNominalInput(tx.totalBayar);
                 fuelInput.value = tx.fuelKey || 'pertalite';
                 if (locationInput) locationInput.value = tx.location || '';
                 odoInput.value = tx.odometer || '';
@@ -1657,7 +1754,7 @@
 
             document.getElementById('bbm-vehicle-type').value = this.setup.vehicleType || '';
             document.getElementById('bbm-vehicle-subtype').value = this.setup.vehicleSubtype || '';
-            document.getElementById('bbm-budget-monthly').value = this.setup.monthlyBudget || '';
+            document.getElementById('bbm-budget-monthly').value = this.formatNominalInput(this.setup.monthlyBudget || '');
             document.getElementById('bbm-reminder-days').value = this.setup.reminderDays || 14;
             document.getElementById('bbm-reminder-km').value = this.setup.reminderKm || 250;
 
@@ -1669,7 +1766,7 @@
         },
 
         updateLiveLiterEstimate: function () {
-            const total = parseInt(document.getElementById('bbm-form-total')?.value || '0', 10) || 0;
+            const total = this.parseNominalInput(document.getElementById('bbm-form-total')?.value || '0');
             const fuel = document.getElementById('bbm-form-fuel')?.value || this.selectedFuelKey || 'pertalite';
             const price = this.prices[fuel] || 0;
             const liter = price > 0 ? total / price : 0;
@@ -1690,6 +1787,54 @@
             };
 
             return map[type]?.[subtype] || (type === 'mobil' ? 200000 : 50000);
+        },
+
+        sanitizeNominalInput: function (value) {
+            return String(value ?? '').replace(/\D+/g, '');
+        },
+
+        parseNominalInput: function (value) {
+            const digits = this.sanitizeNominalInput(value);
+            return digits ? parseInt(digits, 10) : 0;
+        },
+
+        formatNominalInput: function (value) {
+            const parsed = this.parseNominalInput(value);
+            return parsed > 0 ? parsed.toLocaleString('id-ID') : '';
+        },
+
+        getCaretPositionForDigitOffset: function (formattedValue, digitOffset) {
+            if (!formattedValue || digitOffset <= 0) return 0;
+
+            let seenDigits = 0;
+            for (let index = 0; index < formattedValue.length; index += 1) {
+                if (/\d/.test(formattedValue[index])) {
+                    seenDigits += 1;
+                }
+                if (seenDigits >= digitOffset) {
+                    return index + 1;
+                }
+            }
+
+            return formattedValue.length;
+        },
+
+        applyNominalInputFormatting: function (inputEl) {
+            if (!(inputEl instanceof HTMLInputElement)) return;
+
+            const rawValue = inputEl.value || '';
+            const caretStart = inputEl.selectionStart ?? rawValue.length;
+            const digitsBeforeCaret = this.sanitizeNominalInput(rawValue.slice(0, caretStart)).length;
+            const formattedValue = this.formatNominalInput(rawValue);
+
+            inputEl.value = formattedValue;
+
+            if (document.activeElement !== inputEl || typeof inputEl.setSelectionRange !== 'function') {
+                return;
+            }
+
+            const nextCaret = this.getCaretPositionForDigitOffset(formattedValue, digitsBeforeCaret);
+            inputEl.setSelectionRange(nextCaret, nextCaret);
         },
 
         syncKeuangan: function (action, dataBbm) {

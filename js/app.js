@@ -60,6 +60,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Global helper so any module/home quick action can navigate safely.
     window.openView = function (targetId, activeNavTarget = null) {
+        if (typeof budgetManager !== 'undefined' && typeof budgetManager.closeMoreActions === 'function') {
+            budgetManager.closeMoreActions();
+        }
+
         navItems.forEach(nav => nav.classList.remove('active'));
 
         const navTarget = activeNavTarget || targetId;

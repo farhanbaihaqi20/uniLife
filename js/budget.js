@@ -9,6 +9,7 @@ const budgetManager = {
     monthAnimationTimer: null,
     recentInterestFundIds: [],
     interestVisualTimer: null,
+    moreActionsBound: false,
 
     init: function () {
         this.accounts = this.normalizeAccounts(Storage.getBudgetAccounts());
@@ -20,7 +21,69 @@ const budgetManager = {
         this.monthlyLimit = Storage.getBudgetLimit();
         this.baseBalance = this.getTotalInitialBalance();
         this.selectedMonth = this.getInitialSelectedMonth();
+        this.bindMoreActionsEvents();
         this.updateDashboard();
+    },
+
+    bindMoreActionsEvents: function () {
+        if (this.moreActionsBound) return;
+
+        document.addEventListener('click', (event) => {
+            const wrapper = document.getElementById('budget-more-wrapper');
+            if (!wrapper || !wrapper.contains(event.target)) {
+                this.closeMoreActions();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                this.closeMoreActions();
+            }
+        });
+
+        // Close overflow actions when user scrolls to avoid a floating menu that feels detached.
+        document.addEventListener('scroll', () => {
+            const menu = document.getElementById('budget-more-menu');
+            if (!menu || !menu.classList.contains('is-open')) return;
+            this.closeMoreActions();
+        }, true);
+
+        this.moreActionsBound = true;
+    },
+
+    toggleMoreActions: function (event) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        const menu = document.getElementById('budget-more-menu');
+        const toggle = document.getElementById('budget-more-toggle');
+        const wrapper = document.getElementById('budget-more-wrapper');
+        if (!menu || !toggle || !wrapper) return;
+
+        const isOpen = menu.classList.contains('is-open');
+        if (isOpen) {
+            this.closeMoreActions();
+            return;
+        }
+
+        wrapper.classList.add('is-open');
+        menu.classList.add('is-open');
+        menu.setAttribute('aria-hidden', 'false');
+        toggle.setAttribute('aria-expanded', 'true');
+    },
+
+    closeMoreActions: function () {
+        const menu = document.getElementById('budget-more-menu');
+        const toggle = document.getElementById('budget-more-toggle');
+        const wrapper = document.getElementById('budget-more-wrapper');
+        if (!menu || !toggle || !wrapper) return;
+
+        wrapper.classList.remove('is-open');
+        menu.classList.remove('is-open');
+        menu.setAttribute('aria-hidden', 'true');
+        toggle.setAttribute('aria-expanded', 'false');
     },
 
     // --- Data Calculation ---
@@ -107,6 +170,68 @@ const budgetManager = {
 
     formatCurrency: function (amount) {
         return 'Rp ' + amount.toLocaleString('id-ID');
+    },
+
+    sanitizeNominalInput: function (value) {
+        return String(value ?? '').replace(/\D+/g, '');
+    },
+
+    parseNominalInput: function (value) {
+        const digits = this.sanitizeNominalInput(value);
+        return digits ? parseInt(digits, 10) : 0;
+    },
+
+    formatNominalInput: function (value) {
+        const parsed = this.parseNominalInput(value);
+        return parsed > 0 ? parsed.toLocaleString('id-ID') : '';
+    },
+
+    getCaretPositionForDigitOffset: function (formattedValue, digitOffset) {
+        if (!formattedValue || digitOffset <= 0) return 0;
+
+        let seenDigits = 0;
+        for (let index = 0; index < formattedValue.length; index += 1) {
+            if (/\d/.test(formattedValue[index])) {
+                seenDigits += 1;
+            }
+            if (seenDigits >= digitOffset) {
+                return index + 1;
+            }
+        }
+
+        return formattedValue.length;
+    },
+
+    applyNominalInputFormatting: function (inputEl) {
+        if (!(inputEl instanceof HTMLInputElement)) return;
+
+        const rawValue = inputEl.value || '';
+        const caretStart = inputEl.selectionStart ?? rawValue.length;
+        const digitsBeforeCaret = this.sanitizeNominalInput(rawValue.slice(0, caretStart)).length;
+        const formattedValue = this.formatNominalInput(rawValue);
+
+        inputEl.value = formattedValue;
+
+        if (document.activeElement !== inputEl || typeof inputEl.setSelectionRange !== 'function') {
+            return;
+        }
+
+        const nextCaret = this.getCaretPositionForDigitOffset(formattedValue, digitsBeforeCaret);
+        inputEl.setSelectionRange(nextCaret, nextCaret);
+    },
+
+    setNominalInputValue: function (inputId, value) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+        input.value = this.formatNominalInput(value);
+    },
+
+    handleNominalInput: function (inputId, withPreviewWarning = false) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+
+        this.applyNominalInputFormatting(input);
+        if (withPreviewWarning) this.previewFundSourceWarning();
     },
 
     getDefaultBudgetAccounts: function () {
@@ -1171,7 +1296,7 @@ const budgetManager = {
         }
 
         const selectedSourceId = sourceSelect.value;
-        const amount = parseInt(amountInput.value, 10) || 0;
+        const amount = this.parseNominalInput(amountInput.value);
         if (amount <= 0) {
             warningEl.classList.remove('is-visible');
             warningEl.textContent = '';
@@ -1282,7 +1407,7 @@ const budgetManager = {
     // --- Modal Logic ---
 
     openLimitModal: function () {
-        document.getElementById('budget-limit-input').value = this.monthlyLimit > 0 ? this.monthlyLimit : '';
+        this.setNominalInputValue('budget-limit-input', this.monthlyLimit > 0 ? this.monthlyLimit : '');
         document.getElementById('modal-budget-limit').classList.add('active');
         setTimeout(() => document.getElementById('budget-limit-input').focus(), 100);
     },
@@ -1384,7 +1509,7 @@ const budgetManager = {
     saveLimit: function (e) {
         e.preventDefault();
         const rawValue = document.getElementById('budget-limit-input').value;
-        const limit = parseInt(rawValue) || 0;
+        const limit = this.parseNominalInput(rawValue);
 
         Storage.setBudgetLimit(limit);
 
@@ -1399,6 +1524,7 @@ const budgetManager = {
         document.getElementById('budget-modal-title').innerText = i18n.t('budget_add_transaction') || 'Tambah Transaksi';
         document.getElementById('form-budget-add').reset();
         document.getElementById('budget-tx-id').value = '';
+        this.setNominalInputValue('budget-tx-amount', '');
         document.getElementById('budget-tx-date').value = this.getSuggestedTransactionDate();
         document.getElementById('budget-btn-delete').style.display = 'none';
         this.populateFundSourceSelect('budget-fund-source');
@@ -1415,7 +1541,7 @@ const budgetManager = {
 
         document.getElementById('budget-modal-title').innerText = 'Edit Transaksi';
         document.getElementById('budget-tx-id').value = tx.id;
-        document.getElementById('budget-tx-amount').value = tx.amount;
+        this.setNominalInputValue('budget-tx-amount', tx.amount);
         document.getElementById('budget-tx-note').value = tx.note || '';
         document.getElementById('budget-tx-date').value = this.toDateInputValue(this.getTransactionDate(tx));
         this.populateFundSourceSelect('budget-fund-source', tx.fundSourceId);
@@ -1536,7 +1662,7 @@ const budgetManager = {
             return true;
         }
 
-        const amount = parseInt(payload?.nominal, 10) || 0;
+        const amount = this.parseNominalInput(payload?.nominal);
         if (amount <= 0) return false;
 
         const parsedDate = payload?.tanggal ? new Date(payload.tanggal) : new Date();
@@ -1577,7 +1703,7 @@ const budgetManager = {
 
         const id = document.getElementById('budget-tx-id').value;
         const type = document.querySelector('input[name="budget-type"]:checked').value;
-        const amount = parseInt(document.getElementById('budget-tx-amount').value) || 0;
+        const amount = this.parseNominalInput(document.getElementById('budget-tx-amount').value);
         const note = document.getElementById('budget-tx-note').value.trim();
         const txDateRaw = document.getElementById('budget-tx-date').value;
         const fundSourceId = document.getElementById('budget-fund-source').value;
@@ -1663,7 +1789,7 @@ const budgetManager = {
     openTransferModal: function () {
         this.populateFundSourceSelect('budget-transfer-from');
         this.populateFundSourceSelect('budget-transfer-to', this.accounts[1]?.id || this.getDefaultAccountId());
-        document.getElementById('budget-transfer-amount').value = '';
+        this.setNominalInputValue('budget-transfer-amount', '');
         document.getElementById('budget-transfer-note').value = '';
         document.getElementById('budget-transfer-date').value = this.getSuggestedTransactionDate();
         document.getElementById('modal-budget-transfer').classList.add('active');
@@ -1678,7 +1804,7 @@ const budgetManager = {
 
         const fromId = document.getElementById('budget-transfer-from').value;
         const toId = document.getElementById('budget-transfer-to').value;
-        const amount = parseInt(document.getElementById('budget-transfer-amount').value, 10) || 0;
+        const amount = this.parseNominalInput(document.getElementById('budget-transfer-amount').value);
         const note = document.getElementById('budget-transfer-note').value.trim();
         const txDateRaw = document.getElementById('budget-transfer-date').value;
 

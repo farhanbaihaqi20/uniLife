@@ -770,26 +770,34 @@
                 <div class="section-header">
                     <h2 data-i18n="budget_title">Keuangan</h2>
                     <div class="budget-actions-row">
-                        <button class="btn btn-outline budget-action-btn budget-action-btn-clone" onclick="budgetManager.cloneLastMonthExpenses()"
-                            >
-                            <i class="ph ph-copy"></i> Clone
-                        </button>
-                        <button class="btn btn-outline budget-action-btn budget-action-btn-csv" onclick="budgetManager.exportCurrentMonthCSV()"
-                            >
-                            <i class="ph ph-file-arrow-down"></i> CSV
-                        </button>
                         <button class="btn btn-outline budget-action-btn" onclick="budgetManager.openTransferModal()"
                             >
                             <i class="ph ph-arrows-left-right"></i> Transfer
-                        </button>
-                        <button class="btn btn-outline budget-action-btn budget-action-btn-reset" onclick="budgetManager.resetBudgetData()"
-                            >
-                            <i class="ph ph-arrow-counter-clockwise"></i> Reset
                         </button>
                         <button class="btn btn-primary budget-action-btn budget-action-btn-add" onclick="budgetManager.openAddModal()"
                             >
                             <i class="ph ph-plus"></i> <span data-i18n="common_add">Tambah</span>
                         </button>
+                        <div class="budget-more-wrapper" id="budget-more-wrapper">
+                            <button type="button" class="btn btn-outline budget-action-btn budget-more-toggle" id="budget-more-toggle"
+                                aria-label="Aksi lainnya" aria-expanded="false" onclick="budgetManager.toggleMoreActions(event)">
+                                <i class="ph ph-dots-three-outline"></i>
+                            </button>
+                            <div class="budget-more-menu" id="budget-more-menu" role="menu" aria-hidden="true">
+                                <button type="button" class="btn btn-outline budget-action-btn budget-action-btn-clone" role="menuitem"
+                                    onclick="budgetManager.cloneLastMonthExpenses(); budgetManager.closeMoreActions();">
+                                    <i class="ph ph-copy"></i> Clone
+                                </button>
+                                <button type="button" class="btn btn-outline budget-action-btn budget-action-btn-csv" role="menuitem"
+                                    onclick="budgetManager.exportCurrentMonthCSV(); budgetManager.closeMoreActions();">
+                                    <i class="ph ph-file-arrow-down"></i> CSV
+                                </button>
+                                <button type="button" class="btn btn-outline budget-action-btn budget-action-btn-reset" role="menuitem"
+                                    onclick="budgetManager.resetBudgetData(); budgetManager.closeMoreActions();">
+                                    <i class="ph ph-arrow-counter-clockwise"></i> Reset
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -1393,7 +1401,7 @@
             <form id="form-budget-limit" onsubmit="budgetManager.saveLimit(event)">
                 <div class="form-group">
                     <label>Batas Pengeluaran Bulanan (Rp)</label>
-                    <input type="number" id="budget-limit-input" required min="0" placeholder="Contoh: 1500000"
+                    <input type="text" inputmode="numeric" id="budget-limit-input" required placeholder="Contoh: 1.500.000" oninput="budgetManager.handleNominalInput('budget-limit-input')"
                         style="font-size: 1.5rem; font-weight: 700; padding: 1rem; color: #ec4899; background: rgba(236, 72, 153, 0.05); border-color: rgba(236, 72, 153, 0.3);">
                 </div>
                 <div style="display:flex; justify-content: space-between; margin-top: 0.5rem;">
@@ -1437,7 +1445,7 @@
 
                 <div class="form-group">
                     <label data-i18n="budget_amount">Nominal (Rp)</label>
-                    <input type="number" id="budget-tx-amount" required min="1" placeholder="0" oninput="budgetManager.previewFundSourceWarning()"
+                    <input type="text" inputmode="numeric" id="budget-tx-amount" required placeholder="Contoh: 350.000" oninput="budgetManager.handleNominalInput('budget-tx-amount', true)"
                         style="font-size: 2rem; font-weight: 700; padding: 1rem; text-align: center;">
                     <small id="budget-fund-warning" class="budget-inline-warning" aria-live="polite"></small>
                 </div>
@@ -1578,7 +1586,7 @@
 
                 <div class="form-group">
                     <label>Nominal Transfer (Rp)</label>
-                    <input type="number" id="budget-transfer-amount" required min="1" placeholder="Contoh: 150000">
+                    <input type="text" inputmode="numeric" id="budget-transfer-amount" required placeholder="Contoh: 150.000" oninput="budgetManager.handleNominalInput('budget-transfer-amount')">
                 </div>
 
                 <div class="form-group">
