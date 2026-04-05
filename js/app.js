@@ -36,6 +36,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const sections = document.querySelectorAll('.view-section');
     let viewAnimIndex = 0;
     const viewAnimClasses = ['view-anim-rise', 'view-anim-slide', 'view-anim-zoom'];
+    let currentViewId = 'view-home';
+    const viewHistory = ['view-home'];
+    const maxViewHistory = 40;
 
     const animateViewSection = function (targetId) {
         const section = document.getElementById(targetId);
@@ -58,15 +61,59 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    const pushViewHistory = function (targetId) {
+        if (!targetId) return;
+        const last = viewHistory[viewHistory.length - 1];
+        if (last === targetId) return;
+        viewHistory.push(targetId);
+        if (viewHistory.length > maxViewHistory) viewHistory.shift();
+    };
+
+    const goBackView = function () {
+        if (viewHistory.length <= 1) return false;
+        viewHistory.pop();
+        const previousView = viewHistory[viewHistory.length - 1] || 'view-home';
+        window.openView(previousView, previousView, { fromHistory: true, trackHistory: false });
+        return true;
+    };
+
+    const getPreviousViewId = function () {
+        if (viewHistory.length <= 1) return null;
+        return viewHistory[viewHistory.length - 2] || null;
+    };
+
+    const getViewDisplayName = function (viewId) {
+        if (!viewId) return '';
+
+        const navLabel = document.querySelector(`.nav-item[data-target="${viewId}"] span`);
+        const navText = navLabel ? String(navLabel.textContent || '').trim() : '';
+        if (navText) return navText;
+
+        const section = document.getElementById(viewId);
+        if (!section) return '';
+
+        const heading = section.querySelector('.section-header h2, h2, h3');
+        return heading ? String(heading.textContent || '').trim() : '';
+    };
+
+    window.goBackView = goBackView;
+
     // Global helper so any module/home quick action can navigate safely.
-    window.openView = function (targetId, activeNavTarget = null) {
+    window.openView = function (targetId, activeNavTarget = null, options = {}) {
+        const navTarget = activeNavTarget || targetId;
+        const shouldTrackHistory = options.trackHistory !== false;
+        const shouldPushHistory = shouldTrackHistory && options.fromHistory !== true && targetId && targetId !== currentViewId;
+
+        if (shouldPushHistory) {
+            pushViewHistory(targetId);
+        }
+
         if (typeof budgetManager !== 'undefined' && typeof budgetManager.closeMoreActions === 'function') {
             budgetManager.closeMoreActions();
         }
 
         navItems.forEach(nav => nav.classList.remove('active'));
 
-        const navTarget = activeNavTarget || targetId;
         const navToActivate = document.querySelector(`.nav-item[data-target="${navTarget}"]`);
         if (navToActivate) navToActivate.classList.add('active');
 
@@ -76,7 +123,17 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 section.classList.remove('active');
             }
+
+            // Clear any inline transform from gesture interactions.
+            section.style.transform = '';
+            section.style.opacity = '';
         });
+
+        currentViewId = targetId || currentViewId;
+
+        if (targetId === 'view-calendar' && typeof calendarManager !== 'undefined' && typeof calendarManager.focusToday === 'function') {
+            calendarManager.focusToday(true);
+        }
 
         animateViewSection(targetId);
     };
@@ -84,9 +141,216 @@ document.addEventListener('DOMContentLoaded', () => {
     navItems.forEach(item => {
         item.addEventListener('click', () => {
             const targetId = item.getAttribute('data-target');
-            window.openView(targetId, targetId);
+            window.openView(targetId, targetId, { fromHistory: false, trackHistory: true });
         });
     });
+
+    const setupEdgeBackGesture = function () {
+        const EDGE_START_MAX_X = 26;
+        const SWIPE_COMMIT_PX = 84;
+        const SWIPE_HINT_MAX_X = 72;
+        const BACK_TARGETS_BLOCK = 'input, textarea, select, [contenteditable="true"], .allow-select';
+
+        let tracking = false;
+        let horizontalIntent = false;
+        let startX = 0;
+        let startY = 0;
+        let currentDx = 0;
+        let activeSection = null;
+        let previousSection = null;
+        let backHintEl = null;
+
+        const ensureBackHint = function () {
+            if (backHintEl) return backHintEl;
+            const hint = document.createElement('div');
+            hint.className = 'edge-back-hint';
+            hint.setAttribute('aria-hidden', 'true');
+            hint.innerHTML = '<i class="ph ph-caret-left"></i><span class="edge-back-hint-label"></span>';
+            document.body.appendChild(hint);
+            backHintEl = hint;
+            return backHintEl;
+        };
+
+        const updateBackHint = function (dx = 0) {
+            if (!backHintEl) return;
+
+            const previousView = viewHistory.length > 1 ? viewHistory[viewHistory.length - 2] : '';
+            const label = getViewDisplayName(previousView) || 'Kembali';
+            const labelEl = backHintEl.querySelector('.edge-back-hint-label');
+            if (labelEl) labelEl.textContent = label;
+
+            const clamped = Math.max(0, Math.min(SWIPE_HINT_MAX_X, dx));
+            const progress = clamped / SWIPE_HINT_MAX_X;
+
+            backHintEl.classList.add('active');
+            backHintEl.style.opacity = String(Math.max(0, progress));
+            backHintEl.style.transform = `translate3d(${Math.max(-28, -28 + clamped * 0.9)}px, -50%, 0)`;
+        };
+
+        const hideBackHint = function () {
+            if (!backHintEl) return;
+            backHintEl.classList.remove('active');
+            backHintEl.style.opacity = '';
+            backHintEl.style.transform = '';
+        };
+
+        const resetActiveSection = (withSpring = false) => {
+            if (!activeSection) return;
+            if (withSpring) {
+                activeSection.style.transition = 'transform 240ms cubic-bezier(0.22, 1, 0.36, 1), opacity 240ms ease, box-shadow 240ms ease';
+            }
+            activeSection.style.transform = '';
+            activeSection.style.opacity = '';
+            activeSection.style.boxShadow = '';
+            if (withSpring) {
+                setTimeout(() => {
+                    if (!activeSection) return;
+                    activeSection.style.transition = '';
+                }, 250);
+            }
+        };
+
+        const resetPreviousPeek = (withSpring = false) => {
+            if (!previousSection) return;
+            if (withSpring) {
+                previousSection.style.transition = 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease';
+            }
+            previousSection.style.transform = '';
+            previousSection.style.opacity = '';
+            previousSection.classList.remove('edge-back-peek');
+            if (withSpring) {
+                setTimeout(() => {
+                    if (!previousSection) return;
+                    previousSection.style.transition = '';
+                }, 240);
+            }
+        };
+
+        document.addEventListener('touchstart', (event) => {
+            if (event.touches.length !== 1) return;
+            if (document.querySelector('.modal-overlay.active, .welcome-modal.active')) return;
+            if (currentViewId === 'view-home') return;
+
+            const touch = event.touches[0];
+            if (touch.clientX > EDGE_START_MAX_X) return;
+            if (event.target && event.target.closest(BACK_TARGETS_BLOCK)) return;
+
+            activeSection = document.getElementById(currentViewId);
+            if (!activeSection || !activeSection.classList.contains('active')) return;
+
+            const previousViewId = getPreviousViewId();
+            previousSection = previousViewId ? document.getElementById(previousViewId) : null;
+            if (previousSection) {
+                previousSection.classList.add('edge-back-peek');
+                previousSection.style.transition = 'none';
+                previousSection.style.transform = 'translateX(-26px) scale(0.995)';
+                previousSection.style.opacity = '0.72';
+            }
+
+            ensureBackHint();
+            updateBackHint(0);
+
+            tracking = true;
+            horizontalIntent = false;
+            startX = touch.clientX;
+            startY = touch.clientY;
+            currentDx = 0;
+            activeSection.style.transition = 'none';
+            activeSection.style.boxShadow = '0 0 0 rgba(15, 23, 42, 0)';
+        }, { passive: true });
+
+        document.addEventListener('touchmove', (event) => {
+            if (!tracking || !activeSection) return;
+
+            const touch = event.touches[0];
+            const dx = touch.clientX - startX;
+            const dy = touch.clientY - startY;
+
+            if (!horizontalIntent) {
+                if (Math.abs(dy) > Math.abs(dx)) {
+                    tracking = false;
+                    activeSection.style.transition = '';
+                    resetPreviousPeek(true);
+                    hideBackHint();
+                    return;
+                }
+                if (Math.abs(dx) < 8) return;
+                horizontalIntent = true;
+            }
+
+            currentDx = Math.max(0, Math.min(160, dx));
+            const progress = Math.min(1, currentDx / Math.max(window.innerWidth, 1));
+
+            if (currentDx > 0) {
+                event.preventDefault();
+                activeSection.style.transform = `translateX(${currentDx}px)`;
+                activeSection.style.opacity = String(Math.max(0.78, 1 - progress * 0.24));
+                const shadowX = Math.min(26, 8 + (currentDx * 0.22));
+                const shadowBlur = Math.min(34, 12 + (currentDx * 0.28));
+                const shadowAlpha = Math.min(0.2, 0.08 + (progress * 0.14));
+                activeSection.style.boxShadow = `-${shadowX.toFixed(1)}px 0 ${shadowBlur.toFixed(1)}px rgba(15, 23, 42, ${shadowAlpha.toFixed(3)})`;
+                if (previousSection) {
+                    const peekProgress = Math.min(1, currentDx / SWIPE_COMMIT_PX);
+                    const prevX = -26 + (26 * peekProgress);
+                    const prevScale = 0.995 + (0.005 * peekProgress);
+                    const prevOpacity = 0.72 + (0.28 * peekProgress);
+                    previousSection.style.transform = `translateX(${prevX}px) scale(${prevScale})`;
+                    previousSection.style.opacity = String(Math.min(1, prevOpacity));
+                }
+                updateBackHint(currentDx);
+            }
+        }, { passive: false });
+
+        document.addEventListener('touchend', () => {
+            if (!tracking) {
+                activeSection = null;
+                return;
+            }
+
+            const shouldGoBack = horizontalIntent && currentDx >= SWIPE_COMMIT_PX;
+
+            if (shouldGoBack && activeSection) {
+                activeSection.style.transition = 'transform 160ms ease-out, opacity 160ms ease-out, box-shadow 160ms ease-out';
+                activeSection.style.transform = 'translateX(120%)';
+                activeSection.style.opacity = '0.82';
+                activeSection.style.boxShadow = '0 0 0 rgba(15, 23, 42, 0)';
+                nativeHaptics.pulse('medium');
+
+                setTimeout(() => {
+                    goBackView();
+                    resetPreviousPeek(false);
+                    hideBackHint();
+                    if (activeSection) {
+                        activeSection.style.transition = '';
+                    }
+                }, 140);
+            } else {
+                resetActiveSection(true);
+                resetPreviousPeek(true);
+                hideBackHint();
+            }
+
+            tracking = false;
+            horizontalIntent = false;
+            currentDx = 0;
+            activeSection = null;
+            previousSection = null;
+        }, { passive: true });
+
+        document.addEventListener('touchcancel', () => {
+            if (!tracking) return;
+            resetActiveSection(true);
+            resetPreviousPeek(true);
+            hideBackHint();
+            tracking = false;
+            horizontalIntent = false;
+            currentDx = 0;
+            activeSection = null;
+            previousSection = null;
+        }, { passive: true });
+    };
+
+    setupEdgeBackGesture();
 
     animateViewSection('view-home');
 
@@ -97,6 +361,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const syncBodyModalState = function () {
         const hasActiveModal = !!document.querySelector('.modal-overlay.active, .welcome-modal.active');
         document.body.classList.toggle('modal-open', hasActiveModal);
+    };
+
+    const updateModalBackdropVisual = function () {
+        const root = document.documentElement;
+        const mainContent = document.querySelector('.main-content');
+        const hasActiveModal = !!document.querySelector('.modal-overlay.active, .welcome-modal.active');
+        if (!root || !mainContent) return;
+
+        if (!hasActiveModal) {
+            root.style.removeProperty('--modal-backdrop-blur');
+            root.style.removeProperty('--modal-backdrop-opacity');
+            return;
+        }
+
+        const scrollTop = mainContent.scrollTop || 0;
+        const blurPx = Math.min(12, 4 + (scrollTop / 110));
+        const opacity = Math.min(0.66, 0.46 + (scrollTop / 1200));
+
+        root.style.setProperty('--modal-backdrop-blur', `${blurPx.toFixed(2)}px`);
+        root.style.setProperty('--modal-backdrop-opacity', opacity.toFixed(3));
     };
 
     // Make interaction feel more native by preventing copy/select on non-editable surfaces.
@@ -269,6 +553,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (shouldSync) {
             syncBodyModalState();
             setupModalSheetGestures();
+            updateModalBackdropVisual();
         }
     });
 
@@ -279,6 +564,14 @@ document.addEventListener('DOMContentLoaded', () => {
         attributeFilter: ['class']
     });
     syncBodyModalState();
+    updateModalBackdropVisual();
+
+    const mainContent = document.querySelector('.main-content');
+    if (mainContent) {
+        mainContent.addEventListener('scroll', () => {
+            updateModalBackdropVisual();
+        }, { passive: true });
+    }
 
     // Function to re-bind dynamically (since tabs might get re-rendered)
     window.setupDragToScroll = function (containerSelector = '.day-tabs, #home-schedule-list') {
@@ -345,6 +638,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof homeManager !== 'undefined') homeManager.init();
     if (typeof scheduleManager !== 'undefined') scheduleManager.init();
     if (typeof gradesManager !== 'undefined') gradesManager.init();
+    if (typeof calendarManager !== 'undefined') calendarManager.init();
     if (typeof tasksManager !== 'undefined') tasksManager.init();
     if (typeof focusManager !== 'undefined') focusManager.init();
     if (typeof budgetManager !== 'undefined') budgetManager.init();
@@ -362,6 +656,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!key || key === 'unilife_tasks') {
             if (typeof deadlineRadar !== 'undefined') deadlineRadar.renderRadar();
             if (typeof homeManager !== 'undefined') homeManager.renderUpcomingTasks();
+            if (typeof calendarManager !== 'undefined') calendarManager.render();
             if (typeof tasksManager !== 'undefined') {
                 tasksManager.tasks = Storage.getTasks();
                 tasksManager.renderTasks();
@@ -406,9 +701,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 scheduleManager.schedules = Storage.getSchedules();
                 scheduleManager.renderScheduleList();
             }
+            if (typeof calendarManager !== 'undefined') calendarManager.render();
             if (typeof deadlineRadar !== 'undefined') deadlineRadar.renderRadar();
             if (typeof profileManager !== 'undefined') {
                 profileManager.updateDashboardStats();
+            }
+        }
+
+        // Schedule agendas changed
+        if (!key || key === 'unilife_schedule_agendas') {
+            if (typeof scheduleManager !== 'undefined') {
+                scheduleManager.agendas = Storage.getScheduleAgendas ? Storage.getScheduleAgendas() : [];
+                const detailCourseId = document.getElementById('detail-course-id')?.value;
+                if (detailCourseId && document.getElementById('modal-course-detail')?.classList.contains('active')) {
+                    scheduleManager.renderCourseAgendas(detailCourseId);
+                }
+            }
+            if (typeof calendarManager !== 'undefined') calendarManager.render();
+            if (typeof notificationManager !== 'undefined' && typeof notificationManager.checkUpcomingScheduleAgendas === 'function') {
+                notificationManager.checkUpcomingScheduleAgendas();
             }
         }
 
@@ -439,6 +750,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!key || key === 'unilife_profile') {
             if (typeof profileManager !== 'undefined') profileManager.renderProfileSummary();
             if (typeof deadlineRadar !== 'undefined') deadlineRadar.renderRadar();
+            if (typeof calendarManager !== 'undefined') calendarManager.render();
+            if (typeof notificationManager !== 'undefined') {
+                if (typeof notificationManager.checkUpcomingTasks === 'function') notificationManager.checkUpcomingTasks();
+                if (typeof notificationManager.checkUpcomingScheduleAgendas === 'function') notificationManager.checkUpcomingScheduleAgendas();
+            }
             if (typeof homeManager !== 'undefined') {
                 homeManager.renderUpcomingTasks();
                 homeManager.renderTodaySchedule();
@@ -468,6 +784,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 presensiManager.records = Storage.getAttendanceRecords() || [];
                 presensiManager.renderRecap();
             }
+            if (typeof calendarManager !== 'undefined') calendarManager.render();
             if (typeof homeManager !== 'undefined') homeManager.renderTodaySchedule();
             // Update profile dashboard
             if (typeof profileManager !== 'undefined') {

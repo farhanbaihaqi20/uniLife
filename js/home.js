@@ -21,12 +21,13 @@ const homeManager = {
 
         const activeSemester = typeof profileManager !== 'undefined' ? String(profileManager.profile.semester || 1) : '1';
 
-        const todayIndex = new Date().getDay() || 1; // map 0 (sunday) to 1
+        const todayIndex = new Date().getDay(); // JS day index: Sunday=0, Monday=1
         const schedules = Storage.getSchedules();
 
         // Strict filtering by semester then by day
         const todaySchedules = schedules.filter(s => {
             const schSem = String(s.semester || 1);
+            // Schedule uses 1-6 (Mon-Sat), so Sunday (0) will correctly return no classes.
             return schSem === activeSemester && parseInt(s.day) === todayIndex;
         });
 

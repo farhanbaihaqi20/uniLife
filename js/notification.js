@@ -9,6 +9,8 @@ const notificationManager = {
         this.renderNotificationBadge();
         this.renderNotificationPanel();
         this.syncWithData();
+        this.checkUpcomingTasks();
+        this.checkUpcomingScheduleAgendas();
     },
 
     // Storage & Retrieval
@@ -69,6 +71,86 @@ const notificationManager = {
             }
         };
         
+        this.notifications.unshift(notification);
+        this.trimNotifications();
+        this.saveNotifications();
+        this.renderNotificationBadge();
+        return notification;
+    },
+
+    isExamPriorityTitle: function (title) {
+        const normalized = String(title || '').toLowerCase();
+        return normalized.includes('uts') || normalized.includes('uas');
+    },
+
+    isAgendaPriority: function (agendaObj) {
+        if (!agendaObj) return false;
+        return !!agendaObj.isPriorityManual || this.isExamPriorityTitle(agendaObj.title);
+    },
+
+    getAgendaEventDateTime: function (agendaObj) {
+        if (!agendaObj || !agendaObj.date) return null;
+
+        const hasTime = !!agendaObj.time;
+        const fallbackTime = hasTime ? agendaObj.time : '23:59';
+        const eventDate = new Date(`${agendaObj.date}T${fallbackTime}`);
+        return Number.isNaN(eventDate.getTime()) ? null : eventDate;
+    },
+
+    getAgendaReminderTrigger: function (agendaObj) {
+        const mode = agendaObj.reminderType || 'h-1';
+        const eventDateTime = this.getAgendaEventDateTime(agendaObj);
+        if (!eventDateTime) return null;
+
+        if (mode === 'none') return null;
+
+        if (mode === 'custom') {
+            if (!agendaObj.customReminderAt) return null;
+            const customDate = new Date(agendaObj.customReminderAt);
+            if (Number.isNaN(customDate.getTime())) return null;
+            return customDate;
+        }
+
+        const trigger = new Date(eventDateTime);
+        if (mode === 'h-7') trigger.setDate(trigger.getDate() - 7);
+        else if (mode === 'h-3') trigger.setDate(trigger.getDate() - 3);
+        else trigger.setDate(trigger.getDate() - 1);
+        return trigger;
+    },
+
+    addScheduleAgendaReminder: function (agendaObj, triggerAt) {
+        const schedules = Storage.getSchedules ? Storage.getSchedules() : [];
+        const schedule = schedules.find(s => s.id === agendaObj.scheduleId);
+        const scheduleName = schedule
+            ? schedule.name
+            : (i18n.t('schedule_agenda_non_course') || 'Agenda Non-Matkul');
+        const isPriority = this.isAgendaPriority(agendaObj);
+        const reminderKey = `${agendaObj.id}:${triggerAt ? triggerAt.toISOString() : 'default'}`;
+        const reminderModeLabelMap = {
+            'h-7': i18n.t('schedule_agenda_reminder_h7') || 'H-7',
+            'h-3': i18n.t('schedule_agenda_reminder_h3') || 'H-3',
+            'h-1': i18n.t('schedule_agenda_reminder_h1') || 'H-1',
+            'custom': i18n.t('schedule_agenda_reminder_custom') || 'Jam tertentu',
+            'none': i18n.t('schedule_agenda_reminder_none') || 'Tanpa pengingat'
+        };
+        const notification = {
+            id: 'agenda_' + Date.now() + '_' + Math.random(),
+            type: 'agenda',
+            title: `<i class="ph ${isPriority ? 'ph-warning-circle' : 'ph-megaphone-simple'}"></i> ` + (i18n.t('notification_agenda_reminder') || 'Pengingat Agenda'),
+            message: `${agendaObj.title} (${scheduleName}) • ${reminderModeLabelMap[agendaObj.reminderType || 'h-1']}`,
+            timestamp: Date.now(),
+            isRead: false,
+            sourceId: agendaObj.id,
+            dueDate: agendaObj.date,
+            reminderKey,
+            action: () => {
+                if (typeof scheduleManager !== 'undefined' && typeof scheduleManager.openAgendaFromCalendar === 'function') {
+                    scheduleManager.openAgendaFromCalendar(agendaObj.id);
+                }
+                this.markAsRead(notification.id);
+            }
+        };
+
         this.notifications.unshift(notification);
         this.trimNotifications();
         this.saveNotifications();
@@ -466,6 +548,10 @@ const notificationManager = {
             if (key === 'unilife_inbox') {
                 this.checkNewInbox();
             }
+
+            if (key === 'unilife_schedule_agendas') {
+                this.checkUpcomingScheduleAgendas();
+            }
         });
     },
 
@@ -488,6 +574,36 @@ const notificationManager = {
                         this.addTaskDeadline(task);
                     }
                 }
+            }
+        });
+    },
+
+    checkUpcomingScheduleAgendas: function () {
+        const agendas = Storage.getScheduleAgendas ? Storage.getScheduleAgendas() : [];
+        const activeSemester = typeof profileManager !== 'undefined' ? String(profileManager.profile.semester || 1) : '1';
+        const now = new Date();
+
+        agendas.forEach(agenda => {
+            if (String(agenda.semester || 1) !== activeSemester || !agenda.date) return;
+            const triggerAt = this.getAgendaReminderTrigger(agenda);
+            if (!triggerAt) return;
+
+            const eventAt = this.getAgendaEventDateTime(agenda);
+            if (!eventAt) return;
+
+            const staleCutoff = new Date(eventAt);
+            staleCutoff.setDate(staleCutoff.getDate() + 1);
+            if (now > staleCutoff) return;
+
+            if (now < triggerAt) return;
+
+            const reminderKey = `${agenda.id}:${triggerAt.toISOString()}`;
+            const exists = this.notifications.some(n => n.type === 'agenda' && (
+                n.reminderKey === reminderKey ||
+                (!n.reminderKey && n.sourceId === agenda.id)
+            ));
+            if (!exists) {
+                this.addScheduleAgendaReminder(agenda, triggerAt);
             }
         });
     },

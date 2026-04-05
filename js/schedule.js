@@ -1,10 +1,12 @@
 const scheduleManager = {
     schedules: [],
+    agendas: [],
     days: [],
     currentActiveTab: new Date().getDay() || 1, // 0 is Sunday, map to 1 if Sunday (Senin)
 
     init: function () {
         this.schedules = Storage.getSchedules();
+        this.agendas = Storage.getScheduleAgendas ? Storage.getScheduleAgendas() : [];
 
         // Map JS Sunday(0) to our tab array (if Sunday, default to Senin=1)
         let dayOfWeek = new Date().getDay();
@@ -13,6 +15,71 @@ const scheduleManager = {
         this.renderTabs();
         this.renderScheduleList();
         this.setupForm();
+        this.setupAgendaForm();
+    },
+
+    setupAgendaForm: function () {
+        const form = document.getElementById('form-schedule-agenda');
+        if (!form || form.dataset.bound === '1') return;
+
+        form.addEventListener('submit', (e) => this.saveAgenda(e));
+        const reminderSelect = document.getElementById('agenda-reminder');
+        if (reminderSelect) {
+            reminderSelect.addEventListener('change', () => this.toggleAgendaReminderInput());
+        }
+        form.dataset.bound = '1';
+    },
+
+    toggleAgendaReminderInput: function () {
+        const reminderSelect = document.getElementById('agenda-reminder');
+        const customWrap = document.getElementById('agenda-reminder-custom-wrap');
+        if (!reminderSelect || !customWrap) return;
+
+        customWrap.style.display = reminderSelect.value === 'custom' ? 'block' : 'none';
+    },
+
+    isExamPriorityTitle: function (title) {
+        const normalized = String(title || '').toLowerCase();
+        return normalized.includes('uts') || normalized.includes('uas');
+    },
+
+    isAgendaPriority: function (agenda) {
+        if (!agenda) return false;
+        return !!agenda.isPriorityManual || this.isExamPriorityTitle(agenda.title);
+    },
+
+    getActiveSemester: function () {
+        return typeof profileManager !== 'undefined'
+            ? String((profileManager.profile && profileManager.profile.semester) || 1)
+            : '1';
+    },
+
+    getAgendaCourseOptions: function () {
+        const activeSemester = this.getActiveSemester();
+        return this.schedules
+            .filter(s => String(s.semester || 1) === activeSemester)
+            .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+    },
+
+    populateAgendaCourseOptions: function (selectedScheduleId = '', lockSelection = false) {
+        const select = document.getElementById('agenda-course-select');
+        if (!select) return;
+
+        const options = this.getAgendaCourseOptions();
+        const noneLabel = i18n.t('schedule_agenda_course_none') || 'Tanpa Integrasi Matkul';
+        select.innerHTML = `<option value="">${noneLabel}</option>`;
+
+        options.forEach(schedule => {
+            const option = document.createElement('option');
+            option.value = schedule.id;
+            option.textContent = schedule.name;
+            select.appendChild(option);
+        });
+
+        select.value = selectedScheduleId || '';
+        select.disabled = !!lockSelection;
+        select.style.opacity = lockSelection ? '0.65' : '1';
+        select.style.cursor = lockSelection ? 'not-allowed' : 'pointer';
     },
 
     renderTabs: function () {
@@ -63,7 +130,7 @@ const scheduleManager = {
 
         const now = new Date();
         const currentTime = now.getHours() * 60 + now.getMinutes();
-        const currentDayStr = now.getDay() || 1; // Map Sunday to 1
+        const currentDayStr = now.getDay(); // Keep native JS index so Sunday stays 0
 
         const allTasks = Storage.getTasks();
 
@@ -273,6 +340,210 @@ const scheduleManager = {
         document.getElementById('modal-schedule').classList.remove('active');
     },
 
+    openAgendaModal: function (scheduleId, agendaId = null, options = {}) {
+        const modal = document.getElementById('modal-schedule-agenda');
+        if (!modal) return;
+
+        const titleEl = document.getElementById('schedule-agenda-modal-title');
+        const deleteBtn = document.getElementById('agenda-delete-btn');
+
+        document.getElementById('agenda-id').value = '';
+        document.getElementById('agenda-schedule-id').value = scheduleId || '';
+        document.getElementById('agenda-title').value = '';
+        document.getElementById('agenda-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('agenda-time').value = '';
+        document.getElementById('agenda-notes').value = '';
+        document.getElementById('agenda-reminder').value = 'h-1';
+        document.getElementById('agenda-reminder-custom-time').value = '';
+        document.getElementById('agenda-priority-manual').checked = false;
+        this.toggleAgendaReminderInput();
+        deleteBtn.style.display = 'none';
+
+        const lockSelection = !!scheduleId && !options.fromCalendar;
+        this.populateAgendaCourseOptions(scheduleId || '', lockSelection);
+
+        if (agendaId) {
+            const agenda = this.agendas.find(a => a.id === agendaId);
+            if (!agenda) return;
+
+            document.getElementById('agenda-id').value = agenda.id;
+            document.getElementById('agenda-schedule-id').value = agenda.scheduleId;
+            document.getElementById('agenda-title').value = agenda.title || '';
+            document.getElementById('agenda-date').value = agenda.date || new Date().toISOString().split('T')[0];
+            document.getElementById('agenda-time').value = agenda.time || '';
+            document.getElementById('agenda-notes').value = agenda.notes || '';
+            document.getElementById('agenda-reminder').value = agenda.reminderType || 'h-1';
+            document.getElementById('agenda-reminder-custom-time').value = agenda.customReminderAt || '';
+            document.getElementById('agenda-priority-manual').checked = !!agenda.isPriorityManual;
+            this.toggleAgendaReminderInput();
+            deleteBtn.style.display = 'inline-flex';
+
+            const editLockSelection = !!agenda.scheduleId && !options.fromCalendar;
+            this.populateAgendaCourseOptions(agenda.scheduleId || '', editLockSelection);
+
+            if (titleEl) {
+                titleEl.removeAttribute('data-i18n');
+                titleEl.innerText = i18n.t('schedule_agenda_edit_title') || 'Edit Acara Matkul';
+            }
+        } else if (titleEl) {
+            if (options.fromCalendar && !scheduleId) {
+                titleEl.removeAttribute('data-i18n');
+                titleEl.innerText = i18n.t('calendar_add_agenda') || 'Tambah Agenda';
+            } else {
+                titleEl.setAttribute('data-i18n', 'schedule_agenda_add_title');
+                titleEl.innerText = i18n.t('schedule_agenda_add_title') || 'Tambah Acara Matkul';
+            }
+        }
+
+        modal.classList.add('active');
+        if (typeof i18n !== 'undefined' && typeof i18n.translateDOM === 'function') {
+            i18n.translateDOM();
+        }
+
+        const courseDetailModal = document.getElementById('modal-course-detail');
+        if (courseDetailModal && courseDetailModal.classList.contains('active')) {
+            courseDetailModal.classList.add('blurred');
+        }
+    },
+
+    closeAgendaModal: function () {
+        const modal = document.getElementById('modal-schedule-agenda');
+        if (!modal) return;
+        modal.classList.remove('active');
+
+        const courseDetailModal = document.getElementById('modal-course-detail');
+        if (courseDetailModal) {
+            courseDetailModal.classList.remove('blurred');
+        }
+    },
+
+    saveAgenda: function (e) {
+        e.preventDefault();
+
+        const agendaId = document.getElementById('agenda-id').value;
+        const hiddenScheduleId = document.getElementById('agenda-schedule-id').value;
+        const selectedScheduleId = document.getElementById('agenda-course-select').value;
+        const scheduleId = selectedScheduleId || hiddenScheduleId || '';
+        const activeSemester = this.getActiveSemester();
+
+        const payload = {
+            id: agendaId || uuidv4(),
+            scheduleId,
+            semester: activeSemester,
+            title: document.getElementById('agenda-title').value.trim(),
+            date: document.getElementById('agenda-date').value,
+            time: document.getElementById('agenda-time').value || '',
+            notes: document.getElementById('agenda-notes').value.trim(),
+            reminderType: document.getElementById('agenda-reminder').value || 'h-1',
+            customReminderAt: document.getElementById('agenda-reminder').value === 'custom'
+                ? (document.getElementById('agenda-reminder-custom-time').value || '')
+                : '',
+            isPriorityManual: !!document.getElementById('agenda-priority-manual').checked,
+            updatedAt: new Date().toISOString()
+        };
+
+        if (!payload.title || !payload.date) return;
+        if (payload.reminderType === 'custom' && !payload.customReminderAt) {
+            alert(i18n.t('schedule_agenda_reminder_custom_required') || 'Isi waktu reminder custom terlebih dahulu.');
+            return;
+        }
+
+        if (!agendaId) payload.createdAt = new Date().toISOString();
+
+        if (agendaId) {
+            const idx = this.agendas.findIndex(a => a.id === agendaId);
+            if (idx > -1) {
+                this.agendas[idx] = { ...this.agendas[idx], ...payload };
+            }
+        } else {
+            this.agendas.push(payload);
+        }
+
+        Storage.setScheduleAgendas(this.agendas);
+        this.closeAgendaModal();
+
+        const currentCourseId = document.getElementById('detail-course-id')?.value;
+        if (currentCourseId) this.renderCourseAgendas(currentCourseId);
+    },
+
+    deleteAgendaFromModal: function () {
+        const agendaId = document.getElementById('agenda-id').value;
+        if (!agendaId) return;
+        if (!confirm(i18n.t('schedule_agenda_delete_confirm') || 'Hapus agenda ini?')) return;
+
+        this.agendas = this.agendas.filter(a => a.id !== agendaId);
+        Storage.setScheduleAgendas(this.agendas);
+        this.closeAgendaModal();
+
+        const currentCourseId = document.getElementById('detail-course-id')?.value;
+        if (currentCourseId) this.renderCourseAgendas(currentCourseId);
+    },
+
+    renderCourseAgendas: function (courseId) {
+        const container = document.getElementById('detail-course-agendas');
+        if (!container) return;
+
+        const activeSemester = this.getActiveSemester();
+        const courseAgendas = this.agendas
+            .filter(a => a.scheduleId === courseId && String(a.semester || 1) === activeSemester)
+            .sort((a, b) => {
+                const aDate = `${a.date || ''}T${a.time || '23:59'}`;
+                const bDate = `${b.date || ''}T${b.time || '23:59'}`;
+                return new Date(aDate) - new Date(bDate);
+            });
+
+        container.innerHTML = '';
+
+        if (courseAgendas.length === 0) {
+            container.innerHTML = `<div style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding:0.75rem;">${i18n.t('schedule_detail_no_agenda') || 'Belum ada agenda untuk matkul ini.'}</div>`;
+            return;
+        }
+
+        const todayKey = new Date().toISOString().split('T')[0];
+        courseAgendas.forEach(agenda => {
+            const isPast = agenda.date < todayKey;
+            const isPriority = this.isAgendaPriority(agenda);
+            const item = document.createElement('div');
+            item.style.background = 'var(--bg-card)';
+            item.style.padding = '0.7rem';
+            item.style.borderRadius = 'var(--radius-sm)';
+            item.style.border = `1px solid ${isPriority ? 'rgba(239, 68, 68, 0.5)' : (isPast ? 'var(--border-color)' : 'rgba(245, 158, 11, 0.4)')}`;
+            if (isPriority) {
+                item.style.boxShadow = '0 0 0 1px rgba(239, 68, 68, 0.16)';
+            }
+            item.style.cursor = 'pointer';
+            item.onclick = () => this.openAgendaModal(courseId, agenda.id);
+
+            const reminderLabelMap = {
+                'h-7': i18n.t('schedule_agenda_reminder_h7') || 'H-7',
+                'h-3': i18n.t('schedule_agenda_reminder_h3') || 'H-3',
+                'h-1': i18n.t('schedule_agenda_reminder_h1') || 'H-1',
+                'custom': i18n.t('schedule_agenda_reminder_custom') || 'Jam tertentu',
+                'none': i18n.t('schedule_agenda_reminder_none') || 'Tanpa pengingat'
+            };
+            const reminderLabel = reminderLabelMap[agenda.reminderType || 'h-1'];
+
+            item.innerHTML = `
+                <div style="display:flex; justify-content:space-between; gap:0.5rem; align-items:flex-start;">
+                    <div style="font-size:0.9rem; font-weight:600;">${agenda.title}</div>
+                    <div style="display:flex; gap:0.28rem; flex-wrap:wrap; justify-content:flex-end;">
+                        <span style="font-size:0.72rem; padding:0.12rem 0.4rem; border-radius:999px; background:${isPriority ? 'rgba(239, 68, 68, 0.14)' : 'rgba(245, 158, 11, 0.12)'}; color:${isPriority ? '#B91C1C' : '#B45309'};">${i18n.t('schedule_agenda_badge') || 'Acara'}</span>
+                        ${isPriority ? `<span style="font-size:0.72rem; padding:0.12rem 0.4rem; border-radius:999px; background:rgba(239, 68, 68, 0.14); color:#B91C1C;">${i18n.t('schedule_agenda_priority_exam') || 'Prioritas UTS/UAS'}</span>` : ''}
+                    </div>
+                </div>
+                <div style="font-size:0.78rem; color:var(--text-muted); margin-top:0.2rem;">
+                    <i class="ph ph-calendar"></i> ${agenda.date}${agenda.time ? ` • ${agenda.time}` : ''}
+                </div>
+                <div style="font-size:0.75rem; color:var(--primary); margin-top:0.25rem; font-weight:600;">
+                    <i class="ph ph-bell"></i> ${reminderLabel}
+                </div>
+                ${agenda.notes ? `<div style="font-size:0.78rem; color:var(--text-muted); margin-top:0.3rem; line-height:1.35;">${agenda.notes}</div>` : ''}
+            `;
+
+            container.appendChild(item);
+        });
+    },
+
     deleteSchedule: function (id) {
         if (confirm(i18n.t('schedule_delete_confirm'))) {
             this.schedules = this.schedules.filter(s => s.id !== id);
@@ -352,6 +623,8 @@ const scheduleManager = {
                 });
             }
         }
+
+        this.renderCourseAgendas(courseId);
 
         // Render grade status
         const gradeInfo = document.getElementById('detail-course-grade-info');
@@ -529,6 +802,32 @@ const scheduleManager = {
         } else {
             alert(i18n.t('schedule_need_semester_for_grade') || 'Please create semester first in Grades menu!');
         }
+    },
+
+    openAgendaFromCalendar: function (agendaId) {
+        this.agendas = Storage.getScheduleAgendas ? Storage.getScheduleAgendas() : this.agendas;
+        const agenda = this.agendas.find(a => a.id === agendaId);
+        if (!agenda) return;
+
+        const linkedSchedule = this.schedules.find(s => s.id === agenda.scheduleId);
+        if (!agenda.scheduleId || !linkedSchedule) {
+            if (typeof window.openView === 'function') {
+                window.openView('view-calendar', 'view-calendar');
+            }
+            setTimeout(() => this.openAgendaModal('', agenda.id, { fromCalendar: true }), 60);
+            return;
+        }
+
+        if (typeof window.openView === 'function') {
+            window.openView('view-schedule', 'view-schedule');
+        }
+
+        this.currentActiveTab = Number(linkedSchedule.day || this.currentActiveTab || 1);
+        this.renderTabs();
+        this.renderScheduleList();
+
+        this.openCourseDetailModal(agenda.scheduleId);
+        setTimeout(() => this.openAgendaModal(agenda.scheduleId, agenda.id), 120);
     },
 
     renderCourseTasks: function (courseId) {

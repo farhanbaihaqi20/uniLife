@@ -192,6 +192,46 @@
                 </div>
             </section>
 
+            <!-- CALENDAR VIEW -->
+            <section id="view-calendar" class="view-section">
+                <div class="section-header">
+                    <h2 data-i18n="calendar_title">Kalender Akademik</h2>
+                    <button class="btn btn-primary" onclick="scheduleManager.openAgendaModal('', null, { fromCalendar: true })">
+                        <i class="ph ph-plus"></i> <span data-i18n="calendar_add_agenda">Tambah Agenda</span>
+                    </button>
+                </div>
+
+                <div class="calendar-shell card">
+                    <div class="calendar-header-row">
+                        <button type="button" class="icon-btn" id="calendar-prev-month" aria-label="Bulan Sebelumnya">
+                            <i class="ph ph-caret-left"></i>
+                        </button>
+                        <h3 id="calendar-month-label">-</h3>
+                        <button type="button" class="icon-btn" id="calendar-next-month" aria-label="Bulan Berikutnya">
+                            <i class="ph ph-caret-right"></i>
+                        </button>
+                    </div>
+
+                    <div class="calendar-weekdays" id="calendar-weekdays">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <div id="calendar-grid" class="calendar-grid">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <div class="calendar-agenda-shell card">
+                    <div class="calendar-agenda-title-row">
+                        <h3 data-i18n="calendar_agenda">Agenda</h3>
+                        <span id="calendar-selected-date-label">-</span>
+                    </div>
+                    <div id="calendar-agenda-list" class="calendar-agenda-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </section>
+
             <!-- GRADES VIEW -->
             <section id="view-grades" class="view-section">
                 <div class="section-header">
@@ -1176,6 +1216,81 @@
         </div>
     </div>
 
+    <!-- Course Agenda Modal -->
+    <div class="modal-overlay" id="modal-schedule-agenda">
+        <div class="modal-content">
+            <button class="modal-close" onclick="scheduleManager.closeAgendaModal()"><i class="ph ph-x"></i></button>
+            <h3 id="schedule-agenda-modal-title" data-i18n="schedule_agenda_add_title">Tambah Acara Matkul</h3>
+            <form id="form-schedule-agenda">
+                <input type="hidden" id="agenda-id">
+                <input type="hidden" id="agenda-schedule-id">
+
+                <div class="form-group mt-4">
+                    <label data-i18n="schedule_agenda_name">Nama Acara</label>
+                    <input type="text" id="agenda-title" required placeholder="Contoh: UTS, Presentasi, Quiz"
+                        data-i18n-placeholder="schedule_agenda_name_placeholder">
+                </div>
+
+                <div class="form-group row">
+                    <div class="col">
+                        <label data-i18n="schedule_agenda_date">Tanggal</label>
+                        <input type="date" id="agenda-date" required>
+                    </div>
+                    <div class="col">
+                        <label data-i18n="schedule_agenda_time">Jam (Opsional)</label>
+                        <input type="time" id="agenda-time">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label data-i18n="schedule_agenda_course_link">Integrasi Mata Kuliah (Opsional)</label>
+                    <select id="agenda-course-select">
+                        <option value="" data-i18n="schedule_agenda_course_none">Tanpa Integrasi Matkul</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label data-i18n="schedule_agenda_notes">Catatan</label>
+                    <textarea id="agenda-notes" rows="3"
+                        style="width:100%; padding:0.75rem; border:1px solid var(--border-color); border-radius:var(--radius-sm); font-family:inherit; resize:vertical; background:var(--bg-card); color:var(--text-main);"
+                        placeholder="Contoh: Materi bab 1-6" data-i18n-placeholder="schedule_agenda_notes_placeholder"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label data-i18n="schedule_agenda_reminder">Pengingat</label>
+                    <select id="agenda-reminder">
+                        <option value="h-7" data-i18n="schedule_agenda_reminder_h7">H-7</option>
+                        <option value="h-3" data-i18n="schedule_agenda_reminder_h3">H-3</option>
+                        <option value="h-1" data-i18n="schedule_agenda_reminder_h1">H-1</option>
+                        <option value="custom" data-i18n="schedule_agenda_reminder_custom">Jam tertentu</option>
+                        <option value="none" data-i18n="schedule_agenda_reminder_none">Tanpa pengingat</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="agenda-reminder-custom-wrap" style="display:none;">
+                    <label data-i18n="schedule_agenda_reminder_custom_time">Waktu pengingat custom</label>
+                    <input type="datetime-local" id="agenda-reminder-custom-time">
+                </div>
+
+                <div class="form-group" style="margin-top: -0.25rem;">
+                    <label style="display:flex; align-items:center; gap:0.55rem; font-weight:600; color:var(--text-main);">
+                        <input type="checkbox" id="agenda-priority-manual" style="width:1rem; height:1rem; cursor:pointer;">
+                        <span data-i18n="schedule_agenda_priority_manual">Tandai prioritas penting</span>
+                    </label>
+                </div>
+
+                <div style="display:flex; gap:0.75rem; margin-top:1rem;">
+                    <button type="button" id="agenda-delete-btn" class="btn btn-outline"
+                        style="display:none; flex:0.8; color:var(--danger); border-color:var(--danger);"
+                        onclick="scheduleManager.deleteAgendaFromModal()">
+                        <i class="ph ph-trash"></i>
+                    </button>
+                    <button type="submit" class="btn btn-primary" style="flex:1;" data-i18n="schedule_agenda_save">Simpan Acara</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Course Detail Modal (for Task Integration) -->
     <div class="modal-overlay" id="modal-course-detail">
         <div class="modal-content" style="height: 80vh; display: flex; flex-direction: column;">
@@ -1225,6 +1340,22 @@
                 <div id="detail-course-notes"
                     style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 150px; overflow-y: auto;">
                     <!-- Notes will be populated here -->
+                </div>
+            </div>
+
+            <!-- Agenda Section -->
+            <div style="margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <h4 style="font-size: 1.1rem;" data-i18n="schedule_detail_agenda_title">Agenda Matkul</h4>
+                    <button class="btn btn-outline"
+                        onclick="scheduleManager.openAgendaModal(document.getElementById('detail-course-id').value)"
+                        style="padding: 0.5rem 1rem; font-size: 0.8rem; border-color: #F59E0B; color: #B45309;">
+                        <i class="ph ph-plus"></i> <span data-i18n="schedule_detail_add_agenda">Tambah Acara</span>
+                    </button>
+                </div>
+                <div id="detail-course-agendas"
+                    style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 160px; overflow-y: auto;">
+                    <!-- Agenda will be populated here -->
                 </div>
             </div>
 
@@ -1831,6 +1962,7 @@
     "></script>
     <script src="js/calendarExport.js?v=1.2
     "></script>
+    <script src="js/calendar.js?v=1.2"></script>
     <script src="js/notification.js?v=1.2
     "></script>
     <script src="js/profile.js?v=1.2

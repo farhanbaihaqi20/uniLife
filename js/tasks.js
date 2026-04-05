@@ -474,6 +474,20 @@ const tasksManager = {
         document.getElementById('task-course-custom-wrap').style.display = 'none';
     },
 
+    openTaskFromCalendar: function (taskId) {
+        const task = this.tasks.find(t => t.id === taskId);
+        if (!task) return;
+
+        this.filter = task.completed ? 'completed' : 'pending';
+        const filterBtn = document.querySelector(`.task-filters .filter-btn[data-filter="${this.filter}"]`);
+        if (filterBtn) filterBtn.click();
+        else this.renderTasks();
+
+        setTimeout(() => {
+            this.editTask(taskId);
+        }, 80);
+    },
+
     injectTaskModal: function () {
         const modalHtml = `
             <div class="modal-overlay" id="modal-task">

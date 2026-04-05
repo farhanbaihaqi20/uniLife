@@ -273,6 +273,24 @@
             menuCard.addEventListener('click', () => this.openSection());
 
             homeMenuContainer.appendChild(menuCard);
+
+            if (!document.getElementById('calendar-home-menu-card')) {
+                const calendarCard = document.createElement('button');
+                calendarCard.type = 'button';
+                calendarCard.id = 'calendar-home-menu-card';
+                calendarCard.className = 'card bbm-home-card';
+                calendarCard.innerHTML = `
+                    <div class="bbm-home-card-icon" style="background:rgba(37, 99, 235, 0.12); color:#2563EB;"><i class="ph ph-calendar-dots"></i></div>
+                    <span>Kalender</span>
+                `;
+                calendarCard.addEventListener('click', () => {
+                    if (typeof window.openView === 'function') {
+                        window.openView('view-calendar', 'view-calendar');
+                    }
+                });
+
+                homeMenuContainer.appendChild(calendarCard);
+            }
         },
 
         injectModals: function () {

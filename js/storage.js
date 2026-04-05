@@ -74,6 +74,10 @@ const Storage = {
     getAttendanceRecords: () => Storage.get('unilife_attendance_records', []), // Array of { id, scheduleId, semester, meetingNumber, status, reason, timestamp }
     setAttendanceRecords: (data) => Storage.set('unilife_attendance_records', data),
 
+    // Schedule agendas/events (e.g. UTS, presentasi)
+    getScheduleAgendas: () => Storage.get('unilife_schedule_agendas', []), // Array of { id, scheduleId, semester, title, date, time, notes, createdAt, updatedAt }
+    setScheduleAgendas: (data) => Storage.set('unilife_schedule_agendas', data),
+
     // Budget Tracker (Student Financials)
     getBudgetTransactions: () => Storage.get('unilife_budget_transactions', []), // Array of { id, type, amount, category, note, timestamp }
     setBudgetTransactions: (data) => Storage.set('unilife_budget_transactions', data),
