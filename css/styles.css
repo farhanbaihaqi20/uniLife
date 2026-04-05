@@ -1816,6 +1816,11 @@ body.modal-open {
     margin-bottom: 0.25rem;
 }
 
+.stat-info {
+    flex: 1;
+    min-width: 0;
+}
+
 .stat-info .stat-value {
     font-size: 1.5rem;
     font-weight: 700;
@@ -1823,6 +1828,16 @@ body.modal-open {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.profile-dashboard-stats-grid #profile-total-balance {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.2;
+    font-size: clamp(1.2rem, 4.8vw, 2rem);
 }
 
 /* -------------------
