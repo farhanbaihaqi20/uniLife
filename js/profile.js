@@ -811,7 +811,11 @@ const profileManager = {
 
         // Budget total balance (transactions + saldo awal)
         const budgetTransactions = Storage.getBudgetTransactions ? Storage.getBudgetTransactions() : [];
-        const baseBalance = Storage.getBudgetBaseBalance ? Number(Storage.getBudgetBaseBalance()) || 0 : 0;
+        const budgetAccounts = Storage.getBudgetAccounts ? Storage.getBudgetAccounts() : [];
+        const accountInitialTotal = Array.isArray(budgetAccounts)
+            ? budgetAccounts.reduce((sum, account) => sum + (Number(account?.initialBalance) || 0), 0)
+            : 0;
+        const baseBalance = accountInitialTotal || (Storage.getBudgetBaseBalance ? Number(Storage.getBudgetBaseBalance()) || 0 : 0);
         const txBalance = budgetTransactions.reduce((sum, tx) => {
             const amount = Number(tx.amount) || 0;
             return sum + (tx.type === 'income' ? amount : -amount);

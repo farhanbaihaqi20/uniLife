@@ -778,6 +778,10 @@
                             >
                             <i class="ph ph-file-arrow-down"></i> CSV
                         </button>
+                        <button class="btn btn-outline budget-action-btn" onclick="budgetManager.openTransferModal()"
+                            >
+                            <i class="ph ph-arrows-left-right"></i> Transfer
+                        </button>
                         <button class="btn btn-outline budget-action-btn budget-action-btn-reset" onclick="budgetManager.resetBudgetData()"
                             >
                             <i class="ph ph-arrow-counter-clockwise"></i> Reset
@@ -825,13 +829,15 @@
                         style="font-size: 2rem; font-weight: 700; color: var(--text-main); margin-bottom: 1.5rem; letter-spacing: -0.5px;">
                         Rp 0</h3>
 
+                    <div id="budget-fund-breakdown" style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;"></div>
+
                     <div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; margin-top:-0.9rem; margin-bottom:1.2rem;">
                         <p id="budget-manual-balance-info" style="font-size:0.78rem; color: var(--text-muted); font-weight:500;">
                             Saldo awal belum diatur
                         </p>
                         <button type="button" onclick="budgetManager.openBalanceModal()"
                             style="background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.35); color: #2563eb; font-size: 0.75rem; font-weight: 600; border-radius: 999px; padding: 0.35rem 0.65rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.3rem; white-space: nowrap;">
-                            <i class="ph ph-pencil-simple"></i> <span data-i18n="budget_manual_balance_edit">Edit Saldo</span>
+                            <i class="ph ph-pencil-simple"></i> <span data-i18n="budget_manual_balance_edit">Kelola Dana</span>
                         </button>
                     </div>
 
@@ -1363,20 +1369,17 @@
     <div class="modal-overlay" id="modal-budget-balance">
         <div class="modal-content">
             <button class="modal-close" onclick="budgetManager.closeBalanceModal()"><i class="ph ph-x"></i></button>
-            <h3 data-i18n="budget_manual_balance_set">Atur Saldo Awal</h3>
+            <h3 data-i18n="budget_manual_balance_set">Kelola Sumber Dana</h3>
             <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem; margin-bottom: 1.25rem;"
-                data-i18n="budget_manual_balance_hint">Isi saldo awal agar total saldo tidak harus dimulai dari transaksi.</p>
+                data-i18n="budget_manual_balance_hint">Atur nama akun, tipe akun, dan saldo awal tiap sumber dana.</p>
 
             <form id="form-budget-balance" onsubmit="budgetManager.saveBaseBalance(event)">
-                <div class="form-group">
-                    <label data-i18n="budget_manual_balance_label">Saldo Awal (Rp)</label>
-                    <input type="number" id="budget-balance-input" required placeholder="Contoh: 2500000"
-                        style="font-size: 1.5rem; font-weight: 700; padding: 1rem; color: #2563eb; background: rgba(37, 99, 235, 0.06); border-color: rgba(37, 99, 235, 0.3);">
-                </div>
-                <div style="display:flex; justify-content: space-between; margin-top: 0.5rem;">
-                    <button type="button" class="btn btn-outline"
-                        onclick="document.getElementById('budget-balance-input').value = '0'"
-                        style="padding: 0.3rem 0.6rem; font-size: 0.75rem; border-radius: 20px;">Reset ke 0</button>
+                <div id="budget-account-list" style="margin-bottom: 0.8rem;"></div>
+                <div style="display:flex; justify-content: flex-start; margin-top: 0.5rem;">
+                    <button type="button" class="btn btn-outline" onclick="budgetManager.addBudgetAccountRow()"
+                        style="padding: 0.3rem 0.65rem; font-size: 0.75rem; border-radius: 20px;">
+                        <i class="ph ph-plus"></i> Tambah Sumber Dana
+                    </button>
                 </div>
                 <button type="submit" class="btn btn-primary full-width mt-4"
                     style="background: #2563eb; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.35);"
@@ -1440,8 +1443,14 @@
 
                 <div class="form-group">
                     <label data-i18n="budget_amount">Nominal (Rp)</label>
-                    <input type="number" id="budget-tx-amount" required min="1" placeholder="0"
+                    <input type="number" id="budget-tx-amount" required min="1" placeholder="0" oninput="budgetManager.previewFundSourceWarning()"
                         style="font-size: 2rem; font-weight: 700; padding: 1rem; text-align: center;">
+                </div>
+
+                <div class="form-group">
+                    <label>Sumber Dana</label>
+                    <select id="budget-fund-source" required onchange="budgetManager.previewFundSourceWarning()"></select>
+                    <small style="color: var(--text-muted); font-size: 0.75rem;">Sistem akan memberi warning jika saldo sumber dana kurang.</small>
                 </div>
 
                 <div class="form-group">
@@ -1548,6 +1557,48 @@
                         style="flex:1; background: #ef4444; border-color: #ef4444;" data-i18n="budget_save">Simpan
                         Pengeluaran</button>
                 </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-budget-transfer">
+        <div class="modal-content">
+            <button class="modal-close" onclick="budgetManager.closeTransferModal()"><i class="ph ph-x"></i></button>
+            <h3>Transfer Antar Sumber Dana</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem; margin-bottom: 1.25rem;">
+                Total saldo global tidak berubah, hanya perpindahan saldo antar sumber dana.
+            </p>
+
+            <form id="form-budget-transfer" onsubmit="budgetManager.saveTransferTransaction(event)">
+                <div class="form-group row">
+                    <div class="col">
+                        <label>Dari</label>
+                        <select id="budget-transfer-from" required></select>
+                    </div>
+                    <div class="col">
+                        <label>Ke</label>
+                        <select id="budget-transfer-to" required></select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Nominal Transfer (Rp)</label>
+                    <input type="number" id="budget-transfer-amount" required min="1" placeholder="Contoh: 150000">
+                </div>
+
+                <div class="form-group">
+                    <label>Tanggal Transfer</label>
+                    <input type="date" id="budget-transfer-date" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Catatan (Opsional)</label>
+                    <input type="text" id="budget-transfer-note" placeholder="Contoh: Top up e-wallet mingguan">
+                </div>
+
+                <button type="submit" class="btn btn-primary full-width mt-4">
+                    <i class="ph ph-arrows-left-right"></i> Simpan Transfer
+                </button>
             </form>
         </div>
     </div>

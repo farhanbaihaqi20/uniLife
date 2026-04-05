@@ -472,11 +472,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Budget changed
-        if (!key || key === 'unilife_budget_tx' || key === 'unilife_budget_limit' || key === 'unilife_budget_base_balance') {
+        if (!key || key === 'unilife_budget_tx' || key === 'unilife_budget_limit' || key === 'unilife_budget_base_balance' || key === 'unilife_budget_accounts') {
             if (typeof budgetManager !== 'undefined') {
                 budgetManager.transactions = Storage.getBudgetTransactions();
+                budgetManager.accounts = Storage.getBudgetAccounts ? Storage.getBudgetAccounts() : [];
                 budgetManager.monthlyLimit = Storage.getBudgetLimit();
-                budgetManager.baseBalance = Storage.getBudgetBaseBalance();
+                budgetManager.baseBalance = typeof budgetManager.getTotalInitialBalance === 'function'
+                    ? budgetManager.getTotalInitialBalance()
+                    : Storage.getBudgetBaseBalance();
                 budgetManager.updateDashboard();
             }
             if (typeof profileManager !== 'undefined') {

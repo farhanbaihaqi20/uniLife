@@ -1,5 +1,6 @@
 const budgetManager = {
     transactions: [],
+    accounts: [],
     monthlyLimit: 0,
     baseBalance: 0,
     currentChart: null,
@@ -8,9 +9,13 @@ const budgetManager = {
     monthAnimationTimer: null,
 
     init: function () {
-        this.transactions = Storage.getBudgetTransactions();
+        this.accounts = this.normalizeAccounts(Storage.getBudgetAccounts());
+        this.migrateLegacyBaseBalance();
+        this.transactions = this.normalizeTransactions(Storage.getBudgetTransactions());
+        Storage.setBudgetTransactions(this.transactions);
+        Storage.setBudgetAccounts(this.accounts);
         this.monthlyLimit = Storage.getBudgetLimit();
-        this.baseBalance = Storage.getBudgetBaseBalance();
+        this.baseBalance = this.getTotalInitialBalance();
         this.selectedMonth = this.getInitialSelectedMonth();
         this.updateDashboard();
     },
@@ -101,9 +106,105 @@ const budgetManager = {
         return 'Rp ' + amount.toLocaleString('id-ID');
     },
 
+    getDefaultBudgetAccounts: function () {
+        return [
+            { id: 'cash-default', name: 'Cash', type: 'cash', initialBalance: 0 },
+            { id: 'bank-default', name: 'Bank Utama', type: 'banking', initialBalance: 0 },
+            { id: 'ewallet-default', name: 'E-Wallet Utama', type: 'ewallet', initialBalance: 0 }
+        ];
+    },
+
+    normalizeAccountType: function (type) {
+        const normalized = String(type || '').toLowerCase();
+        if (normalized === 'cash' || normalized === 'banking' || normalized === 'ewallet' || normalized === 'other') {
+            return normalized;
+        }
+        return 'other';
+    },
+
+    normalizeAccounts: function (accounts) {
+        const source = Array.isArray(accounts) ? accounts : [];
+        const cleaned = source
+            .map((account) => ({
+                id: account?.id || ((typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-${Math.random().toString(16).slice(2)}`),
+                name: String(account?.name || '').trim() || 'Sumber Dana',
+                type: this.normalizeAccountType(account?.type),
+                initialBalance: Number(account?.initialBalance) || 0
+            }))
+            .filter((account, index, arr) => arr.findIndex((a) => a.id === account.id) === index);
+
+        if (cleaned.length > 0) return cleaned;
+        return this.getDefaultBudgetAccounts();
+    },
+
+    getTotalInitialBalance: function () {
+        return this.accounts.reduce((sum, account) => sum + (Number(account.initialBalance) || 0), 0);
+    },
+
+    getDefaultAccountId: function () {
+        if (!Array.isArray(this.accounts) || this.accounts.length === 0) return 'cash-default';
+        const cashAccount = this.accounts.find((account) => account.type === 'cash');
+        return (cashAccount || this.accounts[0]).id;
+    },
+
+    getAccountById: function (id) {
+        return this.accounts.find((account) => account.id === id) || null;
+    },
+
+    getFundSourceLabelById: function (id) {
+        const account = this.getAccountById(id);
+        return account ? account.name : 'Cash';
+    },
+
+    normalizeTransactions: function (transactions) {
+        const defaultAccountId = this.getDefaultAccountId();
+        const source = Array.isArray(transactions) ? transactions : [];
+        return source.map((tx) => ({
+            ...tx,
+            fundSourceId: this.getAccountById(tx?.fundSourceId) ? tx.fundSourceId : defaultAccountId
+        }));
+    },
+
+    calculateAccountBalances: function (transactions = this.transactions) {
+        const balances = {};
+        this.accounts.forEach((account) => {
+            balances[account.id] = Number(account.initialBalance) || 0;
+        });
+
+        transactions.forEach((tx) => {
+            const fundSourceId = tx.fundSourceId;
+            if (!fundSourceId || typeof balances[fundSourceId] !== 'number') return;
+            const amount = Number(tx.amount) || 0;
+            if (tx.type === 'income') {
+                balances[fundSourceId] += amount;
+            } else {
+                balances[fundSourceId] -= amount;
+            }
+        });
+
+        return balances;
+    },
+
+    migrateLegacyBaseBalance: function () {
+        const oldBaseBalance = Number(Storage.getBudgetBaseBalance()) || 0;
+        const hasAccountsKey = !!localStorage.getItem('unilife_budget_accounts');
+
+        if (hasAccountsKey || oldBaseBalance === 0) return;
+
+        const cashAccount = this.accounts.find((account) => account.type === 'cash') || this.accounts[0];
+        if (!cashAccount) return;
+
+        cashAccount.initialBalance = (Number(cashAccount.initialBalance) || 0) + oldBaseBalance;
+        Storage.setBudgetBaseBalance(0);
+    },
+
     // --- UI Rendering ---
 
     updateDashboard: function () {
+        this.accounts = this.normalizeAccounts(this.accounts);
+        this.baseBalance = this.getTotalInitialBalance();
+        this.transactions = this.normalizeTransactions(this.transactions);
+
         const currentMonthTx = this.getTransactionsByMonth(this.selectedMonth);
         const previousMonth = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth() - 1, 1);
         const previousMonthTx = this.getTransactionsByMonth(previousMonth);
@@ -122,6 +223,7 @@ const budgetManager = {
         if (elExpense) elExpense.innerText = this.formatCurrency(monthTotals.expense);
 
         this.renderManualBalanceInfo();
+        this.renderFundBreakdown();
 
         this.renderMonthHeader();
 
@@ -273,13 +375,14 @@ const budgetManager = {
             return;
         }
 
-        const header = ['Tanggal', 'Tipe', 'Kategori', 'Nominal', 'Catatan'];
+        const header = ['Tanggal', 'Tipe', 'Sumber Dana', 'Kategori', 'Nominal', 'Catatan'];
         const rows = currentMonthTx.map((tx) => {
             const date = this.toDateInputValue(this.getTransactionDate(tx));
             const typeLabel = tx.type === 'income' ? 'Pemasukan' : 'Pengeluaran';
+            const fundSourceName = this.getFundSourceLabelById(tx.fundSourceId);
             const catName = i18n.t('budget_cat_' + tx.category) || tx.category;
             const safeNote = (tx.note || '').replace(/\"/g, '""');
-            return [date, typeLabel, catName, tx.amount, safeNote];
+            return [date, typeLabel, fundSourceName, catName, tx.amount, safeNote];
         });
 
         const csvContent = [header, ...rows]
@@ -304,7 +407,7 @@ const budgetManager = {
     cloneLastMonthExpenses: function () {
         const previousMonth = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth() - 1, 1);
         const previousMonthTx = this.getTransactionsByMonth(previousMonth)
-            .filter(tx => tx.type === 'expense');
+            .filter(tx => tx.type === 'expense' && !tx.isTransfer);
 
         if (previousMonthTx.length === 0) {
             if (typeof inboxManager !== 'undefined') inboxManager.showToast('Tidak ada pengeluaran bulan lalu untuk di-clone');
@@ -401,12 +504,37 @@ const budgetManager = {
         const infoEl = document.getElementById('budget-manual-balance-info');
         if (!infoEl) return;
 
-        if (this.baseBalance === 0) {
-            infoEl.innerText = i18n.t('budget_manual_balance_unset') || 'Saldo awal belum diatur';
+        if (!this.accounts || this.accounts.length === 0) {
+            infoEl.innerText = 'Sumber dana belum diatur';
             return;
         }
 
-        infoEl.innerText = `${i18n.t('budget_manual_balance_prefix') || 'Saldo awal'}: ${this.formatCurrency(this.baseBalance)}`;
+        infoEl.innerText = `${this.accounts.length} sumber dana aktif • Saldo awal total: ${this.formatCurrency(this.baseBalance)}`;
+    },
+
+    renderFundBreakdown: function () {
+        const container = document.getElementById('budget-fund-breakdown');
+        if (!container) return;
+
+        const balances = this.calculateAccountBalances(this.transactions);
+        container.innerHTML = '';
+
+        this.accounts.forEach((account) => {
+            const value = Number(balances[account.id]) || 0;
+            const isMinus = value < 0;
+            const chip = document.createElement('div');
+            chip.style.flex = '1';
+            chip.style.minWidth = '130px';
+            chip.style.background = 'var(--bg-main)';
+            chip.style.border = '1px solid var(--border-color)';
+            chip.style.borderRadius = '12px';
+            chip.style.padding = '0.65rem 0.7rem';
+            chip.innerHTML = `
+                <p style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:0.2rem;">${account.name}</p>
+                <p style="font-size:0.95rem; font-weight:700; color:${isMinus ? '#ef4444' : 'var(--text-main)'};">${this.formatCurrency(value)}</p>
+            `;
+            container.appendChild(chip);
+        });
     },
 
     renderChart: function (currentMonthTx) {
@@ -686,6 +814,7 @@ const budgetManager = {
 
             const iconName = iconMap[tx.category] || 'receipt';
             const catName = i18n.t('budget_cat_' + tx.category) || tx.category;
+            const fundSourceName = this.getFundSourceLabelById(tx.fundSourceId);
 
             const dateObj = this.getTransactionDate(tx);
             const dateStr = dateObj.toLocaleDateString(i18n.locale(), { day: 'numeric', month: 'short' });
@@ -700,7 +829,7 @@ const budgetManager = {
                     <h4 style="font-size: 0.95rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                         ${tx.note || catName}
                     </h4>
-                    <p style="font-size: 0.75rem; color: var(--text-muted);">${catName} &bull; ${dateStr}</p>
+                    <p style="font-size: 0.75rem; color: var(--text-muted);">${catName} &bull; ${fundSourceName} &bull; ${dateStr}</p>
                 </div>
                 <div style="text-align: right;">
                     <p style="font-size: 1rem; font-weight: 700; color: ${isIncome ? '#10b981' : 'var(--text-main)'};">
@@ -752,6 +881,81 @@ const budgetManager = {
         return this.toDateInputValue(suggested);
     },
 
+    populateFundSourceSelect: function (targetId, selectedId) {
+        const select = document.getElementById(targetId);
+        if (!select) return;
+
+        const preferredId = selectedId && this.getAccountById(selectedId)
+            ? selectedId
+            : this.getDefaultAccountId();
+
+        select.innerHTML = this.accounts.map((account) => {
+            const selectedAttr = account.id === preferredId ? 'selected' : '';
+            return `<option value="${account.id}" ${selectedAttr}>${account.name} (${account.type})</option>`;
+        }).join('');
+    },
+
+    previewFundSourceWarning: function () {
+        const sourceSelect = document.getElementById('budget-fund-source');
+        const amountInput = document.getElementById('budget-tx-amount');
+        const typeInput = document.querySelector('input[name="budget-type"]:checked');
+        if (!sourceSelect || !amountInput || !typeInput || typeInput.value !== 'expense') return;
+
+        const selectedSourceId = sourceSelect.value;
+        const amount = parseInt(amountInput.value, 10) || 0;
+        if (amount <= 0) return;
+
+        const balances = this.calculateAccountBalances(this.transactions);
+        const currentBalance = Number(balances[selectedSourceId]) || 0;
+        if (currentBalance < amount && typeof inboxManager !== 'undefined') {
+            inboxManager.showToast(`Warning: saldo sumber dana kurang (${this.formatCurrency(currentBalance)}), transaksi tetap bisa dilanjutkan.`);
+        }
+    },
+
+    renderAccountRows: function () {
+        const container = document.getElementById('budget-account-list');
+        if (!container) return;
+
+        container.innerHTML = '';
+        this.accounts.forEach((account) => {
+            const row = document.createElement('div');
+            row.className = 'budget-account-row';
+            row.style.display = 'grid';
+            row.style.gridTemplateColumns = '1.5fr 1fr 1fr auto';
+            row.style.gap = '0.5rem';
+            row.style.alignItems = 'center';
+            row.style.marginBottom = '0.5rem';
+
+            row.innerHTML = `
+                <input type="text" class="budget-account-name" value="${account.name}" data-id="${account.id}" placeholder="Nama sumber dana" required>
+                <select class="budget-account-type" data-id="${account.id}">
+                    <option value="cash" ${account.type === 'cash' ? 'selected' : ''}>cash</option>
+                    <option value="banking" ${account.type === 'banking' ? 'selected' : ''}>banking</option>
+                    <option value="ewallet" ${account.type === 'ewallet' ? 'selected' : ''}>ewallet</option>
+                    <option value="other" ${account.type === 'other' ? 'selected' : ''}>other</option>
+                </select>
+                <input type="number" class="budget-account-initial" value="${Number(account.initialBalance) || 0}" data-id="${account.id}" placeholder="Saldo awal">
+                <button type="button" class="btn btn-outline" data-remove-id="${account.id}" style="padding:0.45rem 0.55rem; color: var(--danger); border-color: var(--danger);">
+                    <i class="ph ph-trash"></i>
+                </button>
+            `;
+
+            const removeBtn = row.querySelector(`[data-remove-id="${account.id}"]`);
+            if (removeBtn) {
+                removeBtn.onclick = () => {
+                    if (this.accounts.length <= 1) {
+                        if (typeof inboxManager !== 'undefined') inboxManager.showToast('Minimal harus ada 1 sumber dana');
+                        return;
+                    }
+                    this.accounts = this.accounts.filter((item) => item.id !== account.id);
+                    this.renderAccountRows();
+                };
+            }
+
+            container.appendChild(row);
+        });
+    },
+
     // --- Modal Logic ---
 
     openLimitModal: function () {
@@ -761,27 +965,55 @@ const budgetManager = {
     },
 
     openBalanceModal: function () {
-        document.getElementById('budget-balance-input').value = this.baseBalance;
+        this.renderAccountRows();
         document.getElementById('modal-budget-balance').classList.add('active');
-        setTimeout(() => document.getElementById('budget-balance-input').focus(), 100);
+        setTimeout(() => {
+            const firstInput = document.querySelector('.budget-account-name');
+            if (firstInput) firstInput.focus();
+        }, 100);
     },
 
     closeBalanceModal: function () {
         document.getElementById('modal-budget-balance').classList.remove('active');
     },
 
+    addBudgetAccountRow: function () {
+        this.accounts.push({
+            id: (typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+            name: 'Sumber Dana Baru',
+            type: 'cash',
+            initialBalance: 0
+        });
+        this.renderAccountRows();
+    },
+
     saveBaseBalance: function (e) {
         e.preventDefault();
-        const rawValue = document.getElementById('budget-balance-input').value;
-        const parsed = parseInt(rawValue, 10);
 
-        this.baseBalance = Number.isFinite(parsed) ? parsed : 0;
+        const names = Array.from(document.querySelectorAll('.budget-account-name'));
+        const types = Array.from(document.querySelectorAll('.budget-account-type'));
+        const initials = Array.from(document.querySelectorAll('.budget-account-initial'));
+
+        const nextAccounts = names.map((input, index) => ({
+            id: input.dataset.id,
+            name: String(input.value || '').trim() || 'Sumber Dana',
+            type: this.normalizeAccountType(types[index]?.value),
+            initialBalance: Number(initials[index]?.value) || 0
+        }));
+
+        this.accounts = this.normalizeAccounts(nextAccounts);
+        this.transactions = this.normalizeTransactions(this.transactions);
+
+        this.baseBalance = this.getTotalInitialBalance();
+        Storage.setBudgetAccounts(this.accounts);
         Storage.setBudgetBaseBalance(this.baseBalance);
+        Storage.setBudgetTransactions(this.transactions);
+        window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_accounts' } }));
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_base_balance' } }));
 
         this.closeBalanceModal();
         if (typeof inboxManager !== 'undefined') {
-            inboxManager.showToast(i18n.t('budget_manual_balance_saved') || 'Saldo awal berhasil disimpan');
+            inboxManager.showToast('Sumber dana berhasil disimpan');
         }
     },
 
@@ -809,6 +1041,7 @@ const budgetManager = {
         document.getElementById('budget-tx-id').value = '';
         document.getElementById('budget-tx-date').value = this.getSuggestedTransactionDate();
         document.getElementById('budget-btn-delete').style.display = 'none';
+        this.populateFundSourceSelect('budget-fund-source');
 
         this.handleTypeChange('expense'); // Default to expense
 
@@ -825,6 +1058,7 @@ const budgetManager = {
         document.getElementById('budget-tx-amount').value = tx.amount;
         document.getElementById('budget-tx-note').value = tx.note || '';
         document.getElementById('budget-tx-date').value = this.toDateInputValue(this.getTransactionDate(tx));
+        this.populateFundSourceSelect('budget-fund-source', tx.fundSourceId);
 
         // Set type
         this.handleTypeChange(tx.type);
@@ -848,15 +1082,18 @@ const budgetManager = {
         if (!confirmed) return;
 
         this.transactions = [];
+        this.accounts = this.getDefaultBudgetAccounts();
         this.monthlyLimit = 0;
         this.baseBalance = 0;
         this.topCategoryEntries = [];
         this.selectedMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
         Storage.setBudgetTransactions([]);
+        Storage.setBudgetAccounts(this.accounts);
         Storage.setBudgetLimit(0);
         Storage.setBudgetBaseBalance(0);
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_tx' } }));
+        window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_accounts' } }));
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_limit' } }));
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_base_balance' } }));
 
@@ -918,7 +1155,7 @@ const budgetManager = {
         const bbmId = payload?.relation?.bbm_id || payload?.bbm_id;
         if (!bbmId) return false;
 
-        this.transactions = Storage.getBudgetTransactions();
+        this.transactions = this.normalizeTransactions(Storage.getBudgetTransactions());
         const index = this.transactions.findIndex((tx) =>
             tx?.relation?.bbm_id === bbmId || tx?.bbm_id === bbmId || tx?.sourceId === bbmId
         );
@@ -944,6 +1181,7 @@ const budgetManager = {
             category: 'transport',
             note: payload?.catatan || 'Isi BBM',
             date: txDate,
+            fundSourceId: payload?.fundSourceId || this.getDefaultAccountId(),
             relation: { bbm_id: bbmId },
             bbm_id: bbmId,
             source: 'bbm',
@@ -975,6 +1213,7 @@ const budgetManager = {
         const amount = parseInt(document.getElementById('budget-tx-amount').value) || 0;
         const note = document.getElementById('budget-tx-note').value.trim();
         const txDateRaw = document.getElementById('budget-tx-date').value;
+        const fundSourceId = document.getElementById('budget-fund-source').value;
 
         const catName = type === 'expense' ? 'budget-category' : 'budget-category-inc';
         const category = document.querySelector(`input[name="${catName}"]:checked`).value;
@@ -982,6 +1221,20 @@ const budgetManager = {
         if (amount <= 0) {
             if (typeof inboxManager !== 'undefined') inboxManager.showToast('Nominal tidak valid!');
             return;
+        }
+
+        if (!this.getAccountById(fundSourceId)) {
+            if (typeof inboxManager !== 'undefined') inboxManager.showToast('Sumber dana tidak valid');
+            return;
+        }
+
+        if (type === 'expense') {
+            const accountBalances = this.calculateAccountBalances(this.transactions);
+            const currentBalance = Number(accountBalances[fundSourceId]) || 0;
+            if (currentBalance < amount) {
+                const confirmed = confirm(`Saldo sumber dana ini kurang (${this.formatCurrency(currentBalance)}). Lanjutkan dan izinkan saldo minus?`);
+                if (!confirmed) return;
+            }
         }
 
         const parsedDate = txDateRaw ? new Date(`${txDateRaw}T12:00:00`) : new Date();
@@ -997,7 +1250,8 @@ const budgetManager = {
                     amount,
                     category,
                     note,
-                    date: txDate
+                    date: txDate,
+                    fundSourceId
                 };
             }
         } else {
@@ -1008,7 +1262,8 @@ const budgetManager = {
                 amount,
                 category,
                 note,
-                date: txDate
+                date: txDate,
+                fundSourceId
             };
             this.transactions.push(newTx);
         }
@@ -1036,5 +1291,90 @@ const budgetManager = {
             this.closeAddModal();
             if (typeof inboxManager !== 'undefined') inboxManager.showToast('Transaksi dihapus');
         }
+    },
+
+    openTransferModal: function () {
+        this.populateFundSourceSelect('budget-transfer-from');
+        this.populateFundSourceSelect('budget-transfer-to', this.accounts[1]?.id || this.getDefaultAccountId());
+        document.getElementById('budget-transfer-amount').value = '';
+        document.getElementById('budget-transfer-note').value = '';
+        document.getElementById('budget-transfer-date').value = this.getSuggestedTransactionDate();
+        document.getElementById('modal-budget-transfer').classList.add('active');
+    },
+
+    closeTransferModal: function () {
+        document.getElementById('modal-budget-transfer').classList.remove('active');
+    },
+
+    saveTransferTransaction: function (e) {
+        e.preventDefault();
+
+        const fromId = document.getElementById('budget-transfer-from').value;
+        const toId = document.getElementById('budget-transfer-to').value;
+        const amount = parseInt(document.getElementById('budget-transfer-amount').value, 10) || 0;
+        const note = document.getElementById('budget-transfer-note').value.trim();
+        const txDateRaw = document.getElementById('budget-transfer-date').value;
+
+        if (!this.getAccountById(fromId) || !this.getAccountById(toId)) {
+            if (typeof inboxManager !== 'undefined') inboxManager.showToast('Sumber dana transfer tidak valid');
+            return;
+        }
+
+        if (fromId === toId) {
+            if (typeof inboxManager !== 'undefined') inboxManager.showToast('Sumber asal dan tujuan harus berbeda');
+            return;
+        }
+
+        if (amount <= 0) {
+            if (typeof inboxManager !== 'undefined') inboxManager.showToast('Nominal transfer tidak valid');
+            return;
+        }
+
+        const balances = this.calculateAccountBalances(this.transactions);
+        const fromBalance = Number(balances[fromId]) || 0;
+        if (fromBalance < amount) {
+            const confirmed = confirm(`Saldo sumber asal kurang (${this.formatCurrency(fromBalance)}). Lanjutkan transfer dan izinkan saldo minus?`);
+            if (!confirmed) return;
+        }
+
+        const parsedDate = txDateRaw ? new Date(`${txDateRaw}T12:00:00`) : new Date();
+        const txDate = Number.isNaN(parsedDate.getTime()) ? new Date().toISOString() : parsedDate.toISOString();
+        const transferId = (typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+        const transferOut = {
+            id: (typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-out`,
+            type: 'expense',
+            amount,
+            category: 'other',
+            note: note || `Transfer ke ${this.getFundSourceLabelById(toId)}`,
+            date: txDate,
+            fundSourceId: fromId,
+            isTransfer: true,
+            transferId,
+            transferDirection: 'out'
+        };
+
+        const transferIn = {
+            id: (typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-in`,
+            type: 'income',
+            amount,
+            category: 'other_income',
+            note: note || `Transfer dari ${this.getFundSourceLabelById(fromId)}`,
+            date: txDate,
+            fundSourceId: toId,
+            isTransfer: true,
+            transferId,
+            transferDirection: 'in'
+        };
+
+        this.transactions.push(transferOut, transferIn);
+
+        const savedDate = new Date(txDate);
+        this.selectedMonth = new Date(savedDate.getFullYear(), savedDate.getMonth(), 1);
+
+        Storage.setBudgetTransactions(this.transactions);
+        window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_tx' } }));
+        this.closeTransferModal();
+        if (typeof inboxManager !== 'undefined') inboxManager.showToast('Transfer berhasil disimpan');
     }
 };

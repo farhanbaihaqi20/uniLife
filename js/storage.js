@@ -82,5 +82,9 @@ const Storage = {
     setBudgetLimit: (data) => Storage.set('unilife_budget_limit', data),
 
     getBudgetBaseBalance: () => Storage.get('unilife_budget_base_balance', 0), // Manual/initial balance adjustment
-    setBudgetBaseBalance: (data) => Storage.set('unilife_budget_base_balance', data)
+    setBudgetBaseBalance: (data) => Storage.set('unilife_budget_base_balance', data),
+
+    // Flexible fund accounts for budget module
+    getBudgetAccounts: () => Storage.get('unilife_budget_accounts', []), // Array of { id, name, type, initialBalance }
+    setBudgetAccounts: (data) => Storage.set('unilife_budget_accounts', data)
 };
