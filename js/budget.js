@@ -9,6 +9,7 @@ const budgetManager = {
     monthAnimationTimer: null,
     recentInterestFundIds: [],
     interestVisualTimer: null,
+    interestDisplayScope: 'all',
     moreActionsBound: false,
 
     init: function () {
@@ -156,6 +157,40 @@ const budgetManager = {
             expense,
             balance: income - expense
         };
+    },
+
+    calculateTotalInterestEarned: function (transactions = this.transactions) {
+        return (Array.isArray(transactions) ? transactions : []).reduce((sum, tx) => {
+            if (!tx || tx.type !== 'income') return sum;
+            if (tx.isInterest || tx.source === 'bank_interest') {
+                return sum + (Number(tx.amount) || 0);
+            }
+            return sum;
+        }, 0);
+    },
+
+    getInterestTransactions: function (transactions = this.transactions) {
+        return (Array.isArray(transactions) ? transactions : []).filter((tx) => {
+            if (!tx || tx.type !== 'income') return false;
+            return !!tx.isInterest || tx.source === 'bank_interest';
+        });
+    },
+
+    setInterestDisplayScope: function (scope) {
+        const nextScope = scope === 'month' ? 'month' : 'all';
+        if (this.interestDisplayScope === nextScope) return;
+        this.interestDisplayScope = nextScope;
+        this.updateDashboard();
+    },
+
+    renderInterestScopeSwitch: function () {
+        const allBtn = document.getElementById('budget-interest-scope-all');
+        const monthBtn = document.getElementById('budget-interest-scope-month');
+        if (!allBtn || !monthBtn) return;
+
+        const isMonth = this.interestDisplayScope === 'month';
+        allBtn.classList.toggle('is-active', !isMonth);
+        monthBtn.classList.toggle('is-active', isMonth);
     },
 
     getExpensesByCategory: function (transactions) {
@@ -557,15 +592,22 @@ const budgetManager = {
         const totalBalanceWithManual = totals.balance + this.baseBalance;
         const monthTotals = this.calculateTotals(currentMonthTx); // Monthly stats for limit/chart
         const prevMonthTotals = this.calculateTotals(previousMonthTx);
+        const interestSourceTx = this.interestDisplayScope === 'month'
+            ? this.getInterestTransactions(currentMonthTx)
+            : this.getInterestTransactions(this.transactions);
+        const totalInterestEarned = this.calculateTotalInterestEarned(interestSourceTx);
 
         // Update Balance Cards
         const elBalance = document.getElementById('budget-total-balance');
+        const elInterest = document.getElementById('budget-total-interest-value');
         const elIncome = document.getElementById('budget-total-income');
         const elExpense = document.getElementById('budget-total-expense');
 
         if (elBalance) elBalance.innerText = this.formatCurrency(totalBalanceWithManual);
+        if (elInterest) elInterest.innerText = this.formatCurrency(totalInterestEarned);
         if (elIncome) elIncome.innerText = this.formatCurrency(monthTotals.income);
         if (elExpense) elExpense.innerText = this.formatCurrency(monthTotals.expense);
+        this.renderInterestScopeSwitch();
 
         this.renderManualBalanceInfo();
         this.renderFundBreakdown();

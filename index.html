@@ -879,6 +879,20 @@
                         style="font-size: 2rem; font-weight: 700; color: var(--text-main); margin-bottom: 1.5rem; letter-spacing: -0.5px;">
                         Rp 0</h3>
 
+                    <div class="budget-interest-earned-wrap" style="margin-top:-1rem; margin-bottom:1rem;">
+                        <p id="budget-total-interest-earned" class="budget-interest-earned-indicator">
+                            <i class="ph ph-coins"></i>
+                            <span data-i18n="budget_interest_total_label">Total bunga terkumpul</span>
+                            <strong id="budget-total-interest-value">Rp 0</strong>
+                        </p>
+                        <div class="budget-interest-scope-switch" aria-label="Filter bunga">
+                            <button type="button" id="budget-interest-scope-all" class="budget-interest-scope-btn is-active"
+                                data-i18n="budget_interest_scope_all" onclick="budgetManager.setInterestDisplayScope('all')">Semua waktu</button>
+                            <button type="button" id="budget-interest-scope-month" class="budget-interest-scope-btn"
+                                data-i18n="budget_interest_scope_month" onclick="budgetManager.setInterestDisplayScope('month')">Bulan dipilih</button>
+                        </div>
+                    </div>
+
                     <div id="budget-fund-breakdown" style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;"></div>
 
                     <div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; margin-top:-0.9rem; margin-bottom:1.2rem;">

@@ -3193,6 +3193,65 @@ select:focus {
     color: #ef4444;
 }
 
+.budget-interest-earned-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    width: fit-content;
+    max-width: 100%;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #0f766e;
+    background: linear-gradient(135deg, rgba(45, 212, 191, 0.12), rgba(16, 185, 129, 0.08));
+    border: 1px solid rgba(13, 148, 136, 0.25);
+    border-radius: 999px;
+    padding: 0.28rem 0.62rem;
+}
+
+.budget-interest-earned-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.budget-interest-scope-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.18rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 85%, rgba(13, 148, 136, 0.2));
+    background: color-mix(in srgb, var(--bg-card) 88%, var(--bg-main));
+}
+
+.budget-interest-scope-btn {
+    border: none;
+    background: transparent;
+    border-radius: 999px;
+    padding: 0.22rem 0.55rem;
+    font-size: 0.68rem;
+    font-weight: 650;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.budget-interest-scope-btn.is-active {
+    color: #0f766e;
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.16), rgba(16, 185, 129, 0.12));
+}
+
+.budget-interest-earned-indicator i {
+    font-size: 0.86rem;
+}
+
+#budget-total-interest-value {
+    font-size: 0.78rem;
+    font-weight: 750;
+    color: #047857;
+}
+
 .budget-flow-icon {
     width: 36px;
     height: 36px;
@@ -3558,6 +3617,30 @@ select:focus {
     background: linear-gradient(135deg, rgba(14, 116, 144, 0.86), rgba(2, 132, 199, 0.7));
     border-color: rgba(103, 232, 249, 0.36);
     box-shadow: 0 5px 14px rgba(8, 47, 73, 0.45);
+}
+
+[data-theme="dark"] .budget-interest-earned-indicator {
+    color: #99f6e4;
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.24), rgba(6, 182, 212, 0.18));
+    border-color: rgba(45, 212, 191, 0.42);
+}
+
+[data-theme="dark"] .budget-interest-scope-switch {
+    border-color: rgba(45, 212, 191, 0.38);
+    background: rgba(15, 23, 42, 0.46);
+}
+
+[data-theme="dark"] .budget-interest-scope-btn {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .budget-interest-scope-btn.is-active {
+    color: #99f6e4;
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.34), rgba(6, 182, 212, 0.22));
+}
+
+[data-theme="dark"] #budget-total-interest-value {
+    color: #5eead4;
 }
 
 #view-budget.budget-month-animating .premium-budget-card,
