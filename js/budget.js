@@ -378,6 +378,7 @@ const budgetManager = {
         const source = Array.isArray(transactions) ? transactions : [];
         return source.map((tx) => ({
             ...tx,
+            createdAt: tx?.createdAt || tx?.timestamp || tx?.date || new Date().toISOString(),
             fundSourceId: this.getAccountById(tx?.fundSourceId) ? tx.fundSourceId : defaultAccountId
         }));
     },
@@ -1207,8 +1208,19 @@ const budgetManager = {
             return;
         }
 
-        // Sort by date descending
-        const sorted = [...monthTransactions].sort((a, b) => this.getTransactionDate(b) - this.getTransactionDate(a));
+        // Sort by transaction date, then created time, then insertion order (newest first).
+        const sorted = monthTransactions
+            .map((tx, index) => ({ tx, index }))
+            .sort((a, b) => {
+                const dateDiff = this.getTransactionDate(b.tx) - this.getTransactionDate(a.tx);
+                if (dateDiff !== 0) return dateDiff;
+
+                const createdDiff = this.getTransactionDate(b.tx.createdAt || b.tx.date) - this.getTransactionDate(a.tx.createdAt || a.tx.date);
+                if (createdDiff !== 0) return createdDiff;
+
+                return b.index - a.index;
+            })
+            .map((entry) => entry.tx);
 
         // Show up to 15 items for richer monthly context
         const recent = sorted.slice(0, 15);
@@ -1246,7 +1258,10 @@ const budgetManager = {
             const fundSourceName = this.getFundSourceLabelById(tx.fundSourceId);
 
             const dateObj = this.getTransactionDate(tx);
-            const dateStr = dateObj.toLocaleDateString(i18n.locale(), { day: 'numeric', month: 'short' });
+            const dateLabel = dateObj.toLocaleDateString(i18n.locale(), { day: '2-digit', month: 'short' });
+            const timeLabel = dateObj
+                .toLocaleTimeString(i18n.locale(), { hour: '2-digit', minute: '2-digit', hour12: false })
+                .replace(':', '.');
 
             el.innerHTML = `
                 <div style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; 
@@ -1258,7 +1273,7 @@ const budgetManager = {
                     <h4 style="font-size: 0.95rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                         ${tx.note || catName}
                     </h4>
-                    <p style="font-size: 0.75rem; color: var(--text-muted);">${catName} &bull; ${fundSourceName} &bull; ${dateStr}</p>
+                    <p style="font-size: 0.75rem; color: var(--text-muted);">${catName} &bull; ${fundSourceName} &bull; ${dateLabel}, ${timeLabel}</p>
                 </div>
                 <div style="text-align: right;">
                     <p style="font-size: 1rem; font-weight: 700; color: ${isIncome ? '#10b981' : 'var(--text-main)'};">
@@ -1716,6 +1731,7 @@ const budgetManager = {
             category: 'transport',
             note: payload?.catatan || 'Isi BBM',
             date: txDate,
+            createdAt: payload?.createdAt || new Date().toISOString(),
             fundSourceId: payload?.fundSourceId || this.getDefaultAccountId(),
             relation: { bbm_id: bbmId },
             bbm_id: bbmId,
@@ -1786,6 +1802,7 @@ const budgetManager = {
                     category,
                     note,
                     date: txDate,
+                    createdAt: this.transactions[index].createdAt || new Date().toISOString(),
                     fundSourceId
                 };
             }
@@ -1798,6 +1815,7 @@ const budgetManager = {
                 category,
                 note,
                 date: txDate,
+                createdAt: new Date().toISOString(),
                 fundSourceId
             };
             this.transactions.push(newTx);
