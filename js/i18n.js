@@ -38,6 +38,7 @@ const i18n = {
             'home_due_prefix': 'Tenggat:',
             'home_view': 'Lihat',
             'home_prompt_add_reminder': 'Ketik pengingat: (Cth: Beli buku tulis, Fotocopy KTP)',
+            'app_exit_confirm': 'Apakah kamu ingin keluar dari aplikasi?',
 
             // Profile View
             'profile_active_semester': 'Semester Aktif',
@@ -463,6 +464,7 @@ const i18n = {
             'home_due_prefix': 'Due:',
             'home_view': 'View',
             'home_prompt_add_reminder': 'Type a reminder: (e.g. Buy notebook, Photocopy ID)',
+            'app_exit_confirm': 'Do you want to exit the app?',
 
             // Profile View
             'profile_active_semester': 'Active Semester',

@@ -39,6 +39,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentViewId = 'view-home';
     const viewHistory = ['view-home'];
     const maxViewHistory = 40;
+    const browserBackState = {
+        root: '__unilifeRootState',
+        guard: '__unilifeBackGuard'
+    };
 
     const animateViewSection = function (targetId) {
         const section = document.getElementById(targetId);
@@ -153,6 +157,96 @@ document.addEventListener('DOMContentLoaded', () => {
             window.openView(targetId, targetId, { fromHistory: false, trackHistory: true });
         });
     });
+
+    const setupMobileBrowserBackBehavior = function () {
+        const supportsHistoryApi = !!(window.history && typeof window.history.pushState === 'function' && typeof window.history.replaceState === 'function');
+        const isStandalonePwa = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+        // Safest scope: only hijack back behavior while running as installed PWA.
+        if (!supportsHistoryApi || !isStandalonePwa) return;
+
+        const closeActiveLayer = function () {
+            const notifPanel = document.getElementById('notification-panel');
+            if (notifPanel && notifPanel.classList.contains('active')) {
+                notifPanel.classList.remove('active');
+                return true;
+            }
+
+            const focusOverlay = document.getElementById('focus-fullscreen-overlay');
+            if (focusOverlay && focusOverlay.classList.contains('active')) {
+                if (typeof focusManager !== 'undefined' && typeof focusManager.exitFullscreenMode === 'function') {
+                    focusManager.exitFullscreenMode();
+                } else {
+                    focusOverlay.classList.remove('active');
+                }
+                return true;
+            }
+
+            const activeModal = document.querySelector('.modal-overlay.active, .welcome-modal.active, .call-modal-overlay.active');
+            if (!activeModal) return false;
+
+            const closeBtn = activeModal.querySelector('.modal-close');
+            if (closeBtn) {
+                closeBtn.click();
+            } else {
+                activeModal.classList.remove('active');
+            }
+            return true;
+        };
+
+        const normalizeToHome = function () {
+            if (currentViewId === 'view-home') return;
+            window.openView('view-home', 'view-home', { fromHistory: true, trackHistory: false });
+            viewHistory.splice(0, viewHistory.length, 'view-home');
+        };
+
+        const keepBackGuard = function () {
+            const currentState = history.state || {};
+            history.pushState({ ...currentState, [browserBackState.root]: true, [browserBackState.guard]: true }, '', window.location.href);
+        };
+
+        if (!(history.state && history.state[browserBackState.root])) {
+            const currentState = history.state || {};
+            history.replaceState({ ...currentState, [browserBackState.root]: true }, '', window.location.href);
+        }
+        keepBackGuard();
+
+        const handlePopState = function (event) {
+            const state = event.state || {};
+            if (!state[browserBackState.root]) return;
+
+            if (closeActiveLayer()) {
+                keepBackGuard();
+                return;
+            }
+
+            if (currentViewId !== 'view-home') {
+                normalizeToHome();
+                keepBackGuard();
+                return;
+            }
+
+            const exitMessage = (typeof i18n !== 'undefined' && typeof i18n.t === 'function')
+                ? i18n.t('app_exit_confirm')
+                : 'Keluar aplikasi sekarang?';
+            const shouldExit = confirm(exitMessage);
+
+            if (shouldExit) {
+                window.removeEventListener('popstate', handlePopState);
+                history.back();
+                setTimeout(() => {
+                    window.close();
+                }, 120);
+                return;
+            }
+
+            keepBackGuard();
+        };
+
+        window.addEventListener('popstate', handlePopState);
+    };
+
+    setupMobileBrowserBackBehavior();
 
     const setupEdgeBackGesture = function () {
         const EDGE_START_MAX_X = 26;
