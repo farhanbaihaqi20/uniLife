@@ -6,16 +6,25 @@ const budgetManager = {
     currentChart: null,
     selectedMonth: null,
     topCategoryEntries: [],
+    spendingDayRankEntries: [],
+    savingsGoals: [],
+    activeSavingsGoalId: null,
     monthAnimationTimer: null,
     recentInterestFundIds: [],
     interestVisualTimer: null,
     interestDisplayScope: 'all',
+    transactionSourceFilter: 'all',
+    savingsGoalActionsBound: false,
+    savingsGoalSwipeBound: false,
+    savingsGoalSlideDirection: '',
+    savingsGoalSwipeFeedback: false,
     moreActionsBound: false,
 
     init: function () {
         this.accounts = this.normalizeAccounts(Storage.getBudgetAccounts());
         this.migrateLegacyBaseBalance();
         this.transactions = this.normalizeTransactions(Storage.getBudgetTransactions());
+        this.savingsGoals = this.normalizeSavingsGoals(Storage.getBudgetSavingsGoals());
         this.applyPendingAccountInterest();
         Storage.setBudgetTransactions(this.transactions);
         Storage.setBudgetAccounts(this.accounts);
@@ -23,7 +32,112 @@ const budgetManager = {
         this.baseBalance = this.getTotalInitialBalance();
         this.selectedMonth = this.getInitialSelectedMonth();
         this.bindMoreActionsEvents();
+        this.bindSavingsGoalActionsEvents();
+        this.bindSavingsGoalSwipeEvents();
         this.updateDashboard();
+    },
+
+    bindSavingsGoalSwipeEvents: function () {
+        if (this.savingsGoalSwipeBound) return;
+
+        const container = document.getElementById('budget-goal-content');
+        if (!container) return;
+
+        let startX = 0;
+        let startY = 0;
+        let startTime = 0;
+
+        container.addEventListener('touchstart', (event) => {
+            const touch = event.changedTouches && event.changedTouches[0];
+            if (!touch) return;
+            startX = touch.clientX;
+            startY = touch.clientY;
+            startTime = Date.now();
+        }, { passive: true });
+
+        container.addEventListener('touchend', (event) => {
+            const touch = event.changedTouches && event.changedTouches[0];
+            if (!touch) return;
+
+            const deltaX = touch.clientX - startX;
+            const deltaY = touch.clientY - startY;
+            const elapsed = Date.now() - startTime;
+
+            const hasMultipleGoals = Array.isArray(this.savingsGoals) && this.savingsGoals.length > 1;
+            if (!hasMultipleGoals) return;
+            if (elapsed > 500) return;
+            if (Math.abs(deltaX) < 45) return;
+            if (Math.abs(deltaY) > 34) return;
+            if (Math.abs(deltaX) < Math.abs(deltaY) * 1.2) return;
+
+            if (deltaX < 0) {
+                this.nextSavingsGoal(true);
+            } else {
+                this.prevSavingsGoal(true);
+            }
+        }, { passive: true });
+
+        this.savingsGoalSwipeBound = true;
+    },
+
+    bindSavingsGoalActionsEvents: function () {
+        if (this.savingsGoalActionsBound) return;
+
+        document.addEventListener('click', (event) => {
+            const wrapper = document.getElementById('budget-goal-more-wrapper');
+            if (!wrapper || !wrapper.contains(event.target)) {
+                this.closeSavingsGoalActions();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                this.closeSavingsGoalActions();
+            }
+        });
+
+        document.addEventListener('scroll', () => {
+            const menu = document.getElementById('budget-goal-more-menu');
+            if (!menu || !menu.classList.contains('is-open')) return;
+            this.closeSavingsGoalActions();
+        }, true);
+
+        this.savingsGoalActionsBound = true;
+    },
+
+    toggleSavingsGoalActions: function (event) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        const menu = document.getElementById('budget-goal-more-menu');
+        const toggle = document.getElementById('budget-goal-more-toggle');
+        const wrapper = document.getElementById('budget-goal-more-wrapper');
+        if (!menu || !toggle || !wrapper) return;
+
+        const isOpen = menu.classList.contains('is-open');
+        if (isOpen) {
+            this.closeSavingsGoalActions();
+            return;
+        }
+
+        wrapper.classList.add('is-open');
+        menu.classList.add('is-open');
+        menu.setAttribute('aria-hidden', 'false');
+        toggle.setAttribute('aria-expanded', 'true');
+    },
+
+    closeSavingsGoalActions: function () {
+        const menu = document.getElementById('budget-goal-more-menu');
+        const toggle = document.getElementById('budget-goal-more-toggle');
+        const wrapper = document.getElementById('budget-goal-more-wrapper');
+        if (!menu || !toggle || !wrapper) return;
+
+        wrapper.classList.remove('is-open');
+        menu.classList.remove('is-open');
+        menu.setAttribute('aria-hidden', 'true');
+        toggle.setAttribute('aria-expanded', 'false');
     },
 
     bindMoreActionsEvents: function () {
@@ -191,6 +305,28 @@ const budgetManager = {
         const isMonth = this.interestDisplayScope === 'month';
         allBtn.classList.toggle('is-active', !isMonth);
         monthBtn.classList.toggle('is-active', isMonth);
+    },
+
+    setTransactionSourceFilter: function (filterType) {
+        const allowed = ['all', 'cash', 'ewallet', 'banking'];
+        const nextFilter = allowed.includes(filterType) ? filterType : 'all';
+        if (this.transactionSourceFilter === nextFilter) return;
+        this.transactionSourceFilter = nextFilter;
+        this.updateDashboard();
+    },
+
+    renderTransactionSourceFilter: function () {
+        const allBtn = document.getElementById('budget-tx-filter-all');
+        const cashBtn = document.getElementById('budget-tx-filter-cash');
+        const ewalletBtn = document.getElementById('budget-tx-filter-ewallet');
+        const bankingBtn = document.getElementById('budget-tx-filter-banking');
+        if (!allBtn || !cashBtn || !ewalletBtn || !bankingBtn) return;
+
+        const active = this.transactionSourceFilter;
+        allBtn.classList.toggle('is-active', active === 'all');
+        cashBtn.classList.toggle('is-active', active === 'cash');
+        ewalletBtn.classList.toggle('is-active', active === 'ewallet');
+        bankingBtn.classList.toggle('is-active', active === 'banking');
     },
 
     getExpensesByCategory: function (transactions) {
@@ -381,6 +517,64 @@ const budgetManager = {
             createdAt: tx?.createdAt || tx?.timestamp || tx?.date || new Date().toISOString(),
             fundSourceId: this.getAccountById(tx?.fundSourceId) ? tx.fundSourceId : defaultAccountId
         }));
+    },
+
+    normalizeSavingsGoals: function (goals) {
+        const source = Array.isArray(goals) ? goals : [];
+        return source
+            .map((goal) => {
+                const parsedDate = goal?.targetDate ? new Date(goal.targetDate) : null;
+                const targetDate = parsedDate && !Number.isNaN(parsedDate.getTime())
+                    ? this.toDateInputValue(parsedDate)
+                    : this.toDateInputValue(new Date());
+                const status = ['active', 'paused', 'completed'].includes(goal?.status) ? goal.status : 'active';
+
+                return {
+                    id: goal?.id || ((typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-${Math.random().toString(16).slice(2)}`),
+                    name: String(goal?.name || '').trim() || 'Tujuan Nabung',
+                    targetAmount: Math.max(0, Number(goal?.targetAmount) || 0),
+                    targetDate,
+                    currentAmount: Math.max(0, Number(goal?.currentAmount) || 0),
+                    status,
+                    createdAt: goal?.createdAt || new Date().toISOString()
+                };
+            })
+            .filter((goal) => goal.targetAmount > 0)
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    },
+
+    getPrimarySavingsGoal: function () {
+        if (this.activeSavingsGoalId) {
+            const selectedGoal = this.savingsGoals.find((goal) => goal.id === this.activeSavingsGoalId);
+            if (selectedGoal) return selectedGoal;
+        }
+
+        const activeGoal = this.savingsGoals.find((goal) => goal.status === 'active' || goal.status === 'paused');
+        if (activeGoal) return activeGoal;
+        return this.savingsGoals[0] || null;
+    },
+
+    setActiveSavingsGoal: function (goalId, direction = '', withSwipeFeedback = false) {
+        if (!goalId) return;
+        if (!this.savingsGoals.some((goal) => goal.id === goalId)) return;
+        this.activeSavingsGoalId = goalId;
+        this.savingsGoalSlideDirection = direction === 'left' || direction === 'right' ? direction : '';
+        this.savingsGoalSwipeFeedback = !!withSwipeFeedback;
+        this.renderSavingsGoalCard();
+    },
+
+    prevSavingsGoal: function (withSwipeFeedback = false) {
+        if (!Array.isArray(this.savingsGoals) || this.savingsGoals.length <= 1) return;
+        const currentIndex = this.savingsGoals.findIndex((goal) => goal.id === this.activeSavingsGoalId);
+        const nextIndex = currentIndex > 0 ? currentIndex - 1 : 0;
+        this.setActiveSavingsGoal(this.savingsGoals[nextIndex].id, 'right', withSwipeFeedback);
+    },
+
+    nextSavingsGoal: function (withSwipeFeedback = false) {
+        if (!Array.isArray(this.savingsGoals) || this.savingsGoals.length <= 1) return;
+        const currentIndex = this.savingsGoals.findIndex((goal) => goal.id === this.activeSavingsGoalId);
+        const nextIndex = currentIndex >= 0 ? Math.min(this.savingsGoals.length - 1, currentIndex + 1) : 0;
+        this.setActiveSavingsGoal(this.savingsGoals[nextIndex].id, 'left', withSwipeFeedback);
     },
 
     calculateAccountBalances: function (transactions = this.transactions) {
@@ -628,6 +822,7 @@ const budgetManager = {
 
         // Update Limit Progress
         this.renderLimitProgress(monthTotals.expense);
+        this.renderSavingsGoalCard();
 
         // Update Insights
         this.renderInsights(monthTotals, prevMonthTotals, currentMonthTx);
@@ -639,7 +834,119 @@ const budgetManager = {
         this.renderChart(currentMonthTx);
 
         // Update Transaction List
+        this.renderTransactionSourceFilter();
         this.renderTransactionList(currentMonthTx);
+    },
+
+    renderSavingsGoalCard: function () {
+        const emptyEl = document.getElementById('budget-goal-empty');
+        const contentEl = document.getElementById('budget-goal-content');
+        const carouselEl = document.getElementById('budget-goal-carousel');
+        const prevBtn = document.getElementById('budget-goal-prev');
+        const nextBtn = document.getElementById('budget-goal-next');
+        const indicatorEl = document.getElementById('budget-goal-indicator');
+        const statusChipEl = document.getElementById('budget-goal-status-chip');
+        const titleEl = document.getElementById('budget-goal-title');
+        const deadlineEl = document.getElementById('budget-goal-deadline');
+        const progressEl = document.getElementById('budget-goal-progress');
+        const currentEl = document.getElementById('budget-goal-current');
+        const remainingEl = document.getElementById('budget-goal-remaining');
+        const dailyEl = document.getElementById('budget-goal-daily');
+        const weeklyEl = document.getElementById('budget-goal-weekly');
+        const noteEl = document.getElementById('budget-goal-cashflow-note');
+        const toggleMenuBtn = document.getElementById('budget-goal-toggle-menu-btn');
+        const toggleMenuLabel = document.getElementById('budget-goal-toggle-menu-label');
+
+        if (!emptyEl || !contentEl || !statusChipEl || !titleEl || !deadlineEl || !progressEl || !currentEl || !remainingEl || !dailyEl || !weeklyEl || !noteEl || !carouselEl || !prevBtn || !nextBtn || !indicatorEl || !toggleMenuBtn || !toggleMenuLabel) {
+            return;
+        }
+
+        const goal = this.getPrimarySavingsGoal();
+        if (goal) this.activeSavingsGoalId = goal.id;
+
+        const totalGoals = this.savingsGoals.length;
+        const currentIndex = this.savingsGoals.findIndex((entry) => entry.id === this.activeSavingsGoalId);
+        if (totalGoals > 1 && currentIndex >= 0) {
+            carouselEl.style.display = 'inline-flex';
+            indicatorEl.innerText = `${currentIndex + 1}/${totalGoals}`;
+            prevBtn.disabled = currentIndex <= 0;
+            nextBtn.disabled = currentIndex >= totalGoals - 1;
+        } else {
+            carouselEl.style.display = 'none';
+            indicatorEl.innerText = '1/1';
+            prevBtn.disabled = true;
+            nextBtn.disabled = true;
+        }
+
+        if (!goal) {
+            emptyEl.style.display = 'block';
+            contentEl.style.display = 'none';
+            statusChipEl.className = 'budget-goal-status-chip';
+            statusChipEl.innerText = 'Belum aktif';
+            this.closeSavingsGoalActions();
+            return;
+        }
+
+        emptyEl.style.display = 'none';
+        contentEl.style.display = 'block';
+
+        const plan = this.calculateSavingsGoalPlan(goal);
+        if (!plan) return;
+
+        titleEl.innerText = goal.name;
+        deadlineEl.innerText = `Target ${plan.deadlineLabel} • ${plan.daysLeft} hari lagi`;
+        progressEl.style.width = `${plan.progressPercent}%`;
+        currentEl.innerText = this.formatCurrency(goal.currentAmount);
+        remainingEl.innerText = this.formatCurrency(plan.remainingAmount);
+        dailyEl.innerText = this.formatCurrency(plan.neededDaily);
+        weeklyEl.innerText = this.formatCurrency(plan.neededWeekly);
+
+        statusChipEl.className = 'budget-goal-status-chip';
+        toggleMenuBtn.disabled = false;
+        toggleMenuBtn.querySelector('i').className = 'ph ph-pause-circle';
+        toggleMenuLabel.innerText = 'Pause';
+        if (plan.status === 'completed') {
+            statusChipEl.classList.add('is-on-track');
+            statusChipEl.innerText = 'Tercapai';
+            noteEl.innerText = 'Tujuan sudah tercapai. Kamu bisa lanjutkan menabung untuk target berikutnya.';
+            noteEl.style.color = 'var(--success)';
+            toggleMenuBtn.querySelector('i').className = 'ph ph-flag-checkered';
+            toggleMenuLabel.innerText = 'Selesai';
+            toggleMenuBtn.disabled = true;
+        } else if (plan.status === 'paused') {
+            statusChipEl.classList.add('is-paused');
+            statusChipEl.innerText = 'Paused';
+            noteEl.innerText = `Mode paused. Untuk on-track, butuh sekitar ${this.formatCurrency(plan.neededMonthly)}/bulan.`;
+            noteEl.style.color = 'var(--text-muted)';
+            toggleMenuBtn.querySelector('i').className = 'ph ph-play-circle';
+            toggleMenuLabel.innerText = 'Lanjutkan';
+        } else if (plan.status === 'on-track') {
+            statusChipEl.classList.add('is-on-track');
+            statusChipEl.innerText = 'On Track';
+            noteEl.innerText = `Cashflow rata-rata ${this.formatCurrency(plan.monthlyCashflow)}/bulan cukup untuk kebutuhan ${this.formatCurrency(plan.neededMonthly)}/bulan.`;
+            noteEl.style.color = 'var(--success)';
+        } else {
+            statusChipEl.classList.add('is-at-risk');
+            statusChipEl.innerText = 'Perlu Dorongan';
+            noteEl.innerText = `Cashflow rata-rata ${this.formatCurrency(Math.max(0, plan.monthlyCashflow))}/bulan belum cukup untuk kebutuhan ${this.formatCurrency(plan.neededMonthly)}/bulan.`;
+            noteEl.style.color = 'var(--warning)';
+        }
+
+        const direction = this.savingsGoalSlideDirection;
+        const withSwipeFeedback = this.savingsGoalSwipeFeedback;
+        if (direction === 'left' || direction === 'right') {
+            contentEl.classList.remove('budget-goal-content-slide-left', 'budget-goal-content-slide-right', 'budget-goal-content-swipe-feedback');
+            void contentEl.offsetWidth;
+            contentEl.classList.add(direction === 'left' ? 'budget-goal-content-slide-left' : 'budget-goal-content-slide-right');
+            if (withSwipeFeedback) {
+                contentEl.classList.add('budget-goal-content-swipe-feedback');
+            }
+            setTimeout(() => {
+                contentEl.classList.remove('budget-goal-content-slide-left', 'budget-goal-content-slide-right', 'budget-goal-content-swipe-feedback');
+            }, 240);
+        }
+        this.savingsGoalSlideDirection = '';
+        this.savingsGoalSwipeFeedback = false;
     },
 
     renderProSignals: function (monthTotals, prevMonthTotals, currentMonthTx) {
@@ -700,7 +1007,7 @@ const budgetManager = {
         } else if (recurringExpense > 0) {
             proTipEl.innerText = `Terdeteksi pengeluaran rutin sekitar ${this.formatCurrency(recurringExpense)}/bulan. Pertimbangkan paket langganan yang lebih hemat.`;
         } else {
-            proTipEl.innerText = `Sinyal premium aktif. Tambah transaksi rutin agar rekomendasi finansial makin akurat.`;
+            proTipEl.innerText = `Analisis Tambahan. Tambah transaksi rutin agar rekomendasi finansial makin akurat.`;
         }
     },
 
@@ -708,6 +1015,232 @@ const budgetManager = {
         if (dayOfMonth <= 0) return expense;
         if (expense <= 0) return 0;
         return Math.round((expense / dayOfMonth) * monthDays);
+    },
+
+    calculateAverageDailyExpense: function (expense, monthDate = this.selectedMonth) {
+        const amount = Number(expense) || 0;
+        if (amount <= 0) return 0;
+
+        const daysInMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
+        const now = new Date();
+        const isCurrentMonth = monthDate.getMonth() === now.getMonth() && monthDate.getFullYear() === now.getFullYear();
+        const elapsedDays = isCurrentMonth ? Math.max(1, now.getDate()) : Math.max(1, daysInMonth);
+
+        return Math.round(amount / elapsedDays);
+    },
+
+    calculateAverageMonthlyNetCashflow: function (monthSpan = 3) {
+        const span = Math.max(1, Number(monthSpan) || 3);
+        const now = new Date();
+        let totalNet = 0;
+        let countedMonths = 0;
+
+        for (let index = 0; index < span; index += 1) {
+            const monthDate = new Date(now.getFullYear(), now.getMonth() - index, 1);
+            const monthTx = this.getTransactionsByMonth(monthDate);
+            const monthTotals = this.calculateTotals(monthTx);
+            const hasActivity = monthTotals.income > 0 || monthTotals.expense > 0;
+            if (!hasActivity) continue;
+
+            totalNet += (monthTotals.income - monthTotals.expense);
+            countedMonths += 1;
+        }
+
+        if (countedMonths === 0) return 0;
+        return Math.round(totalNet / countedMonths);
+    },
+
+    calculateSavingsGoalPlan: function (goal) {
+        if (!goal) return null;
+
+        const targetAmount = Math.max(0, Number(goal.targetAmount) || 0);
+        const currentAmount = Math.max(0, Number(goal.currentAmount) || 0);
+        const remainingAmount = Math.max(0, targetAmount - currentAmount);
+
+        const todayStart = this.getStartOfDay(new Date());
+        const targetDateRaw = goal.targetDate ? new Date(`${goal.targetDate}T23:59:59`) : new Date();
+        const targetDate = Number.isNaN(targetDateRaw.getTime()) ? new Date() : targetDateRaw;
+        const msPerDay = 1000 * 60 * 60 * 24;
+        const daysLeft = Math.max(1, Math.ceil((targetDate - todayStart) / msPerDay));
+        const weeksLeft = Math.max(1, Math.ceil(daysLeft / 7));
+        const monthsLeft = Math.max(1, Math.ceil(daysLeft / 30));
+
+        const neededDaily = Math.ceil(remainingAmount / daysLeft);
+        const neededWeekly = Math.ceil(remainingAmount / weeksLeft);
+        const neededMonthly = Math.ceil(remainingAmount / monthsLeft);
+
+        const monthlyCashflow = this.calculateAverageMonthlyNetCashflow(3);
+        let status = 'at-risk';
+        if (goal.status === 'paused') {
+            status = 'paused';
+        } else if (remainingAmount <= 0) {
+            status = 'completed';
+        } else if (monthlyCashflow >= neededMonthly) {
+            status = 'on-track';
+        }
+
+        const locale = (typeof i18n !== 'undefined' && typeof i18n.locale === 'function') ? i18n.locale() : 'id-ID';
+        const deadlineLabel = targetDate.toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' });
+        const progressPercent = targetAmount > 0 ? Math.min(100, Math.round((currentAmount / targetAmount) * 100)) : 0;
+
+        return {
+            remainingAmount,
+            neededDaily,
+            neededWeekly,
+            neededMonthly,
+            monthlyCashflow,
+            daysLeft,
+            deadlineLabel,
+            progressPercent,
+            status
+        };
+    },
+
+    calculateRecommendedSavingsTopUp: function (goal) {
+        const plan = this.calculateSavingsGoalPlan(goal);
+        if (!plan) {
+            return { amount: 0, note: 'Target tidak ditemukan.' };
+        }
+
+        if (plan.remainingAmount <= 0) {
+            return { amount: 0, note: 'Target sudah tercapai. Mantap!' };
+        }
+
+        const safeCashflowMonthly = Math.max(0, plan.monthlyCashflow);
+        const safeCashflowWeekly = Math.floor(safeCashflowMonthly / 4);
+        const baseWeeklyNeed = Math.max(0, plan.neededWeekly);
+
+        // If cashflow supports it, suggest full weekly need. If not, suggest a realistic floor to keep momentum.
+        const suggested = safeCashflowWeekly >= baseWeeklyNeed
+            ? baseWeeklyNeed
+            : Math.max(25000, Math.min(baseWeeklyNeed, safeCashflowWeekly));
+
+        let note = `Idealnya setor ${this.formatCurrency(baseWeeklyNeed)} minggu ini agar sesuai rencana.`;
+        if (safeCashflowWeekly < baseWeeklyNeed) {
+            note = `Cashflow rata-rata belum menutup kebutuhan penuh. Mulai dari ${this.formatCurrency(suggested)} minggu ini untuk menjaga progres.`;
+        }
+
+        return {
+            amount: Math.min(plan.remainingAmount, suggested),
+            note
+        };
+    },
+
+    calculateSpendingDayRank: function (monthTransactions, monthDate = this.selectedMonth) {
+        const locale = (typeof i18n !== 'undefined' && typeof i18n.locale === 'function') ? i18n.locale() : 'id-ID';
+        const year = monthDate.getFullYear();
+        const month = monthDate.getMonth();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        const dayStats = Array.from({ length: 7 }, (_, index) => {
+            const labelDate = new Date(2024, 0, 7 + index); // Sunday .. Saturday
+            return {
+                dayIndex: index,
+                label: labelDate.toLocaleDateString(locale, { weekday: 'long' }),
+                total: 0,
+                dayCount: 0,
+                average: 0
+            };
+        });
+
+        for (let day = 1; day <= daysInMonth; day += 1) {
+            const weekday = new Date(year, month, day).getDay();
+            dayStats[weekday].dayCount += 1;
+        }
+
+        (Array.isArray(monthTransactions) ? monthTransactions : []).forEach((tx) => {
+            if (!tx || tx.type !== 'expense' || tx.isTransfer) return;
+            const txDate = this.getTransactionDate(tx);
+            if (Number.isNaN(txDate.getTime())) return;
+            dayStats[txDate.getDay()].total += Number(tx.amount) || 0;
+        });
+
+        dayStats.forEach((entry) => {
+            entry.average = entry.dayCount > 0 ? Math.round(entry.total / entry.dayCount) : 0;
+        });
+
+        return dayStats.sort((a, b) => {
+            if (b.average !== a.average) return b.average - a.average;
+            return b.total - a.total;
+        });
+    },
+
+    getStartOfWeek: function (value) {
+        const date = this.getStartOfDay(value);
+        if (!date) return null;
+        const dayOffset = (date.getDay() + 6) % 7; // Monday-based week
+        date.setDate(date.getDate() - dayOffset);
+        return date;
+    },
+
+    sumExpenseBetweenDates: function (startDate, endDate, transactions = this.transactions) {
+        const start = this.getStartOfDay(startDate);
+        const end = this.getStartOfDay(endDate);
+        if (!start || !end) return 0;
+
+        return (Array.isArray(transactions) ? transactions : []).reduce((sum, tx) => {
+            if (!tx || tx.type !== 'expense' || tx.isTransfer) return sum;
+            const txDate = this.getTransactionDate(tx);
+            if (Number.isNaN(txDate.getTime())) return sum;
+            if (txDate >= start && txDate < end) {
+                return sum + (Number(tx.amount) || 0);
+            }
+            return sum;
+        }, 0);
+    },
+
+    calculateWeeklyExpenseSummary: function () {
+        const now = new Date();
+        const referenceDate = this.isCurrentMonthSelected()
+            ? now
+            : new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth() + 1, 0);
+
+        const currentWeekStart = this.getStartOfWeek(referenceDate);
+        if (!currentWeekStart) {
+            return { currentExpense: 0, previousExpense: 0, deltaExpense: 0 };
+        }
+
+        const currentWeekEnd = new Date(currentWeekStart);
+        currentWeekEnd.setDate(currentWeekEnd.getDate() + 7);
+
+        const previousWeekStart = new Date(currentWeekStart);
+        previousWeekStart.setDate(previousWeekStart.getDate() - 7);
+
+        const currentExpense = this.sumExpenseBetweenDates(currentWeekStart, currentWeekEnd);
+        const previousExpense = this.sumExpenseBetweenDates(previousWeekStart, currentWeekStart);
+
+        return {
+            currentExpense,
+            previousExpense,
+            deltaExpense: currentExpense - previousExpense
+        };
+    },
+
+    getUnusualExpenseStatus: function (tx) {
+        if (!tx || tx.type !== 'expense' || tx.isTransfer) {
+            return { isUnusual: false, averageAmount: 0 };
+        }
+
+        const comparable = this.transactions.filter((item) => {
+            if (!item || item.type !== 'expense' || item.isTransfer) return false;
+            if ((item.id || '') === (tx.id || '')) return false;
+            return item.category === tx.category;
+        });
+
+        if (comparable.length < 4) {
+            return { isUnusual: false, averageAmount: 0 };
+        }
+
+        const averageAmount = comparable.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) / comparable.length;
+        const txAmount = Number(tx.amount) || 0;
+        const threshold = averageAmount * 1.8;
+        const minDelta = Math.max(30000, averageAmount * 0.5);
+        const isUnusual = txAmount >= threshold && (txAmount - averageAmount) >= minDelta;
+
+        return {
+            isUnusual,
+            averageAmount: Math.round(averageAmount)
+        };
     },
 
     calculateHealthScore: function (monthTotals, prevMonthTotals) {
@@ -1106,6 +1639,10 @@ const budgetManager = {
         const vsNoteEl = document.getElementById('budget-insight-vs-note');
         const topCatEl = document.getElementById('budget-insight-top-cat');
         const topValueEl = document.getElementById('budget-insight-top-value');
+        const dailyAvgEl = document.getElementById('budget-insight-daily-avg');
+        const dailyAvgNoteEl = document.getElementById('budget-insight-daily-avg-note');
+        const weeklyExpenseEl = document.getElementById('budget-weekly-expense');
+        const weeklyNoteEl = document.getElementById('budget-weekly-note');
 
         if (savingRateEl && savingNoteEl) {
             if (monthTotals.income <= 0) {
@@ -1144,6 +1681,54 @@ const budgetManager = {
                 topValueEl.innerText = `${this.formatCurrency(value)} - Tap untuk detail`;
             }
         }
+
+        if (dailyAvgEl && dailyAvgNoteEl) {
+            const avgDailyExpense = this.calculateAverageDailyExpense(monthTotals.expense, this.selectedMonth);
+            const previousMonthDate = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth() - 1, 1);
+            const prevAvgDailyExpense = this.calculateAverageDailyExpense(prevMonthTotals.expense, previousMonthDate);
+            const now = new Date();
+            const isCurrentMonth = this.selectedMonth.getMonth() === now.getMonth() && this.selectedMonth.getFullYear() === now.getFullYear();
+            dailyAvgEl.innerText = this.formatCurrency(avgDailyExpense);
+
+            if (prevAvgDailyExpense <= 0) {
+                dailyAvgNoteEl.innerText = isCurrentMonth
+                    ? 'Berdasarkan hari berjalan bulan ini'
+                    : 'Rata-rata per hari pada bulan terpilih';
+                dailyAvgEl.style.color = 'var(--text-main)';
+            } else {
+                const deltaAvg = avgDailyExpense - prevAvgDailyExpense;
+                const isHigher = deltaAvg > 0;
+                const sign = deltaAvg === 0 ? '' : (isHigher ? '+' : '-');
+
+                dailyAvgNoteEl.innerText = deltaAvg === 0
+                    ? 'Stabil dibanding rata-rata harian bulan lalu'
+                    : `${sign}${this.formatCurrency(Math.abs(deltaAvg))} vs rata-rata harian bulan lalu`;
+                dailyAvgEl.style.color = deltaAvg === 0
+                    ? 'var(--text-main)'
+                    : (isHigher ? 'var(--danger)' : 'var(--success)');
+            }
+
+            dailyAvgNoteEl.innerText = `${dailyAvgNoteEl.innerText} • Tap untuk urutan hari paling boros`;
+        }
+
+        if (weeklyExpenseEl && weeklyNoteEl) {
+            const weekly = this.calculateWeeklyExpenseSummary();
+            weeklyExpenseEl.innerText = this.formatCurrency(weekly.currentExpense);
+
+            if (weekly.previousExpense <= 0) {
+                weeklyNoteEl.innerText = 'Belum ada pembanding minggu sebelumnya';
+                weeklyExpenseEl.style.color = 'var(--text-main)';
+            } else if (weekly.deltaExpense === 0) {
+                weeklyNoteEl.innerText = 'Stabil dibanding minggu lalu';
+                weeklyExpenseEl.style.color = 'var(--text-main)';
+            } else if (weekly.deltaExpense > 0) {
+                weeklyNoteEl.innerText = `Naik ${this.formatCurrency(Math.abs(weekly.deltaExpense))} dibanding minggu lalu`;
+                weeklyExpenseEl.style.color = 'var(--danger)';
+            } else {
+                weeklyNoteEl.innerText = `Turun ${this.formatCurrency(Math.abs(weekly.deltaExpense))} dibanding minggu lalu`;
+                weeklyExpenseEl.style.color = 'var(--success)';
+            }
+        }
     },
 
     openTopCategoriesModal: function () {
@@ -1155,6 +1740,56 @@ const budgetManager = {
     closeTopCategoriesModal: function () {
         const modal = document.getElementById('modal-budget-top-categories');
         if (modal) modal.classList.remove('active');
+    },
+
+    openSpendingDayRankModal: function () {
+        this.renderSpendingDayRankModal();
+        const modal = document.getElementById('modal-budget-spending-days');
+        if (modal) modal.classList.add('active');
+    },
+
+    closeSpendingDayRankModal: function () {
+        const modal = document.getElementById('modal-budget-spending-days');
+        if (modal) modal.classList.remove('active');
+    },
+
+    renderSpendingDayRankModal: function () {
+        const monthEl = document.getElementById('budget-spending-days-month');
+        const listEl = document.getElementById('budget-spending-days-list');
+        if (!listEl) return;
+
+        if (monthEl) monthEl.innerText = this.getMonthLabel();
+        listEl.innerHTML = '';
+
+        const monthTx = this.getTransactionsByMonth(this.selectedMonth);
+        const hasExpense = monthTx.some((tx) => tx?.type === 'expense' && !tx?.isTransfer);
+
+        if (!hasExpense) {
+            listEl.innerHTML = `
+                <div style="text-align: center; padding: 1.25rem; border: 1px dashed var(--border-color); border-radius: var(--radius-md); color: var(--text-muted);">
+                    Belum ada pengeluaran di bulan ini.
+                </div>
+            `;
+            return;
+        }
+
+        this.spendingDayRankEntries = this.calculateSpendingDayRank(monthTx, this.selectedMonth);
+
+        this.spendingDayRankEntries.forEach((entry, index) => {
+            const row = document.createElement('div');
+            row.className = 'budget-category-rank-row';
+            row.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div class="budget-category-rank-badge">#${index + 1}</div>
+                    <div>
+                        <p style="font-weight: 700; color: var(--text-main); text-transform: capitalize;">${entry.label}</p>
+                        <small style="color: var(--text-muted);">Total ${this.formatCurrency(entry.total)} dari ${entry.dayCount} hari</small>
+                    </div>
+                </div>
+                <p style="font-weight: 700; color: var(--text-main);">${this.formatCurrency(entry.average)}</p>
+            `;
+            listEl.appendChild(row);
+        });
     },
 
     renderTopCategoriesModal: function () {
@@ -1196,20 +1831,37 @@ const budgetManager = {
         const container = document.getElementById('budget-transaction-list');
         if (!container) return;
 
+        const sourceTypeFilter = this.transactionSourceFilter || 'all';
+        const filteredTransactions = sourceTypeFilter === 'all'
+            ? monthTransactions
+            : monthTransactions.filter((tx) => {
+                const account = this.getAccountById(tx.fundSourceId);
+                return !!account && account.type === sourceTypeFilter;
+            });
+
         container.innerHTML = '';
 
-        if (monthTransactions.length === 0) {
+        if (filteredTransactions.length === 0) {
+            const filterLabelMap = {
+                cash: 'Cash',
+                ewallet: 'E-Wallet',
+                banking: 'Banking'
+            };
+            const activeLabel = filterLabelMap[sourceTypeFilter] || 'sumber dana ini';
+            const emptyText = sourceTypeFilter === 'all'
+                ? `Belum ada catatan di ${this.getMonthLabel()}.`
+                : `Belum ada catatan ${activeLabel} di ${this.getMonthLabel()}.`;
             container.innerHTML = `
                 <div style="text-align: center; padding: 2rem 1rem; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-color);">
                     <i class="ph ph-receipt" style="font-size: 3rem; opacity: 0.3; margin-bottom: 0.75rem; display: block;"></i>
-                    <p style="font-size: 0.9rem; font-weight: 500;">Belum ada catatan di ${this.getMonthLabel()}.</p>
+                    <p style="font-size: 0.9rem; font-weight: 500;">${emptyText}</p>
                 </div>
             `;
             return;
         }
 
         // Sort by transaction date, then created time, then insertion order (newest first).
-        const sorted = monthTransactions
+        const sorted = filteredTransactions
             .map((tx, index) => ({ tx, index }))
             .sort((a, b) => {
                 const dateDiff = this.getTransactionDate(b.tx) - this.getTransactionDate(a.tx);
@@ -1256,6 +1908,13 @@ const budgetManager = {
             const iconName = iconMap[tx.category] || 'receipt';
             const catName = i18n.t('budget_cat_' + tx.category) || tx.category;
             const fundSourceName = this.getFundSourceLabelById(tx.fundSourceId);
+            const unusualStatus = this.getUnusualExpenseStatus(tx);
+            const unusualBadge = unusualStatus.isUnusual
+                ? `<button type="button" class="budget-unusual-badge" data-unusual-amount="${tx.amount}" data-unusual-average="${unusualStatus.averageAmount}">Tidak biasa</button>`
+                : '';
+            const unusualHint = unusualStatus.isUnusual
+                ? `<p style="font-size: 0.7rem; color: var(--warning); margin-top: 0.18rem;">Lebih tinggi dari rerata kategori (${this.formatCurrency(unusualStatus.averageAmount)})</p>`
+                : '';
 
             const dateObj = this.getTransactionDate(tx);
             const dateLabel = dateObj.toLocaleDateString(i18n.locale(), { day: '2-digit', month: 'short' });
@@ -1273,6 +1932,8 @@ const budgetManager = {
                     <h4 style="font-size: 0.95rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                         ${tx.note || catName}
                     </h4>
+                    ${unusualBadge}
+                    ${unusualHint}
                     <p style="font-size: 0.75rem; color: var(--text-muted);">${catName} &bull; ${fundSourceName} &bull; ${dateLabel}, ${timeLabel}</p>
                 </div>
                 <div style="text-align: right;">
@@ -1281,6 +1942,23 @@ const budgetManager = {
                     </p>
                 </div>
             `;
+
+            const unusualBtn = el.querySelector('.budget-unusual-badge');
+            if (unusualBtn) {
+                unusualBtn.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    const amount = Number(unusualBtn.dataset.unusualAmount) || 0;
+                    const average = Number(unusualBtn.dataset.unusualAverage) || 0;
+                    const message = `Terdeteksi tidak biasa karena nominal ${this.formatCurrency(amount)} lebih tinggi dari rerata kategori ${this.formatCurrency(average)}.`;
+
+                    if (typeof inboxManager !== 'undefined') {
+                        inboxManager.showToast(message);
+                    }
+                });
+            }
+
             container.appendChild(el);
         });
     },
@@ -1376,16 +2054,17 @@ const budgetManager = {
         const container = document.getElementById('budget-account-list');
         if (!container) return;
 
+        const summaryEl = document.getElementById('budget-account-modal-summary');
+        if (summaryEl) {
+            const totalInitial = this.accounts.reduce((sum, account) => sum + (Number(account.initialBalance) || 0), 0);
+            summaryEl.textContent = `${this.accounts.length} sumber dana aktif • Total saldo awal ${this.formatCurrency(totalInitial)}`;
+        }
+
         container.innerHTML = '';
         this.accounts.forEach((account) => {
             const row = document.createElement('div');
             row.className = 'budget-account-row';
             row.dataset.id = account.id;
-            row.style.display = 'grid';
-            row.style.gridTemplateColumns = '1.4fr 1fr 1fr auto';
-            row.style.gap = '0.5rem';
-            row.style.alignItems = 'center';
-            row.style.marginBottom = '0.5rem';
 
             const isBanking = account.type === 'banking';
             const interestEnabled = !!account.interestEnabled;
@@ -1393,24 +2072,35 @@ const budgetManager = {
             const payoutFrequency = this.normalizeInterestFrequency(account.interestPayoutFrequency);
 
             row.innerHTML = `
-                <input type="text" class="budget-account-name" value="${account.name}" data-id="${account.id}" placeholder="Nama sumber dana" required>
-                <select class="budget-account-type" data-id="${account.id}">
-                    <option value="cash" ${account.type === 'cash' ? 'selected' : ''}>cash</option>
-                    <option value="banking" ${account.type === 'banking' ? 'selected' : ''}>banking</option>
-                    <option value="ewallet" ${account.type === 'ewallet' ? 'selected' : ''}>ewallet</option>
-                    <option value="other" ${account.type === 'other' ? 'selected' : ''}>other</option>
-                </select>
-                <input type="number" class="budget-account-initial" value="${Number(account.initialBalance) || 0}" data-id="${account.id}" placeholder="Saldo awal">
-                <button type="button" class="btn btn-outline" data-remove-id="${account.id}" style="padding:0.45rem 0.55rem; color: var(--danger); border-color: var(--danger);">
-                    <i class="ph ph-trash"></i>
-                </button>
-                <div style="grid-column:1 / -1; display:grid; grid-template-columns:auto 1fr 1fr; gap:0.45rem; align-items:center; padding:0.45rem 0.55rem; border:1px solid var(--border-color); border-radius:10px; background:var(--bg-main);">
-                    <label style="display:inline-flex; align-items:center; gap:0.35rem; font-size:0.76rem; font-weight:600; color:var(--text-main);">
+                <div class="budget-account-main-grid">
+                    <div class="budget-account-field budget-account-field-name">
+                        <label class="budget-account-field-label">Nama Akun</label>
+                        <input type="text" class="budget-account-name" value="${account.name}" data-id="${account.id}" placeholder="Nama sumber dana" required>
+                    </div>
+                    <div class="budget-account-field budget-account-field-type">
+                        <label class="budget-account-field-label">Tipe</label>
+                        <select class="budget-account-type" data-id="${account.id}">
+                            <option value="cash" ${account.type === 'cash' ? 'selected' : ''}>Cash</option>
+                            <option value="banking" ${account.type === 'banking' ? 'selected' : ''}>Banking</option>
+                            <option value="ewallet" ${account.type === 'ewallet' ? 'selected' : ''}>E-Wallet</option>
+                            <option value="other" ${account.type === 'other' ? 'selected' : ''}>Lainnya</option>
+                        </select>
+                    </div>
+                    <div class="budget-account-field budget-account-field-balance">
+                        <label class="budget-account-field-label">Saldo Awal</label>
+                        <input type="number" inputmode="decimal" class="budget-account-initial" value="${Number(account.initialBalance) || 0}" data-id="${account.id}" placeholder="0">
+                    </div>
+                    <button type="button" class="btn btn-outline budget-account-remove-btn" data-remove-id="${account.id}" aria-label="Hapus sumber dana ${account.name}">
+                        <i class="ph ph-trash"></i>
+                    </button>
+                </div>
+                <div class="budget-account-interest-row">
+                    <label class="budget-account-interest-toggle">
                         <input type="checkbox" class="budget-account-interest-enabled" ${interestEnabled ? 'checked' : ''} ${isBanking ? '' : 'disabled'}>
                         Bunga
                     </label>
-                    <input type="number" class="budget-account-interest-rate" min="0" max="100" step="0.01" placeholder="% p.a" value="${ratePa || ''}" ${isBanking && interestEnabled ? '' : 'disabled'} style="padding:0.45rem 0.55rem; font-size:0.8rem;">
-                    <select class="budget-account-interest-frequency" ${isBanking && interestEnabled ? '' : 'disabled'} style="padding:0.45rem 0.55rem; font-size:0.8rem;">
+                    <input type="number" class="budget-account-interest-rate" min="0" max="100" step="0.01" placeholder="% p.a" value="${ratePa || ''}" ${isBanking && interestEnabled ? '' : 'disabled'}>
+                    <select class="budget-account-interest-frequency" ${isBanking && interestEnabled ? '' : 'disabled'}>
                         <option value="daily" ${payoutFrequency === 'daily' ? 'selected' : ''}>Cair harian</option>
                         <option value="monthly" ${payoutFrequency !== 'daily' ? 'selected' : ''}>Cair bulanan</option>
                     </select>
@@ -1459,6 +2149,256 @@ const budgetManager = {
 
             container.appendChild(row);
         });
+    },
+
+    persistSavingsGoals: function () {
+        this.savingsGoals = this.normalizeSavingsGoals(this.savingsGoals);
+        Storage.setBudgetSavingsGoals(this.savingsGoals);
+        window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_savings_goals' } }));
+        this.updateDashboard();
+    },
+
+    openSavingsGoalModal: function (goalId = null) {
+        const modal = document.getElementById('modal-budget-goal');
+        const titleEl = document.getElementById('budget-goal-modal-title');
+        const idInput = document.getElementById('budget-goal-id');
+        const nameInput = document.getElementById('budget-goal-name');
+        const targetInput = document.getElementById('budget-goal-target');
+        const dateInput = document.getElementById('budget-goal-date');
+        if (!modal || !titleEl || !idInput || !nameInput || !targetInput || !dateInput) return;
+
+        const goal = goalId
+            ? this.savingsGoals.find((entry) => entry.id === goalId)
+            : null;
+        if (goal) {
+            titleEl.innerText = 'Edit Tujuan Nabung';
+            idInput.value = goal.id;
+            nameInput.value = goal.name;
+            this.setNominalInputValue('budget-goal-target', goal.targetAmount);
+            dateInput.value = goal.targetDate;
+        } else {
+            titleEl.innerText = 'Buat Tujuan Nabung';
+            idInput.value = '';
+            nameInput.value = '';
+            this.setNominalInputValue('budget-goal-target', '');
+            const defaultDate = new Date();
+            defaultDate.setMonth(defaultDate.getMonth() + 3);
+            dateInput.value = this.toDateInputValue(defaultDate);
+        }
+
+        modal.classList.add('active');
+    },
+
+    closeSavingsGoalModal: function () {
+        const modal = document.getElementById('modal-budget-goal');
+        if (modal) modal.classList.remove('active');
+    },
+
+    saveSavingsGoal: function (event) {
+        event.preventDefault();
+
+        const id = document.getElementById('budget-goal-id')?.value || '';
+        const name = (document.getElementById('budget-goal-name')?.value || '').trim();
+        const targetAmount = this.parseNominalInput(document.getElementById('budget-goal-target')?.value || '');
+        const targetDate = document.getElementById('budget-goal-date')?.value || '';
+
+        if (!name) {
+            if (typeof inboxManager !== 'undefined') inboxManager.showToast('Nama tujuan wajib diisi');
+            return;
+        }
+        if (targetAmount <= 0) {
+            if (typeof inboxManager !== 'undefined') inboxManager.showToast('Target nominal tidak valid');
+            return;
+        }
+        if (!targetDate) {
+            if (typeof inboxManager !== 'undefined') inboxManager.showToast('Target tanggal wajib diisi');
+            return;
+        }
+
+        const parsedTargetDate = new Date(`${targetDate}T00:00:00`);
+        if (Number.isNaN(parsedTargetDate.getTime())) {
+            if (typeof inboxManager !== 'undefined') inboxManager.showToast('Format tanggal tidak valid');
+            return;
+        }
+
+        if (id) {
+            const index = this.savingsGoals.findIndex((goal) => goal.id === id);
+            if (index > -1) {
+                this.savingsGoals[index] = {
+                    ...this.savingsGoals[index],
+                    name,
+                    targetAmount,
+                    targetDate
+                };
+            }
+        } else {
+            this.savingsGoals.unshift({
+                id: (typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                name,
+                targetAmount,
+                targetDate,
+                currentAmount: 0,
+                status: 'active',
+                createdAt: new Date().toISOString()
+            });
+        }
+
+        if (!id && this.savingsGoals[0]?.id) {
+            this.activeSavingsGoalId = this.savingsGoals[0].id;
+        } else if (id) {
+            this.activeSavingsGoalId = id;
+        }
+
+        this.persistSavingsGoals();
+        this.closeSavingsGoalModal();
+        if (typeof inboxManager !== 'undefined') inboxManager.showToast('Tujuan nabung berhasil disimpan');
+    },
+
+    openSavingsProgressModal: function () {
+        const goal = this.getPrimarySavingsGoal();
+        if (!goal) {
+            if (typeof inboxManager !== 'undefined') inboxManager.showToast('Buat tujuan nabung dulu');
+            return;
+        }
+
+        const modal = document.getElementById('modal-budget-goal-progress');
+        if (!modal) return;
+
+        const suggestAmountEl = document.getElementById('budget-goal-progress-suggest-amount');
+        const suggestNoteEl = document.getElementById('budget-goal-progress-suggest-note');
+        const recommendation = this.calculateRecommendedSavingsTopUp(goal);
+        if (suggestAmountEl) suggestAmountEl.innerText = this.formatCurrency(recommendation.amount);
+        if (suggestNoteEl) suggestNoteEl.innerText = recommendation.note;
+
+        this.setNominalInputValue('budget-goal-progress-amount', '');
+        modal.classList.add('active');
+        setTimeout(() => {
+            const input = document.getElementById('budget-goal-progress-amount');
+            if (input) input.focus();
+        }, 100);
+    },
+
+    applyRecommendedSavingsTopUp: function () {
+        const goal = this.getPrimarySavingsGoal();
+        if (!goal) return;
+
+        const recommendation = this.calculateRecommendedSavingsTopUp(goal);
+        if (recommendation.amount <= 0) {
+            if (typeof inboxManager !== 'undefined') inboxManager.showToast('Belum ada nominal rekomendasi untuk diisi');
+            return;
+        }
+
+        this.setNominalInputValue('budget-goal-progress-amount', recommendation.amount);
+        const input = document.getElementById('budget-goal-progress-amount');
+        if (input) input.focus();
+    },
+
+    closeSavingsProgressModal: function () {
+        const modal = document.getElementById('modal-budget-goal-progress');
+        if (modal) modal.classList.remove('active');
+    },
+
+    saveSavingsProgress: function (event) {
+        event.preventDefault();
+
+        const addAmount = this.parseNominalInput(document.getElementById('budget-goal-progress-amount')?.value || '');
+        if (addAmount <= 0) {
+            if (typeof inboxManager !== 'undefined') inboxManager.showToast('Nominal progress tidak valid');
+            return;
+        }
+
+        const goal = this.getPrimarySavingsGoal();
+        if (!goal) return;
+
+        const index = this.savingsGoals.findIndex((item) => item.id === goal.id);
+        if (index < 0) return;
+
+        const updatedCurrent = (Number(this.savingsGoals[index].currentAmount) || 0) + addAmount;
+        const targetAmount = Number(this.savingsGoals[index].targetAmount) || 0;
+        const completed = updatedCurrent >= targetAmount && targetAmount > 0;
+
+        this.savingsGoals[index] = {
+            ...this.savingsGoals[index],
+            currentAmount: updatedCurrent,
+            status: completed ? 'completed' : this.savingsGoals[index].status
+        };
+
+        this.persistSavingsGoals();
+        this.closeSavingsProgressModal();
+        if (typeof inboxManager !== 'undefined') {
+            inboxManager.showToast(completed ? 'Target nabung tercapai!' : 'Progress nabung diperbarui');
+        }
+    },
+
+    toggleSavingsGoalStatus: function () {
+        const goal = this.getPrimarySavingsGoal();
+        if (!goal || goal.status === 'completed') return;
+
+        const index = this.savingsGoals.findIndex((item) => item.id === goal.id);
+        if (index < 0) return;
+
+        const nextStatus = goal.status === 'paused' ? 'active' : 'paused';
+        this.savingsGoals[index] = {
+            ...this.savingsGoals[index],
+            status: nextStatus
+        };
+
+        this.persistSavingsGoals();
+        this.closeSavingsGoalActions();
+        if (typeof inboxManager !== 'undefined') {
+            inboxManager.showToast(nextStatus === 'paused' ? 'Tujuan nabung di-pause' : 'Tujuan nabung dilanjutkan');
+        }
+    },
+
+    resetActiveSavingsProgress: function () {
+        const goal = this.getPrimarySavingsGoal();
+        if (!goal) return;
+
+        const confirmed = confirm(`Reset progress untuk tujuan "${goal.name}"? Target dan tanggal tetap tersimpan.`);
+        if (!confirmed) return;
+
+        const index = this.savingsGoals.findIndex((item) => item.id === goal.id);
+        if (index < 0) return;
+
+        this.savingsGoals[index] = {
+            ...this.savingsGoals[index],
+            currentAmount: 0,
+            status: 'active'
+        };
+
+        this.persistSavingsGoals();
+        this.closeSavingsGoalActions();
+        if (typeof inboxManager !== 'undefined') inboxManager.showToast('Progress tujuan berhasil di-reset');
+    },
+
+    removeActiveSavingsGoal: function () {
+        const goal = this.getPrimarySavingsGoal();
+        if (!goal) return;
+
+        const confirmed = confirm(`Tinggalkan tujuan "${goal.name}"? Data tujuan ini akan dihapus.`);
+        if (!confirmed) return;
+
+        this.savingsGoals = this.savingsGoals.filter((item) => item.id !== goal.id);
+        if (this.activeSavingsGoalId === goal.id) {
+            this.activeSavingsGoalId = this.savingsGoals[0]?.id || null;
+        }
+
+        this.persistSavingsGoals();
+        this.closeSavingsGoalActions();
+        if (typeof inboxManager !== 'undefined') inboxManager.showToast('Tujuan nabung dihapus');
+    },
+
+    resetAllSavingsGoals: function () {
+        if (!this.savingsGoals.length) return;
+
+        const confirmed = confirm('Reset semua tujuan nabung? Seluruh target dan progress akan dihapus.');
+        if (!confirmed) return;
+
+        this.savingsGoals = [];
+        this.activeSavingsGoalId = null;
+        this.persistSavingsGoals();
+        this.closeSavingsGoalActions();
+        if (typeof inboxManager !== 'undefined') inboxManager.showToast('Semua tujuan nabung berhasil di-reset');
     },
 
     // --- Modal Logic ---
@@ -1634,18 +2574,24 @@ const budgetManager = {
         this.monthlyLimit = 0;
         this.baseBalance = 0;
         this.topCategoryEntries = [];
+        this.savingsGoals = [];
+        this.activeSavingsGoalId = null;
         this.selectedMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
         Storage.setBudgetTransactions([]);
         Storage.setBudgetAccounts(this.accounts);
         Storage.setBudgetLimit(0);
         Storage.setBudgetBaseBalance(0);
+        Storage.setBudgetSavingsGoals([]);
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_tx' } }));
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_accounts' } }));
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_limit' } }));
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_base_balance' } }));
+        window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_savings_goals' } }));
 
         this.closeTopCategoriesModal();
+        this.closeSavingsGoalModal();
+        this.closeSavingsProgressModal();
         if (typeof inboxManager !== 'undefined') inboxManager.showToast('Catatan keuangan berhasil di-reset');
     },
 

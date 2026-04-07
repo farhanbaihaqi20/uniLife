@@ -90,5 +90,9 @@ const Storage = {
 
     // Flexible fund accounts for budget module
     getBudgetAccounts: () => Storage.get('unilife_budget_accounts', []), // Array of { id, name, type, initialBalance }
-    setBudgetAccounts: (data) => Storage.set('unilife_budget_accounts', data)
+    setBudgetAccounts: (data) => Storage.set('unilife_budget_accounts', data),
+
+    // Savings goals (separate from transaction ledger)
+    getBudgetSavingsGoals: () => Storage.get('unilife_budget_savings_goals', []),
+    setBudgetSavingsGoals: (data) => Storage.set('unilife_budget_savings_goals', data)
 };
