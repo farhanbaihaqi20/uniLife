@@ -290,6 +290,15 @@ const tasksManager = {
             this.animateTaskMutation(id, 'complete', () => {
                 this.tasks[index].completed = !this.tasks[index].completed;
                 Storage.setTasks(this.tasks);
+
+                if (this.tasks[index].completed && typeof levelingManager !== 'undefined' && typeof levelingManager.awardXp === 'function') {
+                    levelingManager.awardXp({
+                        amount: 60,
+                        sourceId: `task.completed:${id}`,
+                        label: 'Menyelesaikan tugas kuliah'
+                    });
+                }
+
                 // Render after slight delay for visual effect
                 setTimeout(() => this.renderTasks(), 140);
             });

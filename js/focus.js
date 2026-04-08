@@ -708,25 +708,37 @@ const focusManager = {
         Storage.setFocusStats(this.stats);
 
         // Save focus session with task linkage
+        let savedSession = null;
         if (this.currentTaskId) {
-            this.focusSessions.push({
+            savedSession = {
                 id: uuidv4(),
                 taskId: this.currentTaskId,
                 date: new Date().toISOString(),
                 duration: workMinutes, // minutes
                 completed: true
-            });
+            };
+            this.focusSessions.push(savedSession);
         } else {
             // Even without task linkage, save the session for streak tracking
-            this.focusSessions.push({
+            savedSession = {
                 id: uuidv4(),
                 taskId: null,
                 date: new Date().toISOString(),
                 duration: workMinutes, // minutes
                 completed: true
-            });
+            };
+            this.focusSessions.push(savedSession);
         }
         Storage.setFocusSessions(this.focusSessions);
+
+        if (savedSession && typeof levelingManager !== 'undefined' && typeof levelingManager.awardXp === 'function') {
+            const xpGain = Math.max(10, Math.min(34, Math.round(workMinutes / 2.5)));
+            levelingManager.awardXp({
+                amount: xpGain,
+                sourceId: `focus.session:${savedSession.id}`,
+                label: 'Sesi fokus belajar selesai'
+            });
+        }
 
         this.updateStatsUI();
 

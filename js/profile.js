@@ -685,6 +685,10 @@ const profileManager = {
 
             document.getElementById('home-subgreeting').innerHTML = `<i class="ph ph-student"></i> ${i18n.tf('common_semester', { semester: this.profile.semester || '-' })}${univDisplay}`;
         }
+
+        if (typeof levelingManager !== 'undefined' && typeof levelingManager.refreshUI === 'function') {
+            levelingManager.refreshUI();
+        }
     },
 
     renderComplexDashboard: function () {
@@ -719,6 +723,10 @@ const profileManager = {
         // Calculate and display stats
         this.updateDashboardStats();
         this.renderUrgentTasks();
+
+        if (typeof levelingManager !== 'undefined' && typeof levelingManager.refreshUI === 'function') {
+            levelingManager.refreshUI();
+        }
     },
 
     getActiveSemester: function () {

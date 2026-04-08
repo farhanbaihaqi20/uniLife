@@ -696,6 +696,46 @@
                     </div>
                 </div>
 
+                <div class="card level-history-card" style="margin-bottom: 1.5rem;">
+                    <div class="level-history-header">
+                        <h3><i class="ph ph-trophy" style="color: var(--warning);"></i> Progres Level Kampus</h3>
+                    </div>
+                    <div class="level-overview-grid">
+                        <div class="level-overview-pill">
+                            <small>Level</small>
+                            <strong id="level-overview-level">Lv.1</strong>
+                        </div>
+                        <div class="level-overview-pill">
+                            <small>Gelar</small>
+                            <strong id="level-overview-rank">Mahasiswa Baru</strong>
+                        </div>
+                        <div class="level-overview-pill">
+                            <small>Total</small>
+                            <strong id="level-overview-xp">0 XP</strong>
+                        </div>
+                    </div>
+
+                    <div class="level-progress-wrap">
+                        <div class="level-progress-track">
+                            <div class="level-progress-bar" id="level-overview-progress-bar" style="width:0%"></div>
+                        </div>
+                        <p id="level-overview-progress" class="level-progress-label">0 XP lagi ke Lv.2</p>
+                    </div>
+
+                    <div class="level-history-filters" id="level-history-filters">
+                        <button class="level-filter-btn active" data-filter="all" type="button">Semua</button>
+                        <button class="level-filter-btn" data-filter="task" type="button">Tugas</button>
+                        <button class="level-filter-btn" data-filter="attendance" type="button">Presensi</button>
+                        <button class="level-filter-btn" data-filter="focus" type="button">Fokus</button>
+                        <button class="level-filter-btn" data-filter="grade" type="button">Nilai</button>
+                    </div>
+
+                    <div class="level-history-list" id="level-history-list"></div>
+                    <div class="level-history-empty" id="level-history-empty">
+                        Belum ada riwayat XP. Mulai dari selesaikan tugas atau sesi fokus dulu.
+                    </div>
+                </div>
+
                 <!-- Recent Activity -->
                 <div class="card"
                     style="background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius-md); margin-bottom: 1.5rem;">
@@ -2162,6 +2202,7 @@
     <script src="js/calendar.js?v=1.3"></script>
     <script src="js/notification.js?v=1.3
     "></script>
+    <script src="js/leveling.js?v=1.3"></script>
     <script src="js/profile.js?v=1.3
     "></script>
     <script src="js/home.js?v=1.3

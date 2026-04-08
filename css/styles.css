@@ -4888,6 +4888,590 @@ select:focus {
     margin-bottom: 1rem;
 }
 
+.level-border--silver,
+.level-border--gold,
+.level-border--platinum,
+.level-border--diamond,
+.level-border--legendary {
+    position: relative;
+    transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.level-border--silver {
+    border-color: #cbd5e1 !important;
+    box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.24), var(--shadow-sm);
+}
+
+.level-border--gold {
+    border-color: #f59e0b !important;
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25), 0 0 22px rgba(251, 191, 36, 0.2), var(--shadow-sm);
+}
+
+.level-border--platinum {
+    border-color: #14b8a6 !important;
+    box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.25), 0 0 22px rgba(45, 212, 191, 0.22), var(--shadow-sm);
+}
+
+.level-border--diamond {
+    border-color: #38bdf8 !important;
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25), 0 0 24px rgba(56, 189, 248, 0.25), var(--shadow-sm);
+}
+
+.level-border--legendary {
+    border-color: #f97316 !important;
+    box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.28), 0 0 26px rgba(244, 114, 182, 0.2), var(--shadow-sm);
+}
+
+.level-name-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.55rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    border-radius: 999px;
+    color: var(--level-accent-strong);
+    background: var(--level-chip-bg);
+    border: 1px solid var(--level-chip-border);
+    vertical-align: middle;
+}
+
+.level-progress-chip {
+    margin-top: 0.4rem;
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    padding: 0.3rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--level-accent-strong);
+    background: var(--level-chip-bg);
+    border: 1px solid var(--level-chip-border);
+}
+
+body {
+    --level-accent: #2563eb;
+    --level-accent-strong: #1d4ed8;
+    --level-chip-bg: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(14, 165, 233, 0.12));
+    --level-chip-border: rgba(59, 130, 246, 0.25);
+    --level-card-bg: linear-gradient(160deg, rgba(59, 130, 246, 0.08), rgba(14, 165, 233, 0.06));
+    --level-card-border: rgba(59, 130, 246, 0.2);
+    --level-progress-grad: linear-gradient(90deg, #2563eb, #0ea5e9);
+    --level-header-bg: linear-gradient(135deg, rgba(59, 130, 246, 0.14), rgba(14, 165, 233, 0.1));
+    --level-header-border: rgba(59, 130, 246, 0.35);
+    --level-shadow-soft: rgba(37, 99, 235, 0.28);
+}
+
+body.level-theme--maba {
+    --level-accent: #64748b;
+    --level-accent-strong: #475569;
+    --level-chip-bg: linear-gradient(135deg, rgba(148, 163, 184, 0.16), rgba(100, 116, 139, 0.1));
+    --level-chip-border: rgba(100, 116, 139, 0.3);
+    --level-card-bg: linear-gradient(160deg, rgba(148, 163, 184, 0.11), rgba(100, 116, 139, 0.07));
+    --level-card-border: rgba(100, 116, 139, 0.26);
+    --level-progress-grad: linear-gradient(90deg, #64748b, #94a3b8);
+    --level-header-bg: linear-gradient(135deg, rgba(148, 163, 184, 0.18), rgba(100, 116, 139, 0.12));
+    --level-header-border: rgba(100, 116, 139, 0.35);
+    --level-shadow-soft: rgba(100, 116, 139, 0.24);
+}
+
+body.level-theme--aktivis {
+    --level-accent: #d97706;
+    --level-accent-strong: #b45309;
+    --level-chip-bg: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(249, 115, 22, 0.12));
+    --level-chip-border: rgba(245, 158, 11, 0.34);
+    --level-card-bg: linear-gradient(160deg, rgba(251, 191, 36, 0.14), rgba(249, 115, 22, 0.1));
+    --level-card-border: rgba(245, 158, 11, 0.28);
+    --level-progress-grad: linear-gradient(90deg, #f59e0b, #fb923c);
+    --level-header-bg: linear-gradient(135deg, rgba(251, 191, 36, 0.22), rgba(249, 115, 22, 0.15));
+    --level-header-border: rgba(245, 158, 11, 0.38);
+    --level-shadow-soft: rgba(245, 158, 11, 0.26);
+}
+
+body.level-theme--ketua {
+    --level-accent: #0f766e;
+    --level-accent-strong: #0f766e;
+    --level-chip-bg: linear-gradient(135deg, rgba(45, 212, 191, 0.18), rgba(20, 184, 166, 0.12));
+    --level-chip-border: rgba(13, 148, 136, 0.34);
+    --level-card-bg: linear-gradient(160deg, rgba(45, 212, 191, 0.13), rgba(20, 184, 166, 0.1));
+    --level-card-border: rgba(13, 148, 136, 0.28);
+    --level-progress-grad: linear-gradient(90deg, #14b8a6, #2dd4bf);
+    --level-header-bg: linear-gradient(135deg, rgba(45, 212, 191, 0.2), rgba(20, 184, 166, 0.13));
+    --level-header-border: rgba(13, 148, 136, 0.35);
+    --level-shadow-soft: rgba(13, 148, 136, 0.24);
+}
+
+body.level-theme--asisten {
+    --level-accent: #0369a1;
+    --level-accent-strong: #0c4a6e;
+    --level-chip-bg: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(59, 130, 246, 0.11));
+    --level-chip-border: rgba(14, 165, 233, 0.35);
+    --level-card-bg: linear-gradient(160deg, rgba(56, 189, 248, 0.14), rgba(59, 130, 246, 0.08));
+    --level-card-border: rgba(14, 165, 233, 0.31);
+    --level-progress-grad: linear-gradient(90deg, #0ea5e9, #3b82f6);
+    --level-header-bg: linear-gradient(135deg, rgba(56, 189, 248, 0.22), rgba(59, 130, 246, 0.14));
+    --level-header-border: rgba(14, 165, 233, 0.38);
+    --level-shadow-soft: rgba(14, 165, 233, 0.26);
+}
+
+body.level-theme--dekan {
+    --level-accent: #9d174d;
+    --level-accent-strong: #831843;
+    --level-chip-bg: linear-gradient(135deg, rgba(244, 114, 182, 0.2), rgba(249, 115, 22, 0.12));
+    --level-chip-border: rgba(236, 72, 153, 0.36);
+    --level-card-bg: linear-gradient(160deg, rgba(244, 114, 182, 0.14), rgba(249, 115, 22, 0.09));
+    --level-card-border: rgba(236, 72, 153, 0.32);
+    --level-progress-grad: linear-gradient(90deg, #ec4899, #f97316);
+    --level-header-bg: linear-gradient(135deg, rgba(244, 114, 182, 0.22), rgba(249, 115, 22, 0.13));
+    --level-header-border: rgba(236, 72, 153, 0.38);
+    --level-shadow-soft: rgba(236, 72, 153, 0.3);
+}
+
+.level-header-chip {
+    display: inline-flex;
+    margin-top: 0.18rem;
+    padding: 0.15rem 0.5rem;
+    font-size: 0.66rem;
+    font-weight: 700;
+    border-radius: 999px;
+    color: var(--level-accent-strong);
+    border: 1px solid var(--level-header-border);
+    background: var(--level-header-bg);
+}
+
+.level-welcome-shell {
+    border: 1px solid var(--level-card-border) !important;
+    box-shadow: 0 10px 26px -12px var(--level-shadow-soft) !important;
+}
+
+.level-tier-burst {
+    position: fixed;
+    inset: 0;
+    z-index: 1185;
+    pointer-events: none;
+    opacity: 0;
+}
+
+.level-tier-burst span {
+    position: absolute;
+    border-radius: 999px;
+    filter: blur(2px);
+    opacity: 0;
+}
+
+.level-tier-burst span:first-child {
+    width: 240px;
+    height: 240px;
+    right: -70px;
+    top: -60px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.36) 0%, rgba(255, 255, 255, 0) 72%);
+}
+
+.level-tier-burst span:last-child {
+    width: 320px;
+    height: 320px;
+    left: -100px;
+    bottom: -120px;
+    background: radial-gradient(circle, var(--level-shadow-soft) 0%, rgba(255, 255, 255, 0) 72%);
+}
+
+.level-tier-burst.show {
+    opacity: 1;
+}
+
+.level-tier-burst.show span:first-child {
+    animation: levelTierBurstA 950ms ease-out;
+}
+
+.level-tier-burst.show span:last-child {
+    animation: levelTierBurstB 1000ms ease-out;
+}
+
+.level-tier-pop {
+    animation: levelTierPop 560ms cubic-bezier(0.2, 0.9, 0.2, 1.2);
+}
+
+body.level-tier-transition .level-history-card {
+    box-shadow: 0 0 0 1px var(--level-card-border), 0 14px 34px -18px var(--level-shadow-soft);
+}
+
+@keyframes levelTierBurstA {
+    0% { opacity: 0; transform: translate(0, 0) scale(0.8); }
+    20% { opacity: 0.95; }
+    100% { opacity: 0; transform: translate(-18px, 14px) scale(1.22); }
+}
+
+@keyframes levelTierBurstB {
+    0% { opacity: 0; transform: translate(0, 0) scale(0.88); }
+    24% { opacity: 0.85; }
+    100% { opacity: 0; transform: translate(24px, -16px) scale(1.2); }
+}
+
+@keyframes levelTierPop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.045); }
+    100% { transform: scale(1); }
+}
+
+.level-history-card {
+    background: var(--level-card-bg);
+    border: 1px solid var(--level-card-border);
+    padding: 1rem;
+}
+
+.level-history-header h3 {
+    margin: 0 0 0.8rem;
+    font-size: 1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.level-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.55rem;
+}
+
+.level-overview-pill {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 0.6rem;
+}
+
+.level-overview-pill small {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.level-overview-pill strong {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.92rem;
+    color: var(--text-main);
+}
+
+.level-progress-wrap {
+    margin-top: 0.8rem;
+    margin-bottom: 0.7rem;
+}
+
+.level-progress-track {
+    height: 8px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgba(148, 163, 184, 0.2);
+}
+
+.level-progress-bar {
+    height: 100%;
+    border-radius: 999px;
+    background: var(--level-progress-grad);
+    transition: width 220ms ease;
+}
+
+.level-progress-label {
+    margin: 0.4rem 0 0;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.level-history-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.7rem;
+}
+
+.level-filter-btn {
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+    border-radius: 999px;
+    padding: 0.22rem 0.58rem;
+    cursor: pointer;
+    transition: all 0.16s ease;
+}
+
+.level-filter-btn.active {
+    border-color: var(--level-chip-border);
+    color: var(--level-accent-strong);
+    background: var(--level-chip-bg);
+}
+
+.level-benefits-block {
+    margin-bottom: 0.8rem;
+}
+
+.level-benefits-title {
+    margin: 0.1rem 0 0.45rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.level-benefits-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.42rem;
+}
+
+.level-benefit-item {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 11px;
+    padding: 0.45rem 0.55rem;
+    opacity: 0.75;
+}
+
+.level-benefit-item.is-unlocked {
+    border-color: var(--level-chip-border);
+    box-shadow: 0 6px 14px -11px var(--level-shadow-soft);
+    opacity: 1;
+}
+
+.level-benefit-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--level-accent-strong);
+    background: var(--level-chip-bg);
+    border: 1px solid var(--level-chip-border);
+    flex-shrink: 0;
+}
+
+.level-benefit-main {
+    min-width: 0;
+    flex: 1;
+}
+
+.level-benefit-title {
+    margin: 0;
+    font-size: 0.77rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.level-benefit-desc {
+    margin: 0.15rem 0 0;
+    font-size: 0.69rem;
+    color: var(--text-muted);
+}
+
+.level-benefit-tag {
+    flex-shrink: 0;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    padding: 0.12rem 0.42rem;
+}
+
+.level-benefit-item.is-unlocked .level-benefit-tag {
+    color: var(--level-accent-strong);
+    border-color: var(--level-chip-border);
+    background: var(--level-chip-bg);
+}
+
+.level-up-mini-modal {
+    position: fixed;
+    right: 1rem;
+    top: calc(env(safe-area-inset-top, 0px) + 1rem);
+    z-index: 1200;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-18px) scale(0.94);
+    transition: opacity 0.28s ease, transform 0.28s cubic-bezier(0.2, 0.9, 0.2, 1.15);
+}
+
+.level-up-mini-modal.show {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+.level-up-card {
+    position: relative;
+    min-width: 220px;
+    max-width: min(82vw, 280px);
+    overflow: hidden;
+    border-radius: 14px;
+    border: 1px solid rgba(14, 165, 233, 0.38);
+    background: linear-gradient(140deg, rgba(2, 132, 199, 0.95), rgba(29, 78, 216, 0.95));
+    box-shadow: 0 14px 32px rgba(2, 132, 199, 0.35);
+    padding: 0.75rem 0.85rem;
+    color: #eff6ff;
+}
+
+.level-up-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.level-up-label {
+    font-size: 0.68rem;
+    letter-spacing: 1.1px;
+    font-weight: 700;
+    opacity: 0.92;
+}
+
+.level-up-top strong {
+    font-size: 1rem;
+    letter-spacing: -0.01em;
+}
+
+.level-up-card p {
+    margin: 0.28rem 0 0;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.level-up-spark {
+    position: absolute;
+    border-radius: 999px;
+    pointer-events: none;
+    filter: blur(0.3px);
+    opacity: 0;
+}
+
+.level-up-mini-modal.show .level-up-spark-a {
+    width: 80px;
+    height: 80px;
+    right: -22px;
+    top: -32px;
+    background: radial-gradient(circle, rgba(251, 191, 36, 0.7) 0%, rgba(251, 191, 36, 0) 68%);
+    animation: levelSparkFloatA 1.6s ease;
+}
+
+.level-up-mini-modal.show .level-up-spark-b {
+    width: 92px;
+    height: 92px;
+    left: -36px;
+    bottom: -44px;
+    background: radial-gradient(circle, rgba(186, 230, 253, 0.55) 0%, rgba(186, 230, 253, 0) 70%);
+    animation: levelSparkFloatB 1.8s ease;
+}
+
+@keyframes levelSparkFloatA {
+    0% { opacity: 0; transform: translate(0, 0) scale(0.8); }
+    25% { opacity: 1; }
+    100% { opacity: 0; transform: translate(-10px, 8px) scale(1.1); }
+}
+
+@keyframes levelSparkFloatB {
+    0% { opacity: 0; transform: translate(0, 0) scale(0.9); }
+    30% { opacity: 0.9; }
+    100% { opacity: 0; transform: translate(14px, -10px) scale(1.14); }
+}
+
+@media (max-width: 560px) {
+    .level-up-mini-modal {
+        right: 0.75rem;
+        left: 0.75rem;
+        top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
+    }
+
+    .level-up-card {
+        max-width: 100%;
+    }
+
+    .level-tier-burst span:first-child {
+        width: 190px;
+        height: 190px;
+    }
+
+    .level-tier-burst span:last-child {
+        width: 240px;
+        height: 240px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .level-tier-pop,
+    .level-tier-burst.show span:first-child,
+    .level-tier-burst.show span:last-child {
+        animation: none !important;
+    }
+}
+
+.level-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.level-history-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0.55rem 0.65rem;
+}
+
+.level-history-main {
+    min-width: 0;
+}
+
+.level-history-label {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.level-history-time {
+    margin: 0.2rem 0 0;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.level-history-xp {
+    flex-shrink: 0;
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: #0284c7;
+    background: rgba(14, 165, 233, 0.12);
+    border: 1px solid rgba(14, 165, 233, 0.28);
+    border-radius: 999px;
+    padding: 0.18rem 0.52rem;
+}
+
+.level-history-empty {
+    margin-top: 0.25rem;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    text-align: center;
+    background: var(--bg-card);
+    border-radius: 10px;
+    border: 1px dashed var(--border-color);
+    padding: 0.8rem;
+}
+
+@media (max-width: 560px) {
+    .level-overview-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* Premium Welcome Modal Styles */
 .welcome-modal {
     position: fixed;

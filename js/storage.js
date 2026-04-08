@@ -94,5 +94,13 @@ const Storage = {
 
     // Savings goals (separate from transaction ledger)
     getBudgetSavingsGoals: () => Storage.get('unilife_budget_savings_goals', []),
-    setBudgetSavingsGoals: (data) => Storage.set('unilife_budget_savings_goals', data)
+    setBudgetSavingsGoals: (data) => Storage.set('unilife_budget_savings_goals', data),
+
+    // Leveling progression (isolated from core academic modules)
+    getLeveling: () => Storage.get('unilife_leveling', {
+        version: 1,
+        totalXp: 0,
+        grantedActionIds: []
+    }),
+    setLeveling: (data) => Storage.set('unilife_leveling', data)
 };

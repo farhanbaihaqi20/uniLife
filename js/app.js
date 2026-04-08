@@ -723,6 +723,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 5. Initialize Sub-modules
     if (typeof i18n !== 'undefined') i18n.init();
     if (typeof profileManager !== 'undefined') profileManager.init();
+    if (typeof levelingManager !== 'undefined') levelingManager.init();
     if (typeof gradeGoals !== 'undefined') gradeGoals.init();
     if (typeof notificationManager !== 'undefined') {
         notificationManager.injectNotificationUI();
@@ -772,6 +773,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof profileManager !== 'undefined') {
                 profileManager.updateDashboardStats();
                 profileManager.renderUrgentTasks();
+            }
+            if (typeof levelingManager !== 'undefined' && typeof levelingManager.refreshUI === 'function') {
+                levelingManager.refreshUI();
             }
             if (typeof scheduleManager !== 'undefined' && document.getElementById('modal-course-detail')?.classList.contains('active')) {
                 const courseId = document.getElementById('course-detail-id')?.value;
@@ -837,6 +841,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof profileManager !== 'undefined') {
                 profileManager.updateDashboardStats();
             }
+            if (typeof levelingManager !== 'undefined' && typeof levelingManager.refreshUI === 'function') {
+                levelingManager.refreshUI();
+            }
         }
 
         // Focus sessions changed
@@ -846,6 +853,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Update profile dashboard
             if (typeof profileManager !== 'undefined') {
                 profileManager.updateDashboardStats();
+            }
+            if (typeof levelingManager !== 'undefined' && typeof levelingManager.refreshUI === 'function') {
+                levelingManager.refreshUI();
             }
         }
 
@@ -870,6 +880,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 scheduleManager.schedules = Storage.getSchedules();
                 scheduleManager.renderScheduleList();
             }
+            if (typeof levelingManager !== 'undefined' && typeof levelingManager.refreshUI === 'function') {
+                levelingManager.refreshUI();
+            }
         }
 
         // Notes changed
@@ -892,6 +905,16 @@ document.addEventListener('DOMContentLoaded', () => {
             // Update profile dashboard
             if (typeof profileManager !== 'undefined') {
                 profileManager.updateDashboardStats();
+            }
+            if (typeof levelingManager !== 'undefined' && typeof levelingManager.refreshUI === 'function') {
+                levelingManager.refreshUI();
+            }
+        }
+
+        // Leveling data changed
+        if (!key || key === 'unilife_leveling') {
+            if (typeof levelingManager !== 'undefined' && typeof levelingManager.refreshUI === 'function') {
+                levelingManager.refreshUI();
             }
         }
 

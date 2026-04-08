@@ -366,6 +366,15 @@ const presensiManager = {
         else this.records.push(record);
 
         Storage.setAttendanceRecords(this.records);
+
+        if (status === 'hadir' && typeof levelingManager !== 'undefined' && typeof levelingManager.awardXp === 'function') {
+            levelingManager.awardXp({
+                amount: 20,
+                sourceId: `attendance.hadir:${record.id}`,
+                label: 'Presensi hadir di kelas'
+            });
+        }
+
         this.closeAttendanceModal();
         this.renderRecap();
 

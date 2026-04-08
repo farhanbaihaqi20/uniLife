@@ -411,6 +411,15 @@ const gradesManager = {
 
             Storage.setGrades(this.semesters);
 
+            if (typeof levelingManager !== 'undefined' && typeof levelingManager.awardXp === 'function') {
+                const gradeSourceId = `grade.final:${semId}:${newCourseData.id}`;
+                levelingManager.awardXp({
+                    amount: 78,
+                    sourceId: gradeSourceId,
+                    label: 'Input nilai akhir mata kuliah'
+                });
+            }
+
             this.renderStats();
             this.renderSemesters();
             this.closeModal();
