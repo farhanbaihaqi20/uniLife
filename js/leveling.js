@@ -105,11 +105,11 @@ const levelingManager = {
                 title: 'Avatar Frame Premium',
                 unlockLevel: 1,
                 icon: 'ph-user-circle',
-                desc: 'Bingkai avatar naik kualitas tiap tier level.'
+                desc: 'Bingkai avatar khusus tiap tier level.'
             },
             {
                 id: 'name-badge',
-                title: 'Badge Gelar Kampus',
+                title: 'Badge Gelar Mahasiswa',
                 unlockLevel: 5,
                 icon: 'ph-seal-check',
                 desc: 'Nama profil menampilkan badge gelar sesuai level.'

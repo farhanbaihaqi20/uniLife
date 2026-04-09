@@ -14,11 +14,13 @@ const budgetManager = {
     interestVisualTimer: null,
     interestDisplayScope: 'all',
     transactionSourceFilter: 'all',
+    isBalanceVisible: true,
     savingsGoalActionsBound: false,
     savingsGoalSwipeBound: false,
     savingsGoalSlideDirection: '',
     savingsGoalSwipeFeedback: false,
     moreActionsBound: false,
+    valueTransitionTimers: new WeakMap(),
 
     init: function () {
         this.accounts = this.normalizeAccounts(Storage.getBudgetAccounts());
@@ -29,6 +31,7 @@ const budgetManager = {
         Storage.setBudgetTransactions(this.transactions);
         Storage.setBudgetAccounts(this.accounts);
         this.monthlyLimit = Storage.getBudgetLimit();
+        this.isBalanceVisible = Storage.get('unilife_budget_balance_visible', true) !== false;
         this.baseBalance = this.getTotalInitialBalance();
         this.selectedMonth = this.getInitialSelectedMonth();
         this.bindMoreActionsEvents();
@@ -341,6 +344,71 @@ const budgetManager = {
 
     formatCurrency: function (amount) {
         return 'Rp ' + amount.toLocaleString('id-ID');
+    },
+
+    formatSensitiveCurrency: function (amount) {
+        if (this.isBalanceVisible) {
+            return this.formatCurrency(amount);
+        }
+        return 'Rp ••••••';
+    },
+
+    toggleBalanceVisibility: function (event) {
+        if (event) {
+            event.preventDefault();
+        }
+
+        this.isBalanceVisible = !this.isBalanceVisible;
+        Storage.set('unilife_budget_balance_visible', this.isBalanceVisible);
+        this.updateDashboard();
+    },
+
+    renderBalanceVisibilityToggle: function () {
+        const toggle = document.getElementById('budget-balance-visibility-toggle');
+        const icon = document.getElementById('budget-balance-visibility-icon');
+        const label = document.getElementById('budget-balance-visibility-label');
+        if (!toggle || !icon || !label) return;
+
+        const isVisible = !!this.isBalanceVisible;
+        const actionText = isVisible ? 'Sembunyikan saldo' : 'Tampilkan saldo';
+        icon.className = isVisible ? 'ph ph-eye' : 'ph ph-eye-slash';
+        label.textContent = actionText;
+        toggle.setAttribute('aria-label', actionText);
+        toggle.setAttribute('title', actionText);
+        toggle.setAttribute('aria-pressed', String(isVisible));
+    },
+
+    setAmountTextWithAnimation: function (element, nextText) {
+        if (!element) return;
+
+        const safeText = String(nextText ?? '');
+        if (element.innerText === safeText) return;
+
+        const reduceMotion = typeof window !== 'undefined'
+            && typeof window.matchMedia === 'function'
+            && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        element.classList.add('budget-value-anim');
+
+        if (reduceMotion) {
+            element.innerText = safeText;
+            return;
+        }
+
+        const activeTimer = this.valueTransitionTimers.get(element);
+        if (activeTimer) {
+            clearTimeout(activeTimer);
+            this.valueTransitionTimers.delete(element);
+        }
+
+        element.classList.add('budget-value-changing');
+        const timerId = setTimeout(() => {
+            element.innerText = safeText;
+            element.classList.remove('budget-value-changing');
+            this.valueTransitionTimers.delete(element);
+        }, 120);
+
+        this.valueTransitionTimers.set(element, timerId);
     },
 
     sanitizeNominalInput: function (value) {
@@ -798,10 +866,11 @@ const budgetManager = {
         const elIncome = document.getElementById('budget-total-income');
         const elExpense = document.getElementById('budget-total-expense');
 
-        if (elBalance) elBalance.innerText = this.formatCurrency(totalBalanceWithManual);
-        if (elInterest) elInterest.innerText = this.formatCurrency(totalInterestEarned);
-        if (elIncome) elIncome.innerText = this.formatCurrency(monthTotals.income);
-        if (elExpense) elExpense.innerText = this.formatCurrency(monthTotals.expense);
+        this.setAmountTextWithAnimation(elBalance, this.formatSensitiveCurrency(totalBalanceWithManual));
+        this.setAmountTextWithAnimation(elInterest, this.formatSensitiveCurrency(totalInterestEarned));
+        this.setAmountTextWithAnimation(elIncome, this.formatSensitiveCurrency(monthTotals.income));
+        this.setAmountTextWithAnimation(elExpense, this.formatSensitiveCurrency(monthTotals.expense));
+        this.renderBalanceVisibilityToggle();
         this.renderInterestScopeSwitch();
 
         this.renderManualBalanceInfo();
@@ -1441,7 +1510,7 @@ const budgetManager = {
             return;
         }
 
-        infoEl.innerText = `${this.accounts.length} sumber dana aktif • Saldo awal total: ${this.formatCurrency(this.baseBalance)}`;
+        infoEl.innerText = `${this.accounts.length} sumber dana aktif • Saldo awal total: ${this.formatSensitiveCurrency(this.baseBalance)}`;
     },
 
     getFundTypeLabel: function (type) {
@@ -1493,7 +1562,7 @@ const budgetManager = {
             chip.innerHTML = `
                 ${hasInterestPulse ? '<span class="budget-fund-interest-toast">+Bunga cair</span>' : ''}
                 <p class="budget-fund-name">${account.name}</p>
-                <p class="budget-fund-value">${this.formatCurrency(value)}</p>
+                <p class="budget-fund-value">${this.formatSensitiveCurrency(value)}</p>
                 <span class="${interestVisual.className}">${interestVisual.label}</span>
             `;
             container.appendChild(chip);
@@ -2057,7 +2126,7 @@ const budgetManager = {
         const summaryEl = document.getElementById('budget-account-modal-summary');
         if (summaryEl) {
             const totalInitial = this.accounts.reduce((sum, account) => sum + (Number(account.initialBalance) || 0), 0);
-            summaryEl.textContent = `${this.accounts.length} sumber dana aktif • Total saldo awal ${this.formatCurrency(totalInitial)}`;
+            summaryEl.textContent = `${this.accounts.length} sumber dana aktif • Total saldo awal ${this.formatSensitiveCurrency(totalInitial)}`;
         }
 
         container.innerHTML = '';
