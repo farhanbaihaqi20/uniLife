@@ -388,12 +388,12 @@ const budgetManager = {
             && typeof window.matchMedia === 'function'
             && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-        element.classList.add('budget-value-anim');
-
         if (reduceMotion) {
             element.innerText = safeText;
             return;
         }
+
+        element.classList.add('budget-value-anim');
 
         const activeTimer = this.valueTransitionTimers.get(element);
         if (activeTimer) {
@@ -401,12 +401,15 @@ const budgetManager = {
             this.valueTransitionTimers.delete(element);
         }
 
+        element.innerText = safeText;
+        element.classList.remove('budget-value-changing');
+        // Force reflow so the animation can replay on rapid successive updates.
+        void element.offsetWidth;
         element.classList.add('budget-value-changing');
         const timerId = setTimeout(() => {
-            element.innerText = safeText;
             element.classList.remove('budget-value-changing');
             this.valueTransitionTimers.delete(element);
-        }, 120);
+        }, 220);
 
         this.valueTransitionTimers.set(element, timerId);
     },
@@ -514,6 +517,43 @@ const budgetManager = {
         const parts = dateKey.split('-').map(Number);
         if (parts.length !== 3 || parts.some(Number.isNaN)) return null;
         return new Date(parts[0], parts[1] - 1, parts[2]);
+    },
+
+    buildTransactionDateIso: function (rawInput, baseValue = null) {
+        const baseCandidate = baseValue ? new Date(baseValue) : new Date();
+        const fallbackBase = Number.isNaN(baseCandidate.getTime()) ? new Date() : baseCandidate;
+
+        if (!rawInput) {
+            return fallbackBase.toISOString();
+        }
+
+        if (typeof rawInput === 'string' && rawInput.includes('T')) {
+            const parsedIso = new Date(rawInput);
+            if (!Number.isNaN(parsedIso.getTime())) {
+                return parsedIso.toISOString();
+            }
+        }
+
+        const localDate = this.parseLocalDateKey(String(rawInput));
+        if (!localDate || Number.isNaN(localDate.getTime())) {
+            const parsedGeneric = new Date(rawInput);
+            if (!Number.isNaN(parsedGeneric.getTime())) {
+                return parsedGeneric.toISOString();
+            }
+            return fallbackBase.toISOString();
+        }
+
+        const composed = new Date(
+            localDate.getFullYear(),
+            localDate.getMonth(),
+            localDate.getDate(),
+            fallbackBase.getHours(),
+            fallbackBase.getMinutes(),
+            fallbackBase.getSeconds(),
+            fallbackBase.getMilliseconds()
+        );
+
+        return composed.toISOString();
     },
 
     getStartOfDay: function (value) {
@@ -1936,7 +1976,7 @@ const budgetManager = {
                 const dateDiff = this.getTransactionDate(b.tx) - this.getTransactionDate(a.tx);
                 if (dateDiff !== 0) return dateDiff;
 
-                const createdDiff = this.getTransactionDate(b.tx.createdAt || b.tx.date) - this.getTransactionDate(a.tx.createdAt || a.tx.date);
+                const createdDiff = new Date(b.tx.createdAt || b.tx.date) - new Date(a.tx.createdAt || a.tx.date);
                 if (createdDiff !== 0) return createdDiff;
 
                 return b.index - a.index;
@@ -1987,7 +2027,10 @@ const budgetManager = {
 
             const dateObj = this.getTransactionDate(tx);
             const dateLabel = dateObj.toLocaleDateString(i18n.locale(), { day: '2-digit', month: 'short' });
-            const timeLabel = dateObj
+            const displayTimeSource = tx.createdAt || tx.timestamp || tx.date;
+            const displayTimeObj = new Date(displayTimeSource);
+            const safeTimeObj = Number.isNaN(displayTimeObj.getTime()) ? dateObj : displayTimeObj;
+            const timeLabel = safeTimeObj
                 .toLocaleTimeString(i18n.locale(), { hour: '2-digit', minute: '2-digit', hour12: false })
                 .replace(':', '.');
 
@@ -2737,8 +2780,7 @@ const budgetManager = {
         const amount = this.parseNominalInput(payload?.nominal);
         if (amount <= 0) return false;
 
-        const parsedDate = payload?.tanggal ? new Date(payload.tanggal) : new Date();
-        const txDate = Number.isNaN(parsedDate.getTime()) ? new Date().toISOString() : parsedDate.toISOString();
+        const txDate = this.buildTransactionDateIso(payload?.tanggal, payload?.createdAt || new Date().toISOString());
 
         const linkedTx = {
             type: 'expense',
@@ -2803,8 +2845,9 @@ const budgetManager = {
             }
         }
 
-        const parsedDate = txDateRaw ? new Date(`${txDateRaw}T12:00:00`) : new Date();
-        const txDate = Number.isNaN(parsedDate.getTime()) ? new Date().toISOString() : parsedDate.toISOString();
+        const existingTx = id ? this.transactions.find(t => t.id === id) : null;
+        const baseTime = existingTx?.date || existingTx?.createdAt || new Date().toISOString();
+        const txDate = this.buildTransactionDateIso(txDateRaw, baseTime);
 
         if (id) {
             // Edit existing
@@ -2905,8 +2948,7 @@ const budgetManager = {
             if (!confirmed) return;
         }
 
-        const parsedDate = txDateRaw ? new Date(`${txDateRaw}T12:00:00`) : new Date();
-        const txDate = Number.isNaN(parsedDate.getTime()) ? new Date().toISOString() : parsedDate.toISOString();
+        const txDate = this.buildTransactionDateIso(txDateRaw, new Date().toISOString());
         const transferId = (typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
         const transferOut = {

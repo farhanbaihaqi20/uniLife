@@ -3707,9 +3707,9 @@ select:focus {
 }
 
 .budget-value-changing {
-    opacity: 0.12;
-    filter: blur(1.3px);
-    transform: translateY(-1px);
+    opacity: 0.88;
+    filter: saturate(1.12);
+    transform: translateY(-1px) scale(1.01);
 }
 
 .budget-interest-earned-indicator {
