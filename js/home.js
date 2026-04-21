@@ -34,7 +34,7 @@ const homeManager = {
         todaySchedules.sort((a, b) => a.start.localeCompare(b.start));
 
         if (todaySchedules.length === 0) {
-            container.innerHTML = `<div style="text-align:center; padding:1rem; color:var(--text-muted); background:var(--bg-card); border-radius:var(--radius-sm); border:1px solid var(--border-color);">${i18n.t('home_empty_today_schedule')}</div>`;
+            container.innerHTML = `<div class="home-empty-state">${i18n.t('home_empty_today_schedule')}</div>`;
             return;
         }
 
@@ -66,15 +66,8 @@ const homeManager = {
             }
 
             const card = document.createElement('div');
-            card.className = `schedule-card fade-in ${isNow ? 'is-now' : ''}`;
+            card.className = `schedule-card home-schedule-card fade-in ${isNow ? 'is-now' : ''}`;
             card.style.animationDelay = `${index * 0.05}s`;
-            card.style.background = 'var(--bg-card)';
-            card.style.padding = '1rem';
-            card.style.borderRadius = 'var(--radius-sm)';
-            card.style.border = '1px solid var(--border-color)';
-            card.style.minWidth = '220px';
-            card.style.flexShrink = '0';
-            card.style.cursor = 'pointer';
             card.onclick = () => {
                 if (isNow && typeof presensiManager !== 'undefined') {
                     presensiManager.openAttendanceModal(sch.id, true); // true = from today's class
@@ -88,26 +81,26 @@ const homeManager = {
             };
 
             card.innerHTML = `
-                <div style="display:flex; justify-content:space-between; gap:0.5rem; align-items:flex-start; margin-bottom:0.45rem;">
-                    <div style="font-weight:600; font-size:1.05rem; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:145px;">${sch.name}</div>
+                <div class="home-schedule-card-head">
+                    <div class="home-schedule-course-name">${sch.name}</div>
                     <span class="home-schedule-status ${statusClass}">${statusText}</span>
                 </div>
-                <div style="font-size:0.85rem; color:var(--text-muted); display:flex; flex-direction:column; gap:0.25rem;">
+                <div class="home-schedule-meta">
                     <span><i class="ph ph-clock"></i> ${sch.start} - ${sch.end}</span>
                     <span><i class="ph ph-map-pin"></i> ${sch.room}</span>
                 </div>
                 ${isNow ? `
                     ${hasAttendedToday ? `
-                        <div style="margin-top:0.65rem; padding:0.5rem; background:rgba(16, 185, 129, 0.1); border-radius:var(--radius-sm); font-size:0.8rem; color:var(--success); font-weight:600; display:flex; align-items:center; gap:0.35rem;">
-                            <i class="ph ph-check-circle" style="font-size:1rem;"></i> Sudah presensi hari ini
+                        <div class="home-schedule-attendance-chip done-today">
+                            <i class="ph ph-check-circle"></i> Sudah presensi hari ini
                         </div>
                     ` : `
-                        <div style="margin-top:0.65rem; font-size:0.78rem; color:var(--warning); font-weight:600; display:flex; align-items:center; gap:0.25rem;">
+                        <div class="home-schedule-attendance-chip tap-hint">
                             <i class="ph ph-hand-tap"></i> Tap kartu ini untuk isi presensi
                         </div>
                     `}
                 ` : (hasAttendedToday ? `
-                    <div style="margin-top:0.65rem; font-size:0.75rem; color:var(--success); display:flex; align-items:center; gap:0.35rem; font-weight:600;">
+                    <div class="home-schedule-attendance-chip done">
                         <i class="ph ph-check-circle"></i> Sudah presensi
                     </div>
                 ` : ``)}
@@ -136,7 +129,7 @@ const homeManager = {
         const topTasks = pendingTasks.slice(0, 3);
 
         if (topTasks.length === 0) {
-            container.innerHTML = `<div style="text-align:center; padding:1rem; color:var(--text-muted); background:var(--bg-card); border-radius:var(--radius-sm); border:1px solid var(--border-color);">${i18n.t('home_empty_urgent_tasks')}</div>`;
+            container.innerHTML = `<div class="home-empty-state">${i18n.t('home_empty_urgent_tasks')}</div>`;
             return;
         }
 
@@ -147,25 +140,19 @@ const homeManager = {
             if (task.dueDate < today) dueColor = 'var(--danger)';
             else if (task.dueDate === today) dueColor = 'var(--warning)';
 
+            const dueState = task.dueDate < today ? 'overdue' : (task.dueDate === today ? 'today' : 'upcoming');
+
             const card = document.createElement('div');
-            card.className = 'fade-in';
+            card.className = `home-task-card fade-in is-${dueState}`;
             card.style.animationDelay = `${index * 0.05}s`;
-            card.style.background = 'var(--bg-card)';
-            card.style.padding = '1rem';
-            card.style.borderRadius = 'var(--radius-sm)';
-            card.style.border = '1px solid var(--border-color)';
-            card.style.borderLeft = `3px solid ${dueColor}`;
-            card.style.marginBottom = '0.5rem';
-            card.style.display = 'flex';
-            card.style.justifyContent = 'space-between';
-            card.style.alignItems = 'center';
+            card.style.setProperty('--home-task-due-color', dueColor);
 
             card.innerHTML = `
-                <div>
-                    <div style="font-weight: 500;">${task.title}</div>
-                    <div style="font-size: 0.8rem; color: ${dueColor}; margin-top:0.25rem;"><i class="ph ph-calendar"></i> ${i18n.t('home_due_prefix')} ${task.dueDate}</div>
+                <div class="home-task-main">
+                    <div class="home-task-title">${task.title}</div>
+                    <div class="home-task-due"><i class="ph ph-calendar"></i> ${i18n.t('home_due_prefix')} ${task.dueDate}</div>
                 </div>
-                <button class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.75rem;" onclick="document.querySelector('.nav-item[data-target=\\'view-tasks\\']').click()">${i18n.t('home_view')}</button>
+                <button class="btn btn-outline home-task-open-btn" onclick="document.querySelector('.nav-item[data-target=\\'view-tasks\\']').click()">${i18n.t('home_view')}</button>
             `;
             container.appendChild(card);
         });
@@ -183,17 +170,11 @@ const homeManager = {
 
         this.reminders.forEach(rem => {
             const el = document.createElement('div');
-            el.style.background = 'var(--primary-light)';
-            el.style.padding = '0.75rem 1rem';
-            el.style.borderRadius = 'var(--radius-sm)';
-            el.style.display = 'flex';
-            el.style.justifyContent = 'space-between';
-            el.style.alignItems = 'center';
-            el.style.borderLeft = '3px solid var(--primary)';
+            el.className = 'home-reminder-item';
 
             el.innerHTML = `
-                <div style="font-size: 0.9rem; font-weight:500;">${rem.text}</div>
-                <button class="icon-btn" onclick="homeManager.deleteReminder('${rem.id}')" style="width:24px; height:24px; background:transparent; border:none; box-shadow:none; color:var(--text-muted);">
+                <div class="home-reminder-text">${rem.text}</div>
+                <button class="icon-btn home-reminder-done-btn" onclick="homeManager.deleteReminder('${rem.id}')">
                     <i class="ph ph-check"></i>
                 </button>
             `;

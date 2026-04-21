@@ -637,7 +637,7 @@ const notificationManager = {
 
         // Inject button into header container
         container.innerHTML = `
-            <button class="icon-btn" id="notification-btn" type="button" style="width: 38px; height: 38px; border:none; background:var(--bg-main); position: relative;">
+            <button class="icon-btn header-icon-btn" id="notification-btn" type="button">
                 <i class="ph ph-bell"></i>
                 <span id="notification-badge" class="notification-badge" style="display: none;"></span>
             </button>

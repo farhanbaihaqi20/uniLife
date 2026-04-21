@@ -26,27 +26,39 @@
     <div class="app-container">
         <!-- Header (Sticky & Refined) -->
         <header class="app-header">
-            <div class="header-profile">
-                <!-- Profile Avatar Trigger -->
-                <div id="profile-trigger" class="profile-avatar profile-avatar-initial">
-                    U
-                </div>
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <img src="assets/icon.png" alt="UniLife Logo"
-                        style="width: 28px; height: 28px; border-radius: 6px;">
-                    <div>
+            <div class="header-shell">
+                <div class="header-top-row">
+                    <div class="header-date-chip">
+                        <i class="ph ph-calendar-dots"></i>
                         <h1 class="app-subtitle" id="current-date">Senin, 12 Okt</h1>
-                        <p class="app-title">UniLife</p>
+                    </div>
+
+                    <div class="header-actions">
+                        <!-- Call button -->
+                        <button class="icon-btn header-icon-btn" id="call-open-btn" onclick="callManager.open()" title="Panggilan Kelas">
+                            <i class="ph ph-phone-call"></i>
+                        </button>
+                        <!-- Notification button will be injected here by notification manager -->
+                        <div id="notification-container" class="header-notification-slot"></div>
                     </div>
                 </div>
-            </div>
-            <div class="header-actions" style="display:flex; gap:0.5rem; align-items:center;">
-                <!-- Call button -->
-                <button class="icon-btn" id="call-open-btn" onclick="callManager.open()" title="Panggilan Kelas" style="width:38px;height:38px;border:none;background:var(--bg-main);position:relative;">
-                    <i class="ph ph-phone-call"></i>
-                </button>
-                <!-- Notification button will be injected here by notification manager -->
-                <div id="notification-container" style="position: relative;"></div>
+
+                <div class="header-main-row">
+                    <div class="header-brand-cluster">
+                        <div class="header-brand-mark" aria-hidden="true">
+                            <img src="assets/icon.png" alt="UniLife Logo">
+                        </div>
+                        <div class="header-copy">
+                            <p class="app-title">UniLife</p>
+                        </div>
+                    </div>
+
+                    <div class="header-profile-pill">
+                        <div id="profile-trigger" class="profile-avatar profile-avatar-initial">
+                            U
+                        </div>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -55,120 +67,88 @@
 
             <!-- HOME VIEW -->
             <section id="view-home" class="view-section active">
-                <div class="welcome-box" style="margin-bottom: 2rem; position: relative;">
-                    <div
-                        style="background: var(--primary-gradient); border-radius: var(--radius-lg); padding: 1.5rem; color: white; box-shadow: var(--shadow-md);">
-                        <h2 style="font-size: 1.6rem; font-weight: 700; margin-bottom: 0.25rem;" id="home-greeting">
-                            Halo, Mahasiswa! 👋</h2>
-                        <p style="opacity: 0.9; font-size: 0.95rem; display:flex; align-items:center; gap:0.5rem;"
-                            id="home-subgreeting"><i class="ph ph-student"></i> Semester 1 &bull; Fakultas</p>
+                <div class="welcome-box home-hero-wrap">
+                    <div class="home-hero-card">
+                        <div class="home-hero-orb home-hero-orb-a" aria-hidden="true"></div>
+                        <div class="home-hero-orb home-hero-orb-b" aria-hidden="true"></div>
+                        <h2 id="home-greeting">Halo, Mahasiswa! 👋</h2>
+                        <p id="home-subgreeting"><i class="ph ph-student"></i> Semester 1 &bull; Fakultas</p>
                     </div>
                 </div>
 
-                <div class="quick-actions"
-                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 0.75rem; margin-bottom: 2rem;">
-                    <button class="card"
-                        onclick="document.querySelector('.nav-item[data-target=\'view-schedule\']').click()"
-                        style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; padding:1rem 0.25rem; border:none; background:var(--bg-card); cursor:pointer;">
-                        <div
-                            style="width:40px; height:40px; border-radius:50%; background:var(--primary-light); color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:1.5rem;">
+                <div class="quick-actions home-quick-actions">
+                    <button class="card home-quick-btn"
+                        onclick="document.querySelector('.nav-item[data-target=\'view-schedule\']').click()">
+                        <div class="home-quick-icon" data-tone="schedule">
                             <i class="ph ph-calendar"></i>
                         </div>
-                        <span data-i18n="home_quick_schedule"
-                            style="font-size:0.75rem; font-weight:600; color:var(--text-main)">Jadwal</span>
+                        <span data-i18n="home_quick_schedule">Jadwal</span>
                     </button>
-                    <button class="card"
-                        onclick="document.querySelector('.nav-item[data-target=\'view-tasks\']').click()"
-                        style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; padding:1rem 0.25rem; border:none; background:var(--bg-card); cursor:pointer;">
-                        <div
-                            style="width:40px; height:40px; border-radius:50%; background:rgba(16, 185, 129, 0.1); color:var(--success); display:flex; align-items:center; justify-content:center; font-size:1.5rem;">
+                    <button class="card home-quick-btn"
+                        onclick="document.querySelector('.nav-item[data-target=\'view-tasks\']').click()">
+                        <div class="home-quick-icon" data-tone="tasks">
                             <i class="ph ph-check-square-offset"></i>
                         </div>
-                        <span data-i18n="home_quick_tasks"
-                            style="font-size:0.75rem; font-weight:600; color:var(--text-main)">Tugas</span>
+                        <span data-i18n="home_quick_tasks">Tugas</span>
                     </button>
-                    <button class="card" onclick="window.openView && window.openView('view-focus', 'view-home')"
-                        style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; padding:1rem 0.25rem; border:none; background:var(--bg-card); cursor:pointer;">
-                        <div
-                            style="width:40px; height:40px; border-radius:50%; background:rgba(245, 158, 11, 0.1); color:var(--warning); display:flex; align-items:center; justify-content:center; font-size:1.5rem;">
+                    <button class="card home-quick-btn" onclick="window.openView && window.openView('view-focus', 'view-home')">
+                        <div class="home-quick-icon" data-tone="focus">
                             <i class="ph ph-timer"></i>
                         </div>
-                        <span data-i18n="home_quick_focus"
-                            style="font-size:0.75rem; font-weight:600; color:var(--text-main)">Fokus</span>
+                        <span data-i18n="home_quick_focus">Fokus</span>
                     </button>
-                    <button class="card" onclick="notesManager.openNotesDashboard()"
-                        style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; padding:1rem 0.25rem; border:none; background:var(--bg-card); cursor:pointer;">
-                        <div
-                            style="width:40px; height:40px; border-radius:50%; background:rgba(217, 119, 6, 0.1); color:#D97706; display:flex; align-items:center; justify-content:center; font-size:1.5rem;">
+                    <button class="card home-quick-btn" onclick="notesManager.openNotesDashboard()">
+                        <div class="home-quick-icon" data-tone="notes">
                             <i class="ph ph-notebook"></i>
                         </div>
-                        <span style="font-size:0.75rem; font-weight:600; color:var(--text-main)">Catatan</span>
+                        <span>Catatan</span>
                     </button>
-                    <button class="card" onclick="presensiManager.openDashboard()"
-                        style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; padding:1rem 0.25rem; border:none; background:var(--bg-card); cursor:pointer;">
-                        <div
-                            style="width:40px; height:40px; border-radius:50%; background:rgba(14, 165, 233, 0.12); color:#0284C7; display:flex; align-items:center; justify-content:center; font-size:1.5rem;">
+                    <button class="card home-quick-btn" onclick="presensiManager.openDashboard()">
+                        <div class="home-quick-icon" data-tone="attendance">
                             <i class="ph ph-check-circle"></i>
                         </div>
-                        <span style="font-size:0.75rem; font-weight:600; color:var(--text-main)">Presensi</span>
+                        <span>Presensi</span>
                     </button>
-                    <button class="card" onclick="window.openView && window.openView('view-budget', 'view-home')"
-                        style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; padding:1rem 0.25rem; border:none; background:var(--bg-card); cursor:pointer;">
-                        <div
-                            style="width:40px; height:40px; border-radius:50%; background:rgba(236, 72, 153, 0.12); color:#EC4899; display:flex; align-items:center; justify-content:center; font-size:1.5rem;">
+                    <button class="card home-quick-btn" onclick="window.openView && window.openView('view-budget', 'view-home')">
+                        <div class="home-quick-icon" data-tone="budget">
                             <i class="ph ph-wallet"></i>
                         </div>
-                        <span data-i18n="home_quick_budget"
-                            style="font-size:0.75rem; font-weight:600; color:var(--text-main)">Keuangan</span>
+                        <span data-i18n="home_quick_budget">Keuangan</span>
                     </button>
                 </div>
 
-                <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
-                    <h3 style="flex:1; font-size: 1.2rem; font-weight:600;"><i class="ph ph-calendar-star"
-                            style="color:var(--primary)"></i> <span data-i18n="home_today_schedule">Kuliah Hari
-                            Ini</span></h3>
+                <div class="home-section-head tone-primary">
+                    <h3><i class="ph ph-calendar-star"></i> <span data-i18n="home_today_schedule">Kuliah Hari Ini</span></h3>
                 </div>
-                <!-- Horizontal scrolling for today's schedules -> a more premium feel -->
-                <div id="home-schedule-list"
-                    style="display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem; margin-bottom: 1.5rem; scrollbar-width: none;">
+                <div id="home-schedule-list" class="home-schedule-list">
                     <!-- Populated by JS -->
                 </div>
 
-                <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
-                    <h3 style="flex:1; font-size: 1.2rem; font-weight:600;"><i class="ph ph-radar"
-                            style="color:var(--danger)"></i> <span data-i18n="radar_title">Radar Deadline</span></h3>
+                <div class="home-section-head tone-danger">
+                    <h3><i class="ph ph-radar"></i> <span data-i18n="radar_title">Radar Deadline</span></h3>
                 </div>
-                <div id="deadline-radar" style="margin-bottom: 2rem;">
+                <div id="deadline-radar" class="home-radar-wrap">
                     <!-- Populated by JS -->
                 </div>
 
-                <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
-                    <h3 style="flex:1; font-size: 1.2rem; font-weight:600;"><i class="ph ph-warning-circle"
-                            style="color:var(--danger)"></i> <span data-i18n="home_urgent_tasks">Tugas Mendesak</span>
-                    </h3>
-                    <a href="#" onclick="document.querySelector('.nav-item[data-target=\'view-tasks\']').click()"
-                        style="font-size:0.875rem; color:var(--primary); text-decoration:none; font-weight:500;"
-                        data-i18n="home_see_all">Lihat
-                        Semua</a>
+                <div class="home-section-head with-link tone-danger">
+                    <h3><i class="ph ph-warning-circle"></i> <span data-i18n="home_urgent_tasks">Tugas Mendesak</span></h3>
+                    <a href="#" onclick="document.querySelector('.nav-item[data-target=\'view-tasks\']').click()" data-i18n="home_see_all">Lihat Semua</a>
                 </div>
-                <div id="home-tasks-list" style="margin-bottom: 2rem;">
+                <div id="home-tasks-list" class="home-tasks-list">
                     <!-- Populated by JS -->
                 </div>
 
-                <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; margin-top: 2rem;">
-                    <h3 style="flex:1; font-size: 1.2rem; font-weight:600;"><i class="ph ph-inbox"
-                            style="color:var(--primary)"></i> <span data-i18n="inbox_section">Inbox Cepat</span></h3>
+                <div class="home-section-head tone-primary home-inbox-head">
+                    <h3><i class="ph ph-inbox"></i> <span data-i18n="inbox_section">Inbox Cepat</span></h3>
                 </div>
-                <div id="inbox-list" style="display: none; margin-bottom: 1rem;">
+                <div id="inbox-list" class="home-inbox-list">
                     <!-- Populated by JS -->
                 </div>
-                <div id="inbox-empty-state"
-                    style="text-align: center; padding: 2rem 1rem; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-color);">
-                    <i class="ph ph-tray"
-                        style="font-size: 3rem; opacity: 0.3; margin-bottom: 0.75rem; display: block;"></i>
-                    <p style="font-size: 0.9rem; font-weight: 500;">Inbox kosong</p>
-                    <p style="font-size: 0.8rem; opacity: 0.7; margin-top: 0.25rem;">Tekan tombol + untuk menambah
-                        tangkapan cepat</p>
+                <div id="inbox-empty-state" class="home-inbox-empty-state">
+                    <i class="ph ph-tray"></i>
+                    <p>Inbox kosong</p>
+                    <p>Tekan tombol + untuk menambah tangkapan cepat</p>
                 </div>
 
             </section>

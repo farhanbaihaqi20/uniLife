@@ -483,18 +483,10 @@ const levelingManager = {
     },
 
     applyHeaderRankChip: function (progress, meta) {
-        const appTitle = document.querySelector('.app-title');
-        if (!appTitle || !appTitle.parentElement) return;
-
         let chip = document.getElementById('level-header-chip');
-        if (!chip) {
-            chip = document.createElement('span');
-            chip.id = 'level-header-chip';
-            chip.className = 'level-header-chip';
-            appTitle.insertAdjacentElement('afterend', chip);
+        if (chip) {
+            chip.remove();
         }
-
-        chip.innerText = `Lv.${progress.level} • ${meta.badge}`;
     },
 
     upsertChipAfter: function (anchorId, chipId, text) {
