@@ -17,6 +17,8 @@ const budgetManager = {
     interestVisualTimer: null,
     interestDisplayScope: 'all',
     transactionSourceFilter: 'all',
+    transactionPreviewLimit: 12,
+    transactionHistoryTypeFilter: 'all',
     isBalanceVisible: true,
     savingsGoalActionsBound: false,
     savingsGoalSwipeBound: false,
@@ -267,6 +269,7 @@ const budgetManager = {
         let expense = 0;
 
         transactions.forEach(tx => {
+            if (!tx || tx.isTransfer) return;
             if (tx.type === 'income') {
                 income += tx.amount;
             } else {
@@ -323,6 +326,14 @@ const budgetManager = {
         this.updateDashboard();
     },
 
+    setTransactionHistoryTypeFilter: function (filterType) {
+        const allowed = ['all', 'expense', 'income', 'transfer'];
+        const nextFilter = allowed.includes(filterType) ? filterType : 'all';
+        if (this.transactionHistoryTypeFilter === nextFilter) return;
+        this.transactionHistoryTypeFilter = nextFilter;
+        this.renderTransactionHistoryModal(this.getTransactionsByMonth(this.selectedMonth));
+    },
+
     renderTransactionSourceFilter: function () {
         const allBtn = document.getElementById('budget-tx-filter-all');
         const cashBtn = document.getElementById('budget-tx-filter-cash');
@@ -337,10 +348,24 @@ const budgetManager = {
         bankingBtn.classList.toggle('is-active', active === 'banking');
     },
 
+    renderTransactionHistoryTypeFilter: function () {
+        const allBtn = document.getElementById('budget-history-filter-all');
+        const expenseBtn = document.getElementById('budget-history-filter-expense');
+        const incomeBtn = document.getElementById('budget-history-filter-income');
+        const transferBtn = document.getElementById('budget-history-filter-transfer');
+        if (!allBtn || !expenseBtn || !incomeBtn || !transferBtn) return;
+
+        const active = this.transactionHistoryTypeFilter;
+        allBtn.classList.toggle('is-active', active === 'all');
+        expenseBtn.classList.toggle('is-active', active === 'expense');
+        incomeBtn.classList.toggle('is-active', active === 'income');
+        transferBtn.classList.toggle('is-active', active === 'transfer');
+    },
+
     getExpensesByCategory: function (transactions) {
         const categories = {};
         transactions.forEach(tx => {
-            if (tx.type === 'expense') {
+            if (tx.type === 'expense' && !tx.isTransfer) {
                 categories[tx.category] = (categories[tx.category] || 0) + tx.amount;
             }
         });
@@ -1042,6 +1067,10 @@ const budgetManager = {
         // Update Transaction List
         this.renderTransactionSourceFilter();
         this.renderTransactionList(currentMonthTx);
+        const historyModal = document.getElementById('modal-budget-transaction-history');
+        if (historyModal && historyModal.classList.contains('active')) {
+            this.renderTransactionHistoryModal(currentMonthTx);
+        }
     },
 
     renderSavingsGoalCard: function () {
@@ -1557,24 +1586,243 @@ const budgetManager = {
         };
     },
 
-    getTransactionGroupLabel: function (dateValue) {
+    getTransactionGroupLabel: function (dateValue, options = {}) {
         const txDate = this.getStartOfDay(dateValue);
         if (!txDate) return 'Lainnya';
 
-        const now = new Date();
-        const today = this.getStartOfDay(now);
-        const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
-        const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
+        const relativeToToday = options.relativeToToday === true;
 
-        if (+txDate === +today) return 'Hari ini';
-        if (+txDate === +yesterday) return 'Kemarin';
-        if (txDate >= weekStart && txDate < yesterday) return 'Minggu ini';
+        if (relativeToToday) {
+            const now = new Date();
+            const today = this.getStartOfDay(now);
+            const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+            const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
+
+            if (+txDate === +today) return 'Hari ini';
+            if (+txDate === +yesterday) return 'Kemarin';
+            if (txDate >= weekStart && txDate < yesterday) return 'Minggu ini';
+        }
 
         return txDate.toLocaleDateString(i18n.locale(), {
             weekday: 'long',
             day: 'numeric',
             month: 'long'
         });
+    },
+
+    getTransactionsForDisplay: function (transactions, options = {}) {
+        const sourceTypeFilter = options.sourceTypeFilter || 'all';
+        const typeFilter = options.typeFilter || 'all';
+
+        return (Array.isArray(transactions) ? transactions : []).filter((tx) => {
+            if (!tx) return false;
+
+            if (typeFilter === 'transfer') {
+                if (!tx.isTransfer) return false;
+            } else {
+                if (tx.isTransfer && (typeFilter === 'income' || typeFilter === 'expense')) {
+                    return false;
+                }
+                if (typeFilter !== 'all' && tx.type !== typeFilter) {
+                    return false;
+                }
+            }
+
+            if (sourceTypeFilter === 'all') {
+                return true;
+            }
+
+            const account = this.getAccountById(tx.fundSourceId);
+            return !!account && account.type === sourceTypeFilter;
+        });
+    },
+
+    getSortedTransactionsForDisplay: function (transactions) {
+        return (Array.isArray(transactions) ? transactions : [])
+            .map((tx, index) => ({ tx, index }))
+            .sort((a, b) => {
+                const dateDiff = this.getTransactionDate(b.tx) - this.getTransactionDate(a.tx);
+                if (dateDiff !== 0) return dateDiff;
+
+                const createdDiff = new Date(b.tx.createdAt || b.tx.date) - new Date(a.tx.createdAt || a.tx.date);
+                if (createdDiff !== 0) return createdDiff;
+
+                return b.index - a.index;
+            })
+            .map((entry) => entry.tx);
+    },
+
+    renderTransactionCards: function (container, transactions, monthTransactions, options = {}) {
+        if (!container) return;
+
+        const sorted = this.getSortedTransactionsForDisplay(transactions);
+        const limit = Number.isInteger(options.limit) && options.limit > 0
+            ? options.limit
+            : null;
+        const items = limit ? sorted.slice(0, limit) : sorted;
+        const limitCrossingId = this.getBudgetLimitCrossingTransactionId(monthTransactions);
+        const useRelativeGroupLabel = this.isSameMonth(this.selectedMonth, new Date());
+        let currentGroupLabel = '';
+
+        items.forEach((tx, index) => {
+            const groupLabel = this.getTransactionGroupLabel(this.getTransactionDate(tx), {
+                relativeToToday: useRelativeGroupLabel
+            });
+            if (groupLabel !== currentGroupLabel) {
+                currentGroupLabel = groupLabel;
+                const groupHeader = document.createElement('div');
+                groupHeader.className = 'budget-tx-group-header';
+                groupHeader.style.animationDelay = `${index * 0.03}s`;
+                groupHeader.innerHTML = `
+                    <span class="budget-tx-group-title">${groupLabel}</span>
+                    <span class="budget-tx-group-line"></span>
+                `;
+                container.appendChild(groupHeader);
+            }
+
+            const el = document.createElement('div');
+            el.className = 'card tx-card';
+            el.style.padding = '1rem';
+            el.style.display = 'flex';
+            el.style.alignItems = 'center';
+            el.style.gap = '1rem';
+            el.style.cursor = 'pointer';
+            el.style.transition = 'transform 0.2s, box-shadow 0.2s';
+            el.style.animationDelay = `${index * 0.04}s`;
+            el.onclick = () => this.openEditModal(tx.id);
+
+            const isIncome = tx.type === 'income';
+            const isTransfer = !!tx.isTransfer;
+            const isTransferIn = isTransfer && tx.transferDirection === 'in';
+            const accentBg = isTransfer
+                ? 'rgba(37, 99, 235, 0.12)'
+                : (isIncome ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)');
+            const accentColor = isTransfer
+                ? '#2563eb'
+                : (isIncome ? '#10b981' : '#f59e0b');
+            const amountColor = isTransfer
+                ? '#2563eb'
+                : (isIncome ? '#10b981' : 'var(--text-main)');
+            const amountPrefix = isTransfer ? '' : (isIncome ? '+' : '-');
+
+            const iconMap = {
+                'food': 'hamburger',
+                'transport': 'car',
+                'education': 'graduation-cap',
+                'shopping': 'shopping-bag',
+                'entertainment': 'popcorn',
+                'allowance': 'wallet',
+                'salary': 'money',
+                'bonus': 'gift',
+                'other_income': 'coins',
+                'other': 'dots-three-circle'
+            };
+
+            let iconName = iconMap[tx.category] || 'receipt';
+            if (isTransfer) {
+                iconName = isTransferIn ? 'arrow-bend-down-left' : 'arrow-bend-up-right';
+            }
+            const catName = i18n.t('budget_cat_' + tx.category) || tx.category;
+            const fundSourceName = this.getFundSourceLabelById(tx.fundSourceId);
+            const badges = this.getTransactionInsightBadges(tx, { limitCrossingId });
+            const badgeMarkup = badges.length > 0
+                ? `<div class="budget-tx-badges">${badges.map((badge) => {
+                    if (badge.type === 'unusual') {
+                        return `<button type="button" class="budget-unusual-badge budget-tx-badge is-${badge.tone}" data-unusual-amount="${tx.amount}" data-unusual-average="${badge.averageAmount}">${badge.label}</button>`;
+                    }
+                    return `<span class="budget-tx-badge is-${badge.tone}">${badge.label}</span>`;
+                }).join('')}</div>`
+                : '';
+
+            const typeLabel = isTransfer
+                ? (isTransferIn ? 'Transfer Masuk' : 'Transfer Keluar')
+                : (isIncome ? 'Pemasukan' : 'Pengeluaran');
+            const dateObj = this.getTransactionDate(tx);
+            const displayTimeSource = tx.createdAt || tx.timestamp || tx.date;
+            const displayTimeObj = new Date(displayTimeSource);
+            const safeTimeObj = Number.isNaN(displayTimeObj.getTime()) ? dateObj : displayTimeObj;
+            const timeLabel = safeTimeObj
+                .toLocaleTimeString(i18n.locale(), { hour: '2-digit', minute: '2-digit', hour12: false })
+                .replace(':', '.');
+
+            el.innerHTML = `
+                <div style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; 
+                    background: ${accentBg}; 
+                    color: ${accentColor};">
+                    <i class="ph ph-${iconName}"></i>
+                </div>
+                <div style="flex: 1; overflow: hidden;">
+                    <h4 style="font-size: 0.95rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        ${tx.note || catName}
+                    </h4>
+                    ${badgeMarkup}
+                    <p style="font-size: 0.75rem; color: var(--text-muted);">${typeLabel} &bull; ${fundSourceName} &bull; ${timeLabel}</p>
+                </div>
+                <div style="text-align: right;">
+                    <p style="font-size: 1rem; font-weight: 700; color: ${amountColor};">
+                        ${amountPrefix}${this.formatCurrency(tx.amount)}
+                    </p>
+                </div>
+            `;
+
+            const unusualBtn = el.querySelector('.budget-unusual-badge');
+            if (unusualBtn) {
+                unusualBtn.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    const amount = Number(unusualBtn.dataset.unusualAmount) || 0;
+                    const average = Number(unusualBtn.dataset.unusualAverage) || 0;
+                    const message = `Terdeteksi tidak biasa karena nominal ${this.formatCurrency(amount)} lebih tinggi dari rerata kategori ${this.formatCurrency(average)}.`;
+
+                    if (typeof inboxManager !== 'undefined') {
+                        inboxManager.showToast(message);
+                    }
+                });
+            }
+
+            container.appendChild(el);
+        });
+    },
+
+    getTransactionEmptyStateMarkup: function (options = {}) {
+        const sourceTypeFilter = options.sourceTypeFilter || 'all';
+        const typeFilter = options.typeFilter || 'all';
+        const monthLabel = this.getMonthLabel(options.monthDate || this.selectedMonth);
+
+        if (options.customText) {
+            return `
+                <div style="text-align: center; padding: 2rem 1rem; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-color);">
+                    <i class="ph ph-receipt" style="font-size: 3rem; opacity: 0.3; margin-bottom: 0.75rem; display: block;"></i>
+                    <p style="font-size: 0.9rem; font-weight: 500;">${options.customText}</p>
+                </div>
+            `;
+        }
+
+        const filterLabelMap = {
+            cash: 'Cash',
+            ewallet: 'E-Wallet',
+            banking: 'Banking'
+        };
+        const typeLabelMap = {
+            all: 'catatan',
+            expense: 'pengeluaran',
+            income: 'pemasukan',
+            transfer: 'transfer'
+        };
+        const sourceLabel = filterLabelMap[sourceTypeFilter];
+        const typeLabel = typeLabelMap[typeFilter] || 'catatan';
+
+        const emptyText = sourceTypeFilter === 'all'
+            ? `Belum ada ${typeLabel} di ${monthLabel}.`
+            : `Belum ada ${typeLabel} ${sourceLabel} di ${monthLabel}.`;
+
+        return `
+            <div style="text-align: center; padding: 2rem 1rem; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-color);">
+                <i class="ph ph-receipt" style="font-size: 3rem; opacity: 0.3; margin-bottom: 0.75rem; display: block;"></i>
+                <p style="font-size: 0.9rem; font-weight: 500;">${emptyText}</p>
+            </div>
+        `;
     },
 
     getBudgetLimitCrossingTransactionId: function (monthTransactions) {
@@ -1606,6 +1854,12 @@ const budgetManager = {
         const badges = [];
         const unusualStatus = this.getUnusualExpenseStatus(tx);
         const limitCrossingId = context.limitCrossingId || '';
+
+        if (tx?.isTransfer) {
+            badges.push({ type: 'static', tone: 'slate', label: 'Transfer' });
+            badges.push({ type: 'static', tone: 'slate', label: tx.transferDirection === 'in' ? 'Masuk' : 'Keluar' });
+            return badges;
+        }
 
         if (tx?.source === 'recurring_bill' || tx?.recurringBillId || tx?.relation?.recurring_bill_id) {
             badges.push({ type: 'static', tone: 'rose', label: 'Tagihan' });
@@ -1661,7 +1915,7 @@ const budgetManager = {
     },
 
     estimateRecurringExpense: function () {
-        const expenseTx = this.transactions.filter(tx => tx.type === 'expense');
+        const expenseTx = this.transactions.filter(tx => tx.type === 'expense' && !tx.isTransfer);
         if (expenseTx.length < 4) return 0;
 
         const groups = {};
@@ -1695,7 +1949,9 @@ const budgetManager = {
         const header = ['Tanggal', 'Tipe', 'Sumber Dana', 'Kategori', 'Nominal', 'Catatan'];
         const rows = currentMonthTx.map((tx) => {
             const date = this.toDateInputValue(this.getTransactionDate(tx));
-            const typeLabel = tx.type === 'income' ? 'Pemasukan' : 'Pengeluaran';
+            const typeLabel = tx.isTransfer
+                ? (tx.transferDirection === 'in' ? 'Transfer Masuk' : 'Transfer Keluar')
+                : (tx.type === 'income' ? 'Pemasukan' : 'Pengeluaran');
             const fundSourceName = this.getFundSourceLabelById(tx.fundSourceId);
             const catName = i18n.t('budget_cat_' + tx.category) || tx.category;
             const safeNote = (tx.note || '').replace(/\"/g, '""');
@@ -2651,153 +2907,68 @@ const budgetManager = {
         if (!container) return;
 
         const sourceTypeFilter = this.transactionSourceFilter || 'all';
-        const filteredTransactions = sourceTypeFilter === 'all'
-            ? monthTransactions
-            : monthTransactions.filter((tx) => {
-                const account = this.getAccountById(tx.fundSourceId);
-                return !!account && account.type === sourceTypeFilter;
-            });
+        const filteredTransactions = this.getTransactionsForDisplay(monthTransactions, { sourceTypeFilter });
 
         container.innerHTML = '';
 
         if (filteredTransactions.length === 0) {
-            const filterLabelMap = {
-                cash: 'Cash',
-                ewallet: 'E-Wallet',
-                banking: 'Banking'
-            };
-            const activeLabel = filterLabelMap[sourceTypeFilter] || 'sumber dana ini';
-            const emptyText = sourceTypeFilter === 'all'
-                ? `Belum ada catatan di ${this.getMonthLabel()}.`
-                : `Belum ada catatan ${activeLabel} di ${this.getMonthLabel()}.`;
-            container.innerHTML = `
-                <div style="text-align: center; padding: 2rem 1rem; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-color);">
-                    <i class="ph ph-receipt" style="font-size: 3rem; opacity: 0.3; margin-bottom: 0.75rem; display: block;"></i>
-                    <p style="font-size: 0.9rem; font-weight: 500;">${emptyText}</p>
-                </div>
-            `;
+            container.innerHTML = this.getTransactionEmptyStateMarkup({
+                sourceTypeFilter,
+                typeFilter: 'all',
+                monthDate: this.selectedMonth
+            });
             return;
         }
 
-        // Sort by transaction date, then created time, then insertion order (newest first).
-        const sorted = filteredTransactions
-            .map((tx, index) => ({ tx, index }))
-            .sort((a, b) => {
-                const dateDiff = this.getTransactionDate(b.tx) - this.getTransactionDate(a.tx);
-                if (dateDiff !== 0) return dateDiff;
-
-                const createdDiff = new Date(b.tx.createdAt || b.tx.date) - new Date(a.tx.createdAt || a.tx.date);
-                if (createdDiff !== 0) return createdDiff;
-
-                return b.index - a.index;
-            })
-            .map((entry) => entry.tx);
-
-        // Show up to 15 items for richer monthly context
-        const recent = sorted.slice(0, 15);
-        const limitCrossingId = this.getBudgetLimitCrossingTransactionId(monthTransactions);
-        let currentGroupLabel = '';
-
-        recent.forEach((tx, index) => {
-            const groupLabel = this.getTransactionGroupLabel(this.getTransactionDate(tx));
-            if (groupLabel !== currentGroupLabel) {
-                currentGroupLabel = groupLabel;
-                const groupHeader = document.createElement('div');
-                groupHeader.className = 'budget-tx-group-header';
-                groupHeader.style.animationDelay = `${index * 0.03}s`;
-                groupHeader.innerHTML = `
-                    <span class="budget-tx-group-title">${groupLabel}</span>
-                    <span class="budget-tx-group-line"></span>
-                `;
-                container.appendChild(groupHeader);
-            }
-
-            const el = document.createElement('div');
-            el.className = 'card tx-card';
-            el.style.padding = '1rem';
-            el.style.display = 'flex';
-            el.style.alignItems = 'center';
-            el.style.gap = '1rem';
-            el.style.cursor = 'pointer';
-            el.style.transition = 'transform 0.2s, box-shadow 0.2s';
-            el.style.animationDelay = `${index * 0.04}s`;
-            el.onclick = () => this.openEditModal(tx.id);
-
-            const isIncome = tx.type === 'income';
-
-            // Icon mapping
-            const iconMap = {
-                'food': 'hamburger',
-                'transport': 'car',
-                'education': 'graduation-cap',
-                'shopping': 'shopping-bag',
-                'entertainment': 'popcorn',
-                'allowance': 'wallet',
-                'salary': 'money',
-                'bonus': 'gift',
-                'other_income': 'coins',
-                'other': 'dots-three-circle'
-            };
-
-            const iconName = iconMap[tx.category] || 'receipt';
-            const catName = i18n.t('budget_cat_' + tx.category) || tx.category;
-            const fundSourceName = this.getFundSourceLabelById(tx.fundSourceId);
-            const badges = this.getTransactionInsightBadges(tx, { limitCrossingId });
-            const badgeMarkup = badges.length > 0
-                ? `<div class="budget-tx-badges">${badges.map((badge) => {
-                    if (badge.type === 'unusual') {
-                        return `<button type="button" class="budget-unusual-badge budget-tx-badge is-${badge.tone}" data-unusual-amount="${tx.amount}" data-unusual-average="${badge.averageAmount}">${badge.label}</button>`;
-                    }
-                    return `<span class="budget-tx-badge is-${badge.tone}">${badge.label}</span>`;
-                }).join('')}</div>`
-                : '';
-
-            const dateObj = this.getTransactionDate(tx);
-            const displayTimeSource = tx.createdAt || tx.timestamp || tx.date;
-            const displayTimeObj = new Date(displayTimeSource);
-            const safeTimeObj = Number.isNaN(displayTimeObj.getTime()) ? dateObj : displayTimeObj;
-            const timeLabel = safeTimeObj
-                .toLocaleTimeString(i18n.locale(), { hour: '2-digit', minute: '2-digit', hour12: false })
-                .replace(':', '.');
-
-            el.innerHTML = `
-                <div style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; 
-                    background: ${isIncome ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)'}; 
-                    color: ${isIncome ? '#10b981' : '#f59e0b'};">
-                    <i class="ph ph-${iconName}"></i>
-                </div>
-                <div style="flex: 1; overflow: hidden;">
-                    <h4 style="font-size: 0.95rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                        ${tx.note || catName}
-                    </h4>
-                    ${badgeMarkup}
-                    <p style="font-size: 0.75rem; color: var(--text-muted);">${catName} &bull; ${fundSourceName} &bull; ${timeLabel}</p>
-                </div>
-                <div style="text-align: right;">
-                    <p style="font-size: 1rem; font-weight: 700; color: ${isIncome ? '#10b981' : 'var(--text-main)'};">
-                        ${isIncome ? '+' : '-'}${this.formatCurrency(tx.amount)}
-                    </p>
-                </div>
-            `;
-
-            const unusualBtn = el.querySelector('.budget-unusual-badge');
-            if (unusualBtn) {
-                unusualBtn.addEventListener('click', (event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-
-                    const amount = Number(unusualBtn.dataset.unusualAmount) || 0;
-                    const average = Number(unusualBtn.dataset.unusualAverage) || 0;
-                    const message = `Terdeteksi tidak biasa karena nominal ${this.formatCurrency(amount)} lebih tinggi dari rerata kategori ${this.formatCurrency(average)}.`;
-
-                    if (typeof inboxManager !== 'undefined') {
-                        inboxManager.showToast(message);
-                    }
-                });
-            }
-
-            container.appendChild(el);
+        this.renderTransactionCards(container, filteredTransactions, monthTransactions, {
+            limit: this.transactionPreviewLimit
         });
+    },
+
+    openTransactionHistoryModal: function (typeFilter = 'all') {
+        this.transactionHistoryTypeFilter = ['all', 'expense', 'income', 'transfer'].includes(typeFilter) ? typeFilter : 'all';
+        this.renderTransactionHistoryModal(this.getTransactionsByMonth(this.selectedMonth));
+        const modal = document.getElementById('modal-budget-transaction-history');
+        if (!modal) return;
+        modal.classList.add('active');
+    },
+
+    closeTransactionHistoryModal: function () {
+        const modal = document.getElementById('modal-budget-transaction-history');
+        if (!modal) return;
+        modal.classList.remove('active');
+    },
+
+    renderTransactionHistoryModal: function (monthTransactions) {
+        const listEl = document.getElementById('budget-history-modal-list');
+        const titleEl = document.getElementById('budget-history-modal-title');
+        const subtitleEl = document.getElementById('budget-history-modal-subtitle');
+        if (!listEl || !titleEl || !subtitleEl) return;
+
+        const typeFilter = this.transactionHistoryTypeFilter || 'all';
+        const filteredTransactions = this.getTransactionsForDisplay(monthTransactions, { typeFilter });
+        const totalCount = filteredTransactions.length;
+        const filterLabelMap = {
+            all: 'Riwayat Bulan Ini',
+            expense: 'Riwayat Pengeluaran',
+            income: 'Riwayat Pemasukan',
+            transfer: 'Riwayat Transfer'
+        };
+
+        titleEl.innerText = filterLabelMap[typeFilter] || 'Riwayat Bulan Ini';
+        subtitleEl.innerText = `${this.getMonthLabel(this.selectedMonth)} • ${totalCount} transaksi`;
+        this.renderTransactionHistoryTypeFilter();
+        listEl.innerHTML = '';
+
+        if (filteredTransactions.length === 0) {
+            listEl.innerHTML = this.getTransactionEmptyStateMarkup({
+                typeFilter,
+                monthDate: this.selectedMonth
+            });
+            return;
+        }
+
+        this.renderTransactionCards(listEl, filteredTransactions, monthTransactions);
     },
 
     animateMonthTransition: function () {
@@ -3603,6 +3774,7 @@ const budgetManager = {
         this.closeSavingsGoalModal();
         this.closeSavingsProgressModal();
         this.closeRecurringBillModal();
+        this.closeTransactionHistoryModal();
         if (typeof inboxManager !== 'undefined') inboxManager.showToast('Catatan keuangan berhasil di-reset');
     },
 

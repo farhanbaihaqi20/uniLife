@@ -938,7 +938,8 @@
                     </div>
 
                     <div class="budget-flow-summary">
-                        <div class="budget-flow-item budget-flow-item-income">
+                        <button type="button" class="budget-flow-item budget-flow-item-income budget-flow-item-action"
+                            onclick="budgetManager.openTransactionHistoryModal('income')" title="Lihat riwayat pemasukan bulan ini">
                             <div class="budget-flow-icon budget-flow-icon-income">
                                 <i class="ph-bold ph-arrow-down-left"></i>
                             </div>
@@ -947,8 +948,9 @@
                                 <p id="budget-total-income" class="budget-flow-amount budget-flow-amount-income">
                                     Rp 0</p>
                             </div>
-                        </div>
-                        <div class="budget-flow-item budget-flow-item-expense">
+                        </button>
+                        <button type="button" class="budget-flow-item budget-flow-item-expense budget-flow-item-action"
+                            onclick="budgetManager.openTransactionHistoryModal('expense')" title="Lihat riwayat pengeluaran bulan ini">
                             <div class="budget-flow-icon budget-flow-icon-expense">
                                 <i class="ph-bold ph-arrow-up-right"></i>
                             </div>
@@ -957,7 +959,7 @@
                                 <p id="budget-total-expense" class="budget-flow-amount budget-flow-amount-expense">
                                     Rp 0</p>
                             </div>
-                        </div>
+                        </button>
                     </div>
 
                     <!-- Monthly Limit Progress -->
@@ -1202,6 +1204,11 @@
                         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                         <h3 style="font-size: 1.1rem; font-weight: 600; color: var(--text-main);"
                             data-i18n="budget_recent_transactions">Riwayat Terakhir</h3>
+                        <button type="button" class="budget-history-open-btn"
+                            onclick="budgetManager.openTransactionHistoryModal('all')">
+                            <span>Lihat semua</span>
+                            <i class="ph ph-arrow-right"></i>
+                        </button>
                     </div>
 
                     <div id="budget-tx-source-filter" class="budget-tx-source-filter-switch" style="margin-bottom: 0.9rem;">
@@ -2032,6 +2039,30 @@
             <div id="budget-weekly-story"
                 style="border: 1px solid var(--border-color); border-radius: 14px; padding: 0.9rem; background: var(--bg-card); color: var(--text-main); font-size: 0.82rem; line-height: 1.55;">
                 -
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-budget-transaction-history">
+        <div class="modal-content" style="max-height: 84vh; overflow-y: auto;">
+            <button class="modal-close" onclick="budgetManager.closeTransactionHistoryModal()"><i class="ph ph-x"></i></button>
+            <h3 id="budget-history-modal-title">Riwayat Bulan Ini</h3>
+            <p id="budget-history-modal-subtitle"
+                style="font-size: 0.84rem; color: var(--text-muted); margin-top: 0.25rem; margin-bottom: 1rem;">-</p>
+
+            <div id="budget-history-modal-filter" class="budget-history-filter-switch" style="margin-bottom: 0.95rem;">
+                <button id="budget-history-filter-all" class="budget-history-filter-btn is-active" type="button"
+                    onclick="budgetManager.setTransactionHistoryTypeFilter('all')">Semua</button>
+                <button id="budget-history-filter-expense" class="budget-history-filter-btn" type="button"
+                    onclick="budgetManager.setTransactionHistoryTypeFilter('expense')">Pengeluaran</button>
+                <button id="budget-history-filter-income" class="budget-history-filter-btn" type="button"
+                    onclick="budgetManager.setTransactionHistoryTypeFilter('income')">Pemasukan</button>
+                <button id="budget-history-filter-transfer" class="budget-history-filter-btn" type="button"
+                    onclick="budgetManager.setTransactionHistoryTypeFilter('transfer')">Transfer</button>
+            </div>
+
+            <div id="budget-history-modal-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <!-- Rendered by JS -->
             </div>
         </div>
     </div>

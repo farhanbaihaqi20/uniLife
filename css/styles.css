@@ -4286,6 +4286,23 @@ select:focus {
     gap: 0.7rem;
 }
 
+.budget-flow-item-action {
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.budget-flow-item-action:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+}
+
+.budget-flow-item-action:focus-visible {
+    outline: 2px solid rgba(14, 165, 233, 0.38);
+    outline-offset: 2px;
+}
+
 .budget-flow-text {
     min-width: 0;
 }
@@ -4402,6 +4419,51 @@ select:focus {
 .budget-tx-source-filter-btn.is-active {
     color: #075985;
     background: linear-gradient(135deg, rgba(14, 165, 233, 0.17), rgba(6, 182, 212, 0.12));
+}
+
+.budget-history-open-btn {
+    border: none;
+    background: transparent;
+    color: #0284c7;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    padding: 0.12rem 0;
+}
+
+.budget-history-open-btn i {
+    font-size: 0.92rem;
+}
+
+.budget-history-filter-switch {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding: 0.2rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 85%, rgba(59, 130, 246, 0.18));
+    background: color-mix(in srgb, var(--bg-card) 90%, var(--bg-main));
+}
+
+.budget-history-filter-btn {
+    border: none;
+    background: transparent;
+    border-radius: 999px;
+    padding: 0.3rem 0.72rem;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.budget-history-filter-btn.is-active {
+    color: #1d4ed8;
+    background: linear-gradient(135deg, rgba(96, 165, 250, 0.18), rgba(37, 99, 235, 0.12));
 }
 
 .budget-interest-earned-indicator i {
@@ -4905,6 +4967,24 @@ select:focus {
 [data-theme="dark"] .budget-tx-source-filter-btn.is-active {
     color: #bae6fd;
     background: linear-gradient(135deg, rgba(14, 165, 233, 0.32), rgba(6, 182, 212, 0.2));
+}
+
+[data-theme="dark"] .budget-history-open-btn {
+    color: #7dd3fc;
+}
+
+[data-theme="dark"] .budget-history-filter-switch {
+    border-color: rgba(96, 165, 250, 0.32);
+    background: rgba(15, 23, 42, 0.48);
+}
+
+[data-theme="dark"] .budget-history-filter-btn {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .budget-history-filter-btn.is-active {
+    color: #dbeafe;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.22));
 }
 
 [data-theme="dark"] #budget-total-interest-value {
