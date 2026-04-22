@@ -96,6 +96,10 @@ const Storage = {
     getBudgetSavingsGoals: () => Storage.get('unilife_budget_savings_goals', []),
     setBudgetSavingsGoals: (data) => Storage.set('unilife_budget_savings_goals', data),
 
+    // Recurring bills / tagihan rutin
+    getBudgetRecurringBills: () => Storage.get('unilife_budget_recurring_bills', []),
+    setBudgetRecurringBills: (data) => Storage.set('unilife_budget_recurring_bills', data),
+
     // Leveling progression (isolated from core academic modules)
     getLeveling: () => Storage.get('unilife_leveling', {
         version: 1,

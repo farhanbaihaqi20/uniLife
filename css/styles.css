@@ -3837,18 +3837,86 @@ select:focus {
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
-    margin-bottom: 0.2rem;
     border-radius: 999px;
     background: rgba(245, 158, 11, 0.12);
     color: #b45309;
-    font-size: 0.63rem;
+    font-size: 0.68rem;
     font-weight: 700;
-    padding: 0.12rem 0.45rem;
+    padding: 0.18rem 0.55rem;
 }
 
 .budget-unusual-badge:focus-visible {
     outline: 2px solid rgba(245, 158, 11, 0.5);
     outline-offset: 1px;
+}
+
+.budget-tx-group-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0.9rem 0 0.55rem;
+    animation: budgetListRise 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.budget-tx-group-header:first-child {
+    margin-top: 0;
+}
+
+.budget-tx-group-title {
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.budget-tx-group-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(148, 163, 184, 0.28), rgba(148, 163, 184, 0));
+}
+
+.budget-tx-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.38rem;
+    margin: 0.32rem 0 0.36rem;
+}
+
+.budget-tx-badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    padding: 0.18rem 0.55rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.budget-tx-badge.is-rose {
+    color: #be185d;
+    background: rgba(244, 114, 182, 0.12);
+    border-color: rgba(190, 24, 93, 0.16);
+}
+
+.budget-tx-badge.is-slate {
+    color: #475569;
+    background: rgba(148, 163, 184, 0.12);
+    border-color: rgba(100, 116, 139, 0.18);
+}
+
+.budget-tx-badge.is-danger {
+    color: #b91c1c;
+    background: rgba(248, 113, 113, 0.1);
+    border-color: rgba(220, 38, 38, 0.16);
+}
+
+.budget-tx-badge.is-warning {
+    color: #b45309;
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(217, 119, 6, 0.18);
 }
 
 .budget-category-rank-row {
@@ -4686,6 +4754,38 @@ select:focus {
     color: #fdba74;
     border-color: rgba(251, 146, 60, 0.42);
     background: rgba(194, 65, 12, 0.25);
+}
+
+[data-theme="dark"] .budget-tx-group-title {
+    color: rgba(226, 232, 240, 0.78);
+}
+
+[data-theme="dark"] .budget-tx-group-line {
+    background: linear-gradient(90deg, rgba(148, 163, 184, 0.22), rgba(148, 163, 184, 0));
+}
+
+[data-theme="dark"] .budget-tx-badge.is-rose {
+    color: #f9a8d4;
+    background: rgba(244, 114, 182, 0.18);
+    border-color: rgba(244, 114, 182, 0.22);
+}
+
+[data-theme="dark"] .budget-tx-badge.is-slate {
+    color: #cbd5e1;
+    background: rgba(148, 163, 184, 0.16);
+    border-color: rgba(148, 163, 184, 0.2);
+}
+
+[data-theme="dark"] .budget-tx-badge.is-danger {
+    color: #fca5a5;
+    background: rgba(248, 113, 113, 0.16);
+    border-color: rgba(248, 113, 113, 0.22);
+}
+
+[data-theme="dark"] .budget-tx-badge.is-warning {
+    color: #fbbf24;
+    background: rgba(245, 158, 11, 0.18);
+    border-color: rgba(245, 158, 11, 0.24);
 }
 
 [data-theme="dark"] .budget-insight-card small,

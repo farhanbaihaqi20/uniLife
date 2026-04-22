@@ -919,10 +919,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Budget changed
-        if (!key || key === 'unilife_budget_tx' || key === 'unilife_budget_limit' || key === 'unilife_budget_base_balance' || key === 'unilife_budget_accounts') {
+        if (!key || key === 'unilife_budget_tx' || key === 'unilife_budget_limit' || key === 'unilife_budget_base_balance' || key === 'unilife_budget_accounts' || key === 'unilife_budget_recurring_bills') {
             if (typeof budgetManager !== 'undefined') {
                 budgetManager.transactions = Storage.getBudgetTransactions();
                 budgetManager.accounts = Storage.getBudgetAccounts ? Storage.getBudgetAccounts() : [];
+                budgetManager.recurringBills = Storage.getBudgetRecurringBills ? Storage.getBudgetRecurringBills() : [];
                 budgetManager.monthlyLimit = Storage.getBudgetLimit();
                 budgetManager.baseBalance = typeof budgetManager.getTotalInitialBalance === 'function'
                     ? budgetManager.getTotalInitialBalance()
