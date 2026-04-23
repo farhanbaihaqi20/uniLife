@@ -21,6 +21,7 @@ const budgetManager = {
     transactionHistoryTypeFilter: 'all',
     transactionHistoryCategoryFilter: '',
     transactionHistoryWeekdayFilter: null,
+    transactionHistoryReturnTarget: '',
     isBalanceVisible: true,
     savingsGoalActionsBound: false,
     savingsGoalSwipeBound: false,
@@ -1061,7 +1062,7 @@ const budgetManager = {
         this.renderInsights(monthTotals, prevMonthTotals, currentMonthTx);
 
         // Premium signals
-        this.renderProSignals(monthTotals, prevMonthTotals, currentMonthTx);
+        this.renderProSignals(monthTotals, prevMonthTotals, currentMonthTx, totalBalanceWithManual);
 
         // Update Chart
         this.renderChart(currentMonthTx);
@@ -1294,37 +1295,43 @@ const budgetManager = {
         });
     },
 
-    renderProSignals: function (monthTotals, prevMonthTotals, currentMonthTx) {
+    renderProSignals: function (monthTotals, prevMonthTotals, currentMonthTx, totalBalanceWithManual = 0) {
+        const radarHeadlineEl = document.getElementById('budget-radar-headline');
+        const radarSummaryEl = document.getElementById('budget-radar-summary');
         const healthScoreEl = document.getElementById('budget-health-score');
         const healthNoteEl = document.getElementById('budget-health-note');
         const forecastEl = document.getElementById('budget-forecast-end');
         const forecastNoteEl = document.getElementById('budget-forecast-note');
         const dailySafeEl = document.getElementById('budget-daily-safe');
         const dailySafeNoteEl = document.getElementById('budget-daily-safe-note');
+        const burnRateEl = document.getElementById('budget-burn-rate');
+        const burnRateNoteEl = document.getElementById('budget-burn-rate-note');
+        const runwayEl = document.getElementById('budget-runway-days');
+        const runwayNoteEl = document.getElementById('budget-runway-note');
+        const billPressureEl = document.getElementById('budget-bill-pressure');
+        const billPressureNoteEl = document.getElementById('budget-bill-pressure-note');
         const proTipEl = document.getElementById('budget-pro-tip');
 
         if (!healthScoreEl || !forecastEl || !dailySafeEl || !proTipEl) return;
 
-        const now = new Date();
-        const isCurrentMonth = this.isCurrentMonthSelected();
-        const monthDays = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth() + 1, 0).getDate();
-        const dayOfMonth = isCurrentMonth ? now.getDate() : monthDays;
+        const progress = this.getMonthProgressInfo(this.selectedMonth);
+        const recurringSummary = this.getRecurringBillMonthSummary(this.selectedMonth);
+        const budgetPace = this.calculateBudgetPace(monthTotals, this.selectedMonth);
+        const forecast = this.calculateForecastExpense(monthTotals, prevMonthTotals, currentMonthTx);
+        const avgDailyExpense = this.calculateAverageDailyExpense(monthTotals.expense, this.selectedMonth);
+        const runway = this.calculateSpendingRunway(totalBalanceWithManual, forecast.dailyReference || avgDailyExpense);
 
         const health = this.calculateHealthScore(monthTotals, prevMonthTotals);
         healthScoreEl.innerText = `${health.score}/100`;
         if (healthNoteEl) healthNoteEl.innerText = health.note;
 
-        const forecastExpense = this.calculateForecastExpense(monthTotals.expense, dayOfMonth, monthDays);
-        forecastEl.innerText = this.formatCurrency(forecastExpense);
+        forecastEl.innerText = this.formatCurrency(forecast.amount);
         if (forecastNoteEl) {
-            const delta = forecastExpense - monthTotals.expense;
-            forecastNoteEl.innerText = delta > 0
-                ? `Potensi naik ${this.formatCurrency(delta)} hingga akhir bulan`
-                : 'Trend pengeluaran stabil';
+            forecastNoteEl.innerText = forecast.note;
         }
 
         if (this.monthlyLimit > 0) {
-            const daysLeft = Math.max(1, monthDays - dayOfMonth + 1);
+            const daysLeft = Math.max(1, progress.remainingDays + 1);
             const remainingLimit = this.monthlyLimit - monthTotals.expense;
             const dailySafe = Math.floor(remainingLimit / daysLeft);
 
@@ -1332,6 +1339,8 @@ const budgetManager = {
             if (dailySafeNoteEl) {
                 if (remainingLimit < 0) {
                     dailySafeNoteEl.innerText = 'Limit sudah terlewati, prioritaskan pengeluaran penting dulu';
+                } else if (!progress.isCurrentMonth) {
+                    dailySafeNoteEl.innerText = 'Bulan ini sudah selesai, angka ini jadi referensi evaluasi';
                 } else {
                     dailySafeNoteEl.innerText = `${daysLeft} hari tersisa untuk tetap di bawah limit`;
                 }
@@ -1341,25 +1350,294 @@ const budgetManager = {
             if (dailySafeNoteEl) dailySafeNoteEl.innerText = 'Set limit bulanan untuk aktivasi';
         }
 
+        if (burnRateEl && burnRateNoteEl) {
+            burnRateEl.innerText = `${budgetPace.percent}%`;
+            burnRateEl.style.color = budgetPace.color;
+            burnRateNoteEl.innerText = budgetPace.note;
+        }
+
+        if (runwayEl && runwayNoteEl) {
+            runwayEl.innerText = runway.label;
+            runwayEl.style.color = runway.color;
+            runwayNoteEl.innerText = runway.note;
+        }
+
+        if (billPressureEl && billPressureNoteEl) {
+            billPressureEl.innerText = this.formatCurrency(recurringSummary.currentMonthOutstanding);
+            billPressureEl.style.color = recurringSummary.currentMonthOutstanding > 0 ? 'var(--danger)' : 'var(--text-main)';
+            if (recurringSummary.activeCount === 0) {
+                billPressureNoteEl.innerText = 'Belum ada tagihan rutin aktif';
+            } else if (!progress.isCurrentMonth) {
+                billPressureNoteEl.innerText = `${recurringSummary.paidCount}/${recurringSummary.activeCount} tagihan tercatat pada bulan ini`;
+            } else if (recurringSummary.currentMonthOutstanding > 0) {
+                billPressureNoteEl.innerText = `${recurringSummary.unpaidCount} tagihan belum dibayar sampai akhir bulan ini`;
+            } else {
+                billPressureNoteEl.innerText = 'Semua tagihan rutin bulan ini sudah aman';
+            }
+        }
+
         const recurringExpense = this.estimateRecurringExpense();
         const topCat = this.topCategoryEntries && this.topCategoryEntries[0] ? this.topCategoryEntries[0][0] : null;
         const topCatName = topCat ? (i18n.t('budget_cat_' + topCat) || topCat) : 'belum ada';
+        const radarSummary = this.buildFinancialRadarSummary({
+            health,
+            forecast,
+            budgetPace,
+            runway,
+            recurringSummary,
+            topCatName,
+            monthTotals
+        });
+
+        if (radarHeadlineEl) radarHeadlineEl.innerText = radarSummary.headline;
+        if (radarSummaryEl) radarSummaryEl.innerText = radarSummary.summary;
 
         if (health.score >= 80) {
             proTipEl.innerText = `Kondisi keuangan sehat. Pertahankan ritme ini dan sisihkan minimal 10% dari pemasukan bulan depan.`;
         } else if (this.monthlyLimit > 0 && monthTotals.expense > this.monthlyLimit) {
             proTipEl.innerText = `Limit terlampaui. Fokus menahan kategori ${topCatName} dulu dan evaluasi transaksi harian.`;
+        } else if (runway.days > 0 && runway.days <= 14) {
+            proTipEl.innerText = `Saldo saat ini kira-kira cukup ${runway.label.toLowerCase()}. Tekan pengeluaran kategori ${topCatName} dan prioritaskan kebutuhan wajib dulu.`;
+        } else if (recurringSummary.currentMonthOutstanding > 0) {
+            proTipEl.innerText = `Masih ada komitmen rutin sekitar ${this.formatCurrency(recurringSummary.currentMonthOutstanding)} bulan ini. Sisakan ruang sebelum belanja fleksibel seperti nongkrong atau checkout dadakan.`;
         } else if (recurringExpense > 0) {
             proTipEl.innerText = `Terdeteksi pengeluaran rutin sekitar ${this.formatCurrency(recurringExpense)}/bulan. Pertimbangkan paket langganan yang lebih hemat.`;
         } else {
-            proTipEl.innerText = `Analisis Tambahan. Tambah transaksi rutin agar rekomendasi finansial makin akurat.`;
+            proTipEl.innerText = `Tambah transaksi rutin seperti makan, transport, dan tagihan supaya prediksi finansial makin akurat.`;
         }
     },
 
-    calculateForecastExpense: function (expense, dayOfMonth, monthDays) {
-        if (dayOfMonth <= 0) return expense;
-        if (expense <= 0) return 0;
-        return Math.round((expense / dayOfMonth) * monthDays);
+    getMonthProgressInfo: function (monthDate = this.selectedMonth) {
+        const date = monthDate instanceof Date ? monthDate : new Date(monthDate);
+        const monthDays = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+        const now = new Date();
+        const isCurrentMonth = this.isSameMonth(date, now);
+        const elapsedDays = isCurrentMonth ? Math.max(1, Math.min(monthDays, now.getDate())) : monthDays;
+        const remainingDays = Math.max(0, monthDays - elapsedDays);
+
+        return {
+            monthDays,
+            elapsedDays,
+            remainingDays,
+            isCurrentMonth,
+            progressRatio: monthDays > 0 ? (elapsedDays / monthDays) : 1
+        };
+    },
+
+    getRecurringBillMonthSummary: function (monthDate = this.selectedMonth) {
+        const activeBills = (Array.isArray(this.recurringBills) ? this.recurringBills : []).filter((bill) => bill?.isActive !== false);
+        const isCurrentMonth = this.isSameMonth(monthDate, new Date());
+        const summary = {
+            activeCount: activeBills.length,
+            paidCount: 0,
+            unpaidCount: 0,
+            paidTotal: 0,
+            currentMonthOutstanding: 0
+        };
+
+        activeBills.forEach((bill) => {
+            const amount = Math.max(0, Number(bill?.amount) || 0);
+            const status = this.getRecurringBillStatus(bill, monthDate);
+
+            if (status.key === 'paid') {
+                summary.paidCount += 1;
+                summary.paidTotal += amount;
+                return;
+            }
+
+            if (isCurrentMonth && (status.key === 'upcoming' || status.key === 'overdue')) {
+                summary.unpaidCount += 1;
+                summary.currentMonthOutstanding += amount;
+            }
+        });
+
+        return summary;
+    },
+
+    calculateBudgetPace: function (monthTotals, monthDate = this.selectedMonth) {
+        if (this.monthlyLimit <= 0) {
+            return {
+                percent: 0,
+                ratio: 0,
+                color: 'var(--text-main)',
+                note: 'Tambahkan limit bulanan supaya laju pengeluaran bisa dipantau'
+            };
+        }
+
+        const progress = this.getMonthProgressInfo(monthDate);
+        const idealSpendToDate = this.monthlyLimit * progress.progressRatio;
+        const ratio = idealSpendToDate > 0 ? monthTotals.expense / idealSpendToDate : 0;
+        const percent = Math.max(0, Math.round(ratio * 100));
+        let color = 'var(--text-main)';
+        let note = 'Masih sesuai jalur aman bulanan';
+
+        if (ratio > 1.1) {
+            color = 'var(--danger)';
+            note = 'Laju belanja lebih cepat dari jalur aman limit';
+        } else if (ratio >= 0.9) {
+            color = '#d97706';
+            note = 'Mulai mepet dengan pace aman, jaga belanja fleksibel';
+        } else if (ratio > 0) {
+            color = 'var(--success)';
+            note = 'Masih di bawah pace aman limit';
+        }
+
+        if (!progress.isCurrentMonth) {
+            note = 'Perbandingan final antara realisasi dan pace ideal bulan itu';
+        }
+
+        return { percent, ratio, color, note };
+    },
+
+    calculateSpendingRunway: function (totalBalance, dailyExpense) {
+        const safeBalance = Number(totalBalance) || 0;
+        const referenceExpense = Math.max(0, Number(dailyExpense) || 0);
+
+        if (safeBalance <= 0) {
+            return {
+                days: 0,
+                label: '0 hari',
+                color: 'var(--danger)',
+                note: 'Saldo total sudah habis atau minus'
+            };
+        }
+
+        if (referenceExpense <= 0) {
+            return {
+                days: 999,
+                label: 'Aman',
+                color: 'var(--success)',
+                note: 'Belum ada ritme pengeluaran yang cukup untuk menghitung runway'
+            };
+        }
+
+        const days = Math.max(0, Math.floor(safeBalance / referenceExpense));
+        let color = 'var(--text-main)';
+        let note = `Dengan ritme sekarang, saldo cukup sekitar ${days} hari`;
+
+        if (days <= 14) {
+            color = 'var(--danger)';
+            note = 'Cadangan tipis, tekan pengeluaran non-prioritas';
+        } else if (days <= 30) {
+            color = '#d97706';
+            note = 'Masih cukup, tapi ruang gerak mulai terbatas';
+        } else {
+            color = 'var(--success)';
+            note = 'Runway cukup panjang untuk ritme belanja saat ini';
+        }
+
+        return {
+            days,
+            label: `${days} hari`,
+            color,
+            note
+        };
+    },
+
+    buildFinancialRadarSummary: function ({ health, forecast, budgetPace, runway, recurringSummary, topCatName, monthTotals }) {
+        const hasTransactions = (monthTotals.income + monthTotals.expense) > 0;
+        if (!hasTransactions) {
+            return {
+                headline: 'Belum ada pola keuangan yang bisa dibaca',
+                summary: 'Mulai catat pemasukan, makan, transport, dan tagihan rutin supaya radar finansial bisa kasih sinyal yang lebih akurat.'
+            };
+        }
+
+        if (this.monthlyLimit > 0 && forecast.amount > this.monthlyLimit) {
+            return {
+                headline: 'Prediksi akhir bulan melewati limit yang kamu pasang',
+                summary: `Forecast saat ini ${this.formatCurrency(forecast.amount)}. Tahan kategori ${topCatName} dan ikuti batas aman harian supaya selisihnya tidak makin lebar.`
+            };
+        }
+
+        if (runway.days > 0 && runway.days <= 14) {
+            return {
+                headline: 'Saldo mulai menipis untuk ritme belanja sekarang',
+                summary: `Runway tersisa sekitar ${runway.label.toLowerCase()}. Prioritaskan kebutuhan inti anak kos seperti makan, transport, dan tagihan wajib dulu.`
+            };
+        }
+
+        if (recurringSummary.currentMonthOutstanding > 0) {
+            return {
+                headline: 'Masih ada komitmen rutin yang perlu diamankan dulu',
+                summary: `${recurringSummary.unpaidCount} tagihan aktif belum dibayar dengan estimasi ${this.formatCurrency(recurringSummary.currentMonthOutstanding)}. Sisakan ruang sebelum belanja impulsif.`
+            };
+        }
+
+        if (health.score >= 75 && (this.monthlyLimit <= 0 || budgetPace.ratio <= 1)) {
+            return {
+                headline: 'Arus kas bulan ini lagi cukup sehat',
+                summary: `Pola belanjamu masih terjaga. Kalau ada sisa pemasukan, arahkan ke tabungan, dana darurat, atau target semester berikutnya.`
+            };
+        }
+
+        return {
+            headline: 'Keuangan masih aman, tapi perlu dijaga ritmenya',
+            summary: `Pantau burn rate harian dan cek kategori ${topCatName} kalau mulai sering bocor. Sedikit disiplin di tengah bulan biasanya paling berpengaruh ke hasil akhir.`
+        };
+    },
+
+    calculateForecastExpense: function (monthTotals, prevMonthTotals, currentMonthTx = []) {
+        const progress = this.getMonthProgressInfo(this.selectedMonth);
+        const recurringSummary = this.getRecurringBillMonthSummary(this.selectedMonth);
+
+        if (!progress.isCurrentMonth) {
+            return {
+                amount: monthTotals.expense,
+                projectedVariable: 0,
+                unpaidRecurring: 0,
+                dailyReference: this.calculateAverageDailyExpense(monthTotals.expense, this.selectedMonth),
+                note: 'Bulan terpilih sudah selesai, ini angka realisasi final'
+            };
+        }
+
+        const previousMonthDate = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth() - 1, 1);
+        const previousRecurringSummary = this.getRecurringBillMonthSummary(previousMonthDate);
+        const variableExpenseSoFar = Math.max(0, monthTotals.expense - recurringSummary.paidTotal);
+        const previousVariableExpense = Math.max(0, prevMonthTotals.expense - previousRecurringSummary.paidTotal);
+        const currentDailyVariable = progress.elapsedDays > 0 ? (variableExpenseSoFar / progress.elapsedDays) : 0;
+        const previousDailyVariable = this.calculateAverageDailyExpense(previousVariableExpense, previousMonthDate);
+
+        let projectedDailyVariable = currentDailyVariable;
+        if (currentDailyVariable > 0 && previousDailyVariable > 0) {
+            projectedDailyVariable = (currentDailyVariable * 0.72) + (previousDailyVariable * 0.28);
+            if (progress.elapsedDays <= 3) {
+                projectedDailyVariable = (currentDailyVariable * 0.35) + (previousDailyVariable * 0.65);
+            }
+        } else if (previousDailyVariable > 0) {
+            projectedDailyVariable = previousDailyVariable;
+        }
+
+        const expenseDays = new Set(
+            (Array.isArray(currentMonthTx) ? currentMonthTx : [])
+                .filter((tx) => tx?.type === 'expense' && !tx?.isTransfer)
+                .map((tx) => this.toDateInputValue(this.getTransactionDate(tx)))
+                .filter(Boolean)
+        ).size;
+        if (progress.elapsedDays > 0 && expenseDays <= Math.max(1, Math.floor(progress.elapsedDays / 3))) {
+            projectedDailyVariable *= 0.92;
+        }
+
+        const projectedVariable = Math.round(projectedDailyVariable * progress.remainingDays);
+        const unpaidRecurring = recurringSummary.currentMonthOutstanding;
+        const amount = Math.max(0, Math.round(monthTotals.expense + projectedVariable + unpaidRecurring));
+
+        let note = 'Forecast dihitung dari pola belanja harian bulan ini';
+        if (unpaidRecurring > 0 && projectedVariable > 0) {
+            note = `Tambahan potensi ${this.formatCurrency(projectedVariable)} + tagihan sisa ${this.formatCurrency(unpaidRecurring)}`;
+        } else if (unpaidRecurring > 0) {
+            note = `Sudah termasuk tagihan rutin tersisa ${this.formatCurrency(unpaidRecurring)}`;
+        } else if (projectedVariable > 0) {
+            note = `Potensi naik ${this.formatCurrency(projectedVariable)} jika ritme belanja tetap sama`;
+        }
+
+        return {
+            amount,
+            projectedVariable,
+            unpaidRecurring,
+            dailyReference: Math.max(0, Math.round(projectedDailyVariable || currentDailyVariable || previousDailyVariable || 0)),
+            note
+        };
     },
 
     calculateAverageDailyExpense: function (expense, monthDate = this.selectedMonth) {
@@ -2987,6 +3265,7 @@ const budgetManager = {
     openTransactionHistoryModal: function (typeFilter = 'all') {
         this.transactionHistoryCategoryFilter = '';
         this.transactionHistoryWeekdayFilter = null;
+        this.transactionHistoryReturnTarget = '';
         this.transactionHistoryTypeFilter = ['all', 'expense', 'income', 'transfer'].includes(typeFilter) ? typeFilter : 'all';
         this.renderTransactionHistoryModal(this.getTransactionsByMonth(this.selectedMonth));
         const modal = document.getElementById('modal-budget-transaction-history');
@@ -2999,6 +3278,7 @@ const budgetManager = {
 
         this.transactionHistoryCategoryFilter = category;
         this.transactionHistoryWeekdayFilter = null;
+        this.transactionHistoryReturnTarget = 'top-categories';
         this.transactionHistoryTypeFilter = 'expense';
         this.renderTransactionHistoryModal(this.getTransactionsByMonth(this.selectedMonth));
         this.closeTopCategoriesModal();
@@ -3013,6 +3293,7 @@ const budgetManager = {
 
         this.transactionHistoryCategoryFilter = '';
         this.transactionHistoryWeekdayFilter = dayIndex;
+        this.transactionHistoryReturnTarget = 'spending-days';
         this.transactionHistoryTypeFilter = 'all';
         this.renderTransactionHistoryModal(this.getTransactionsByMonth(this.selectedMonth));
         this.closeSpendingDayRankModal();
@@ -3028,6 +3309,37 @@ const budgetManager = {
         modal.classList.remove('active');
         this.transactionHistoryCategoryFilter = '';
         this.transactionHistoryWeekdayFilter = null;
+        this.transactionHistoryReturnTarget = '';
+    },
+
+    reopenTransactionHistorySource: function () {
+        const target = this.transactionHistoryReturnTarget || '';
+        if (!target) return;
+
+        const categoryFilter = this.transactionHistoryCategoryFilter || '';
+        const weekdayFilter = Number.isInteger(this.transactionHistoryWeekdayFilter) ? this.transactionHistoryWeekdayFilter : null;
+        this.closeTransactionHistoryModal();
+
+        if (target === 'top-categories') {
+            this.openTopCategoriesModal();
+            if (categoryFilter) {
+                requestAnimationFrame(() => {
+                    const activeRow = document.querySelector('#budget-top-categories-list .budget-category-rank-row-btn');
+                    if (activeRow) activeRow.focus();
+                });
+            }
+            return;
+        }
+
+        if (target === 'spending-days') {
+            this.openSpendingDayRankModal();
+            if (weekdayFilter !== null) {
+                requestAnimationFrame(() => {
+                    const activeRow = document.querySelector('#budget-spending-days-list .budget-category-rank-row-btn');
+                    if (activeRow) activeRow.focus();
+                });
+            }
+        }
     },
 
     renderTransactionHistoryModal: function (monthTransactions) {
@@ -3035,6 +3347,7 @@ const budgetManager = {
         const titleEl = document.getElementById('budget-history-modal-title');
         const subtitleEl = document.getElementById('budget-history-modal-subtitle');
         const filterEl = document.getElementById('budget-history-modal-filter');
+        const backBtn = document.getElementById('budget-history-back-btn');
         if (!listEl || !titleEl || !subtitleEl) return;
 
         const typeFilter = this.transactionHistoryTypeFilter || 'all';
@@ -3051,6 +3364,7 @@ const budgetManager = {
         const categoryName = categoryFilter ? (i18n.t('budget_cat_' + categoryFilter) || categoryFilter) : '';
         const weekdayName = weekdayFilter !== null ? this.getWeekdayLabel(weekdayFilter) : '';
         const hasCustomHistoryFilter = !!categoryFilter || weekdayFilter !== null;
+        const returnTarget = this.transactionHistoryReturnTarget || '';
 
         titleEl.innerText = categoryFilter
             ? `History ${categoryName}`
@@ -3064,6 +3378,10 @@ const budgetManager = {
                 : `${this.getMonthLabel(this.selectedMonth)} • ${totalCount} transaksi`);
         if (filterEl) {
             filterEl.style.display = hasCustomHistoryFilter ? 'none' : 'inline-flex';
+        }
+        if (backBtn) {
+            backBtn.style.display = hasCustomHistoryFilter && returnTarget ? 'inline-flex' : 'none';
+            backBtn.innerHTML = `<i class="ph ph-arrow-left"></i>${returnTarget === 'spending-days' ? 'Kembali ke ranking harian' : 'Kembali ke ranking kategori'}`;
         }
         if (!hasCustomHistoryFilter) {
             this.renderTransactionHistoryTypeFilter();

@@ -3535,11 +3535,213 @@ select:focus {
 }
 
 .budget-pro-signal-shell {
-    border: 1px solid rgba(37, 99, 235, 0.26);
+    border: 1px solid rgba(255, 255, 255, 0.58);
     background:
-        radial-gradient(circle at 88% 18%, rgba(37, 99, 235, 0.12), transparent 48%),
-        radial-gradient(circle at 12% 82%, rgba(16, 185, 129, 0.08), transparent 44%),
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.78), transparent 34%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(244, 247, 251, 0.92)),
         var(--bg-card);
+    box-shadow:
+        0 20px 50px rgba(15, 23, 42, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+}
+
+.budget-radar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.budget-radar-title {
+    font-size: 1.02rem;
+    font-weight: 700;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+}
+
+.budget-radar-title i {
+    color: rgba(15, 23, 42, 0.6);
+}
+
+.budget-radar-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    padding: 0.2rem 0.68rem;
+    font-size: 0.67rem;
+    font-weight: 600;
+    letter-spacing: 0.25px;
+    color: rgba(15, 23, 42, 0.56);
+    border: 1px solid rgba(255, 255, 255, 0.68);
+    background: rgba(255, 255, 255, 0.58);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+.budget-radar-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.8fr) minmax(220px, 0.9fr);
+    gap: 0.9rem;
+    margin-bottom: 0.9rem;
+}
+
+.budget-radar-copy,
+.budget-radar-score,
+.budget-radar-metric,
+.budget-radar-tip {
+    position: relative;
+    overflow: hidden;
+    border-radius: 22px;
+    border: 1px solid rgba(255, 255, 255, 0.62);
+    box-shadow:
+        0 14px 34px rgba(15, 23, 42, 0.04),
+        inset 0 1px 0 rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+}
+
+.budget-radar-copy {
+    padding: 1.08rem 1.08rem 1.14rem;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.52), rgba(255, 255, 255, 0.34));
+}
+
+.budget-radar-kicker {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.22px;
+    text-transform: uppercase;
+    color: rgba(15, 23, 42, 0.44);
+    margin-bottom: 0.45rem;
+}
+
+.budget-radar-headline {
+    font-size: 1.18rem;
+    font-weight: 700;
+    line-height: 1.24;
+    color: var(--text-main);
+    letter-spacing: -0.02em;
+    margin-bottom: 0.46rem;
+}
+
+.budget-radar-summary {
+    font-size: 0.84rem;
+    line-height: 1.58;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.budget-radar-score {
+    padding: 1rem 1.04rem;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.38));
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.28rem;
+}
+
+.budget-radar-score-label,
+.budget-radar-metric-label,
+.budget-radar-tip-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    text-transform: uppercase;
+    color: rgba(15, 23, 42, 0.48);
+}
+
+.budget-radar-score-value {
+    font-size: 2.1rem;
+    line-height: 0.95;
+    margin: 0;
+    color: var(--text-main);
+    letter-spacing: -0.035em;
+}
+
+.budget-radar-score small {
+    font-size: 0.76rem;
+    line-height: 1.42;
+    color: var(--text-muted);
+}
+
+.budget-radar-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.78rem;
+}
+
+.budget-radar-metric {
+    padding: 0.94rem 0.98rem 0.98rem;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.52), rgba(255, 255, 255, 0.32));
+    transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease;
+}
+
+.budget-radar-metric:hover {
+    transform: translateY(-1px);
+    box-shadow:
+        0 18px 36px rgba(15, 23, 42, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+.budget-radar-metric h4 {
+    font-size: 1.14rem;
+    line-height: 1.12;
+    font-weight: 700;
+    color: var(--text-main);
+    letter-spacing: -0.02em;
+    margin: 0.34rem 0 0.24rem;
+}
+
+.budget-radar-metric small {
+    display: block;
+    font-size: 0.75rem;
+    line-height: 1.42;
+    color: var(--text-muted);
+}
+
+.budget-radar-metric[data-tone="forecast"] {
+    border-color: rgba(255, 255, 255, 0.62);
+}
+
+.budget-radar-metric[data-tone="safe"] {
+    border-color: rgba(255, 255, 255, 0.62);
+}
+
+.budget-radar-metric[data-tone="pace"] {
+    border-color: rgba(255, 255, 255, 0.62);
+}
+
+.budget-radar-metric[data-tone="runway"] {
+    border-color: rgba(255, 255, 255, 0.62);
+}
+
+.budget-radar-metric[data-tone="bills"] {
+    border-color: rgba(255, 255, 255, 0.62);
+}
+
+.budget-radar-tip {
+    margin-top: 0.86rem;
+    padding: 0.9rem 1rem;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.46), rgba(255, 255, 255, 0.26));
+}
+
+.budget-radar-tip p {
+    margin: 0.32rem 0 0;
+    font-size: 0.83rem;
+    line-height: 1.58;
+    color: var(--text-main);
+    font-weight: 600;
 }
 
 .budget-chart-shell {
@@ -4463,6 +4665,25 @@ select:focus {
     font-size: 0.92rem;
 }
 
+.budget-history-back-btn {
+    border: 1px solid rgba(37, 99, 235, 0.16);
+    background: rgba(37, 99, 235, 0.08);
+    color: #1d4ed8;
+    border-radius: 999px;
+    padding: 0.42rem 0.8rem;
+    font-size: 0.74rem;
+    font-weight: 700;
+    cursor: pointer;
+    align-items: center;
+    gap: 0.38rem;
+    margin-bottom: 0.9rem;
+    max-width: 100%;
+}
+
+.budget-history-back-btn i {
+    font-size: 0.9rem;
+}
+
 .budget-history-filter-switch {
     display: inline-flex;
     align-items: center;
@@ -4818,11 +5039,58 @@ select:focus {
 }
 
 [data-theme="dark"] .budget-pro-signal-shell {
-    border-color: rgba(147, 197, 253, 0.34);
+    border-color: rgba(255, 255, 255, 0.08);
     background:
-        radial-gradient(circle at 88% 18%, rgba(147, 197, 253, 0.18), transparent 48%),
-        radial-gradient(circle at 12% 82%, rgba(45, 212, 191, 0.12), transparent 44%),
+        radial-gradient(circle at top left, rgba(148, 163, 184, 0.08), transparent 30%),
+        linear-gradient(180deg, rgba(15, 23, 42, 0.72), rgba(15, 23, 42, 0.82)),
         var(--bg-card);
+    box-shadow:
+        0 24px 48px rgba(2, 6, 23, 0.34),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+[data-theme="dark"] .budget-radar-badge {
+    color: rgba(226, 232, 240, 0.72);
+    border-color: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .budget-radar-copy,
+[data-theme="dark"] .budget-radar-score,
+[data-theme="dark"] .budget-radar-metric,
+[data-theme="dark"] .budget-radar-tip {
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+[data-theme="dark"] .budget-radar-copy {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.02));
+}
+
+[data-theme="dark"] .budget-radar-score {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.025));
+}
+
+[data-theme="dark"] .budget-radar-score-value {
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .budget-radar-title i,
+[data-theme="dark"] .budget-radar-kicker,
+[data-theme="dark"] .budget-radar-score-label,
+[data-theme="dark"] .budget-radar-metric-label,
+[data-theme="dark"] .budget-radar-tip-label {
+    color: rgba(226, 232, 240, 0.5);
+}
+
+[data-theme="dark"] .budget-radar-metric {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.022));
+}
+
+[data-theme="dark"] .budget-radar-tip {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.018));
 }
 
 [data-theme="dark"] .budget-insight-card {
@@ -4998,6 +5266,12 @@ select:focus {
     color: #7dd3fc;
 }
 
+[data-theme="dark"] .budget-history-back-btn {
+    color: #93c5fd;
+    background: rgba(59, 130, 246, 0.14);
+    border-color: rgba(96, 165, 250, 0.18);
+}
+
 [data-theme="dark"] .budget-history-filter-switch {
     border-color: rgba(96, 165, 250, 0.32);
     background: rgba(15, 23, 42, 0.48);
@@ -5058,6 +5332,20 @@ select:focus {
 
     .budget-insight-grid-main {
         grid-template-columns: 1fr;
+    }
+
+    .budget-radar-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .budget-radar-hero,
+    .budget-radar-metrics {
+        grid-template-columns: 1fr;
+    }
+
+    .budget-radar-score-value {
+        font-size: 1.7rem;
     }
 
     .budget-fund-grid {
