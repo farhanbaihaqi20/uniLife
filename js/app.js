@@ -745,6 +745,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof calendarManager !== 'undefined') calendarManager.init();
     if (typeof tasksManager !== 'undefined') tasksManager.init();
     if (typeof focusManager !== 'undefined') focusManager.init();
+    if (typeof healthManager !== 'undefined') healthManager.init();
     if (typeof budgetManager !== 'undefined') budgetManager.init();
 
     // 5. Add calendar export buttons after views are loaded
@@ -856,6 +857,22 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (typeof levelingManager !== 'undefined' && typeof levelingManager.refreshUI === 'function') {
                 levelingManager.refreshUI();
+            }
+        }
+
+        // Health sleep logs changed
+        if (!key || key === 'unilife_health_sleep_logs' || key === 'unilife_health_hydration_logs' || key === 'unilife_health_hydration_settings') {
+            if (typeof healthManager !== 'undefined') {
+                healthManager.sleepLogs = typeof healthManager.normalizeSleepLogs === 'function'
+                    ? healthManager.normalizeSleepLogs(Storage.getHealthSleepLogs ? Storage.getHealthSleepLogs() : [])
+                    : (Storage.getHealthSleepLogs ? Storage.getHealthSleepLogs() : []);
+                healthManager.hydrationLogs = typeof healthManager.normalizeHydrationLogs === 'function'
+                    ? healthManager.normalizeHydrationLogs(Storage.getHealthHydrationLogs ? Storage.getHealthHydrationLogs() : [])
+                    : (Storage.getHealthHydrationLogs ? Storage.getHealthHydrationLogs() : []);
+                healthManager.hydrationSettings = typeof healthManager.normalizeHydrationSettings === 'function'
+                    ? healthManager.normalizeHydrationSettings(Storage.getHealthHydrationSettings ? Storage.getHealthHydrationSettings() : {})
+                    : (Storage.getHealthHydrationSettings ? Storage.getHealthHydrationSettings() : {});
+                healthManager.render();
             }
         }
 

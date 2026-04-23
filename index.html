@@ -127,6 +127,12 @@
                         </div>
                         <span>Kalender</span>
                     </button>
+                    <button class="card home-quick-btn" type="button" onclick="window.openView && window.openView('view-health', 'view-home')">
+                        <div class="home-quick-icon" data-tone="health">
+                            <i class="ph ph-moon-stars"></i>
+                        </div>
+                        <span>Kesehatan</span>
+                    </button>
                 </div>
 
                 <div class="home-section-head tone-primary">
@@ -219,6 +225,189 @@
                         <span id="calendar-selected-date-label">-</span>
                     </div>
                     <div id="calendar-agenda-list" class="calendar-agenda-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- HEALTH VIEW -->
+            <section id="view-health" class="view-section">
+                <div class="section-header health-section-header">
+                    <div>
+                        <h2>Health, Sleep & Hydration</h2>
+                        <p class="health-section-subtitle">Tidur rapi dan hidrasi cukup bikin ritme kuliah terasa lebih stabil.</p>
+                    </div>
+                    <div class="health-header-actions">
+                        <div class="health-more-wrapper" id="health-more-wrapper">
+                            <button class="btn btn-outline health-more-btn" type="button" id="health-more-toggle" aria-label="Aksi health lainnya" aria-expanded="false" onclick="healthManager.toggleMoreActions(event)">
+                                <i class="ph ph-dots-three-outline"></i>
+                            </button>
+                            <div class="health-more-menu" id="health-more-menu" role="menu" aria-hidden="true">
+                                <button type="button" class="health-more-menu-btn" role="menuitem" onclick="healthManager.resetSleepData()">
+                                    <i class="ph ph-moon"></i> Reset Sleep
+                                </button>
+                                <button type="button" class="health-more-menu-btn" role="menuitem" onclick="healthManager.resetHydrationData()">
+                                    <i class="ph ph-drop"></i> Reset Hydration
+                                </button>
+                                <button type="button" class="health-more-menu-btn is-danger" role="menuitem" onclick="healthManager.resetAllHealthData()">
+                                    <i class="ph ph-arrow-counter-clockwise"></i> Reset Semua
+                                </button>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="healthManager.openSleepModal()">
+                            <i class="ph ph-plus"></i> Tambah Tidur
+                        </button>
+                    </div>
+                </div>
+
+                <div class="health-hero-card">
+                    <div class="health-hero-glow health-hero-glow-a" aria-hidden="true"></div>
+                    <div class="health-hero-glow health-hero-glow-b" aria-hidden="true"></div>
+                    <div class="health-hero-top">
+                        <div>
+                            <p class="health-hero-label">Tidur Terakhir</p>
+                            <h3 id="health-latest-duration">-</h3>
+                            <p id="health-latest-meta" class="health-hero-meta">Belum ada catatan tidur.</p>
+                        </div>
+                        <div class="health-status-pill" id="health-latest-status">Belum ada data</div>
+                    </div>
+                    <div class="health-hero-bottom">
+                        <div class="health-mini-stat">
+                            <span>Jadwal</span>
+                            <strong id="health-latest-window">-</strong>
+                        </div>
+                        <div class="health-mini-stat">
+                            <span>Target</span>
+                            <strong>8 jam</strong>
+                        </div>
+                        <div class="health-mini-stat">
+                            <span>Kualitas</span>
+                            <strong id="health-latest-quality">-</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="health-stats-grid">
+                    <div class="health-stat-card">
+                        <span>Rata-rata 7 Hari</span>
+                        <strong id="health-avg-seven">-</strong>
+                        <small id="health-avg-note">Belum cukup data mingguan.</small>
+                    </div>
+                    <div class="health-stat-card">
+                        <span>Ideal Streak</span>
+                        <strong id="health-streak-value">0 hari</strong>
+                        <small>Tidur minimal 7 jam 30 menit.</small>
+                    </div>
+                    <div class="health-stat-card">
+                        <span>Sleep Debt</span>
+                        <strong id="health-debt-value">0 menit</strong>
+                        <small id="health-debt-note">Masih aman minggu ini.</small>
+                    </div>
+                </div>
+
+                <div class="health-hydration-card">
+                    <div class="health-card-head">
+                        <div>
+                            <h3>Hydration Tracker</h3>
+                            <p>Quick log minum air harian dengan target yang bisa kamu atur.</p>
+                        </div>
+                        <button class="health-ghost-btn" type="button" onclick="healthManager.openHydrationModal()">
+                            <i class="ph ph-drop-half-bottom"></i> Atur
+                        </button>
+                    </div>
+
+                    <div class="health-hydration-shell">
+                        <div class="health-hydration-progress-card">
+                            <div class="health-hydration-progress-ring">
+                                <div class="health-hydration-progress-core">
+                                    <span id="health-hydration-percent">0%</span>
+                                    <strong id="health-hydration-total">0 / 0 ml</strong>
+                                </div>
+                            </div>
+                            <p id="health-hydration-status" class="health-hydration-status">Mulai log air minum hari ini.</p>
+                        </div>
+
+                        <div class="health-hydration-side">
+                            <div class="health-hydration-metrics">
+                                <div class="health-hydration-metric">
+                                    <span>Target Hari Ini</span>
+                                    <strong id="health-hydration-target">0 ml</strong>
+                                </div>
+                                <div class="health-hydration-metric">
+                                    <span>Streak Target</span>
+                                    <strong id="health-hydration-streak">0 hari</strong>
+                                </div>
+                                <div class="health-hydration-metric">
+                                    <span>Rata-rata 7 Hari</span>
+                                    <strong id="health-hydration-average">0 ml</strong>
+                                </div>
+                            </div>
+
+                            <div class="health-hydration-quick">
+                                <button type="button" class="health-hydration-quick-btn" id="health-hydration-quick-sip" onclick="healthManager.addHydrationQuick('sip')">
+                                    <strong>+150 ml</strong>
+                                    <span>Sip cepat</span>
+                                </button>
+                                <button type="button" class="health-hydration-quick-btn" id="health-hydration-quick-cup" onclick="healthManager.addHydrationQuick('cup')">
+                                    <strong>+250 ml</strong>
+                                    <span>1 gelas</span>
+                                </button>
+                                <button type="button" class="health-hydration-quick-btn" id="health-hydration-quick-bottle" onclick="healthManager.addHydrationQuick('bottle')">
+                                    <strong>+500 ml</strong>
+                                    <span>Botol kecil</span>
+                                </button>
+                            </div>
+
+                            <div class="health-hydration-actions">
+                                <button type="button" class="health-hydration-action-btn" onclick="healthManager.undoHydrationQuick()">
+                                    <i class="ph ph-minus"></i> <span id="health-hydration-undo-label">Undo 250</span>
+                                </button>
+                                <button type="button" class="health-hydration-action-btn" onclick="healthManager.resetTodayHydration()">
+                                    <i class="ph ph-arrow-counter-clockwise"></i> Reset Hari Ini
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="health-shell-grid">
+                    <div class="health-card">
+                        <div class="health-card-head">
+                            <div>
+                                <h3>Trend Mingguan</h3>
+                                <p>Snapshot 7 malam terakhir dengan target visual.</p>
+                            </div>
+                            <div class="health-head-chip">7 Hari</div>
+                        </div>
+                        <div id="health-week-strip" class="health-week-strip">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <div class="health-card health-insight-card">
+                        <div class="health-card-head">
+                            <div>
+                                <h3>Insight Ringkas</h3>
+                                <p>Feedback ringan biar kebiasaan lebih gampang dibaca.</p>
+                            </div>
+                        </div>
+                        <div id="health-insight-list" class="health-insight-list">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="health-card">
+                    <div class="health-card-head">
+                        <div>
+                            <h3>Riwayat Tidur</h3>
+                            <p>Catatan harian dengan kualitas dan jam tidur-bangun.</p>
+                        </div>
+                        <button class="health-ghost-btn" type="button" onclick="healthManager.openSleepModal()">
+                            <i class="ph ph-moon"></i> Catat
+                        </button>
+                    </div>
+                    <div id="health-history-list" class="health-history-list">
                         <!-- Populated by JS -->
                     </div>
                 </div>
@@ -2407,6 +2596,86 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="modal-health-sleep">
+        <div class="modal-content health-modal-content">
+            <button class="modal-close" onclick="healthManager.closeSleepModal()"><i class="ph ph-x"></i></button>
+            <h3 id="health-modal-title">Catat Tidur</h3>
+            <p class="health-modal-note">Masukkan jam tidur dan jam bangun. Durasi dihitung otomatis walau lewat tengah malam.</p>
+            <form id="form-health-sleep" onsubmit="healthManager.saveSleepEntry(event)">
+                <input type="hidden" id="health-sleep-id">
+                <div class="form-group">
+                    <label for="health-sleep-date">Tanggal Tidur</label>
+                    <input type="date" id="health-sleep-date" required>
+                </div>
+                <div class="form-group row">
+                    <div class="col">
+                        <label for="health-sleep-time">Jam Tidur</label>
+                        <input type="time" id="health-sleep-time" required>
+                    </div>
+                    <div class="col">
+                        <label for="health-wake-time">Jam Bangun</label>
+                        <input type="time" id="health-wake-time" required>
+                    </div>
+                </div>
+                <div class="health-live-preview" id="health-live-preview">
+                    <div>
+                        <span>Estimasi Durasi</span>
+                        <strong id="health-live-duration">-</strong>
+                    </div>
+                    <div class="health-live-status" id="health-live-status">Isi jam dulu</div>
+                </div>
+                <div class="form-group">
+                    <label for="health-sleep-quality">Kualitas Tidur</label>
+                    <select id="health-sleep-quality" required>
+                        <option value="5">5 - Nyenyak banget</option>
+                        <option value="4">4 - Enak dan cukup</option>
+                        <option value="3">3 - Lumayan</option>
+                        <option value="2">2 - Kurang nyaman</option>
+                        <option value="1">1 - Berantakan</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="health-sleep-note">Catatan</label>
+                    <input type="text" id="health-sleep-note" placeholder="Contoh: tidur telat karena tugas studio">
+                </div>
+                <div class="health-modal-actions">
+                    <button type="button" class="btn btn-outline health-delete-btn" id="health-delete-btn" onclick="healthManager.deleteSleepEntry()" style="display:none;">
+                        <i class="ph ph-trash"></i>
+                    </button>
+                    <button type="submit" class="btn btn-primary" style="flex:1;">
+                        <i class="ph ph-floppy-disk"></i> Simpan Tidur
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-health-hydration">
+        <div class="modal-content health-modal-content">
+            <button class="modal-close" onclick="healthManager.closeHydrationModal()"><i class="ph ph-x"></i></button>
+            <h3>Atur Hydration</h3>
+            <p class="health-modal-note">Sesuaikan target minum harian dan ukuran gelas default untuk quick log.</p>
+            <form id="form-health-hydration" onsubmit="healthManager.saveHydrationSettings(event)">
+                <div class="form-group">
+                    <label for="health-hydration-target-input">Target Harian (ml)</label>
+                    <input type="number" id="health-hydration-target-input" min="250" max="6000" step="50" required>
+                </div>
+                <div class="form-group">
+                    <label for="health-hydration-cup-input">Ukuran Gelas Default (ml)</label>
+                    <input type="number" id="health-hydration-cup-input" min="100" max="1500" step="50" required>
+                </div>
+                <div class="health-hydration-preset-row">
+                    <button type="button" class="health-hydration-preset-btn" onclick="healthManager.applyHydrationPreset(2000, 250)">Balanced</button>
+                    <button type="button" class="health-hydration-preset-btn" onclick="healthManager.applyHydrationPreset(2500, 300)">Active</button>
+                    <button type="button" class="health-hydration-preset-btn" onclick="healthManager.applyHydrationPreset(3000, 500)">Bottle Mode</button>
+                </div>
+                <button type="submit" class="btn btn-primary full-width">
+                    <i class="ph ph-floppy-disk"></i> Simpan Hydration
+                </button>
+            </form>
+        </div>
+    </div>
+
     <!-- Scripts - Version parameter untuk cache-busting -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
@@ -2442,6 +2711,7 @@
     "></script>
     <script src="js/tasks.js?v=1.3.5
     "></script>
+    <script src="js/health.js?v=1.0.0"></script>
     <script src="js/budget.js?v=1.3.6"></script>
     <script src="js/bbm.js?v=1.3.5"></script>
     <script src="js/sync.js?v=1.3.5"></script>

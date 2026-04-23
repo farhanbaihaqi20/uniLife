@@ -78,6 +78,14 @@ const Storage = {
     getScheduleAgendas: () => Storage.get('unilife_schedule_agendas', []), // Array of { id, scheduleId, semester, title, date, time, notes, createdAt, updatedAt }
     setScheduleAgendas: (data) => Storage.set('unilife_schedule_agendas', data),
 
+    // Health / sleep tracker
+    getHealthSleepLogs: () => Storage.get('unilife_health_sleep_logs', []),
+    setHealthSleepLogs: (data) => Storage.set('unilife_health_sleep_logs', data),
+    getHealthHydrationLogs: () => Storage.get('unilife_health_hydration_logs', []),
+    setHealthHydrationLogs: (data) => Storage.set('unilife_health_hydration_logs', data),
+    getHealthHydrationSettings: () => Storage.get('unilife_health_hydration_settings', { targetMl: 2000, cupMl: 250 }),
+    setHealthHydrationSettings: (data) => Storage.set('unilife_health_hydration_settings', data),
+
     // Budget Tracker (Student Financials)
     getBudgetTransactions: () => Storage.get('unilife_budget_transactions', []), // Array of { id, type, amount, category, note, timestamp }
     setBudgetTransactions: (data) => Storage.set('unilife_budget_transactions', data),
