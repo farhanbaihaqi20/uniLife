@@ -3930,6 +3930,25 @@ select:focus {
     background: var(--bg-card);
 }
 
+.budget-category-rank-row-btn {
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+    cursor: pointer;
+    transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.budget-category-rank-row-btn:hover {
+    transform: translateY(-1px);
+    border-color: rgba(37, 99, 235, 0.24);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.budget-category-rank-row-btn:focus-visible {
+    outline: 2px solid rgba(37, 99, 235, 0.32);
+    outline-offset: 2px;
+}
+
 .budget-category-rank-badge {
     min-width: 44px;
     text-align: center;
@@ -3939,6 +3958,12 @@ select:focus {
     color: #db2777;
     background: rgba(236, 72, 153, 0.12);
     padding: 0.2rem 0.4rem;
+}
+
+.budget-rank-action-text {
+    font-size: 0.72rem;
+    color: #2563eb;
+    font-weight: 700;
 }
 
 .budget-cat-card {

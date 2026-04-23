@@ -19,6 +19,8 @@ const budgetManager = {
     transactionSourceFilter: 'all',
     transactionPreviewLimit: 12,
     transactionHistoryTypeFilter: 'all',
+    transactionHistoryCategoryFilter: '',
+    transactionHistoryWeekdayFilter: null,
     isBalanceVisible: true,
     savingsGoalActionsBound: false,
     savingsGoalSwipeBound: false,
@@ -1508,6 +1510,13 @@ const budgetManager = {
         });
     },
 
+    getWeekdayLabel: function (dayIndex) {
+        const locale = (typeof i18n !== 'undefined' && typeof i18n.locale === 'function') ? i18n.locale() : 'id-ID';
+        const safeDayIndex = Number.isInteger(dayIndex) ? dayIndex : 0;
+        const labelDate = new Date(2024, 0, 7 + safeDayIndex);
+        return labelDate.toLocaleDateString(locale, { weekday: 'long' });
+    },
+
     getStartOfWeek: function (value) {
         const date = this.getStartOfDay(value);
         if (!date) return null;
@@ -1613,6 +1622,8 @@ const budgetManager = {
     getTransactionsForDisplay: function (transactions, options = {}) {
         const sourceTypeFilter = options.sourceTypeFilter || 'all';
         const typeFilter = options.typeFilter || 'all';
+        const categoryFilter = options.categoryFilter || '';
+        const weekdayFilter = Number.isInteger(options.weekdayFilter) ? options.weekdayFilter : null;
 
         return (Array.isArray(transactions) ? transactions : []).filter((tx) => {
             if (!tx) return false;
@@ -1629,11 +1640,37 @@ const budgetManager = {
             }
 
             if (sourceTypeFilter === 'all') {
+                if (categoryFilter && tx.category !== categoryFilter) {
+                    return false;
+                }
+
+                if (weekdayFilter !== null) {
+                    const txDate = this.getTransactionDate(tx);
+                    if (Number.isNaN(txDate.getTime()) || txDate.getDay() !== weekdayFilter) {
+                        return false;
+                    }
+                }
+
                 return true;
             }
 
             const account = this.getAccountById(tx.fundSourceId);
-            return !!account && account.type === sourceTypeFilter;
+            if (!account || account.type !== sourceTypeFilter) {
+                return false;
+            }
+
+            if (categoryFilter && tx.category !== categoryFilter) {
+                return false;
+            }
+
+            if (weekdayFilter !== null) {
+                const txDate = this.getTransactionDate(tx);
+                if (Number.isNaN(txDate.getTime()) || txDate.getDay() !== weekdayFilter) {
+                    return false;
+                }
+            }
+
+            return true;
         });
     },
 
@@ -2851,8 +2888,15 @@ const budgetManager = {
         this.spendingDayRankEntries = this.calculateSpendingDayRank(monthTx, this.selectedMonth);
 
         this.spendingDayRankEntries.forEach((entry, index) => {
-            const row = document.createElement('div');
-            row.className = 'budget-category-rank-row';
+            const matchingTransactions = monthTx.filter((tx) => {
+                if (!tx) return false;
+                const txDate = this.getTransactionDate(tx);
+                return !Number.isNaN(txDate.getTime()) && txDate.getDay() === entry.dayIndex;
+            });
+            const row = document.createElement('button');
+            row.type = 'button';
+            row.className = 'budget-category-rank-row budget-category-rank-row-btn';
+            row.onclick = () => this.openWeekdayTransactionHistory(entry.dayIndex);
             row.innerHTML = `
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
                     <div class="budget-category-rank-badge">#${index + 1}</div>
@@ -2861,7 +2905,10 @@ const budgetManager = {
                         <small style="color: var(--text-muted);">Total ${this.formatCurrency(entry.total)} dari ${entry.dayCount} hari</small>
                     </div>
                 </div>
-                <p style="font-weight: 700; color: var(--text-main);">${this.formatCurrency(entry.average)}</p>
+                <div style="text-align: right;">
+                    <p style="font-weight: 700; color: var(--text-main);">${this.formatCurrency(entry.average)}</p>
+                    <small class="budget-rank-action-text">${matchingTransactions.length} transaksi</small>
+                </div>
             `;
             listEl.appendChild(row);
         });
@@ -2884,19 +2931,31 @@ const budgetManager = {
             return;
         }
 
+        const monthTransactions = this.getTransactionsByMonth(this.selectedMonth);
+
         this.topCategoryEntries.forEach((entry, index) => {
             const [cat, value] = entry;
-            const row = document.createElement('div');
-            row.className = 'budget-category-rank-row';
+            const categoryTransactions = monthTransactions.filter((tx) =>
+                tx?.type === 'expense' && !tx?.isTransfer && tx?.category === cat
+            );
+            const categoryCount = categoryTransactions.length;
+            const average = categoryCount > 0 ? Math.round(value / categoryCount) : 0;
+            const row = document.createElement('button');
+            row.type = 'button';
+            row.className = 'budget-category-rank-row budget-category-rank-row-btn';
+            row.onclick = () => this.openCategoryTransactionHistory(cat);
             row.innerHTML = `
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
                     <div class="budget-category-rank-badge">#${index + 1}</div>
                     <div>
                         <p style="font-weight: 700; color: var(--text-main);">${i18n.t('budget_cat_' + cat) || cat}</p>
-                        <small style="color: var(--text-muted);">Kontribusi pengeluaran</small>
+                        <small style="color: var(--text-muted);">${categoryCount} transaksi &bull; rata-rata ${this.formatCurrency(average)}</small>
                     </div>
                 </div>
-                <p style="font-weight: 700; color: var(--text-main);">${this.formatCurrency(value)}</p>
+                <div style="text-align: right;">
+                    <p style="font-weight: 700; color: var(--text-main);">${this.formatCurrency(value)}</p>
+                    <small class="budget-rank-action-text">Tap lihat history</small>
+                </div>
             `;
             listEl.appendChild(row);
         });
@@ -2926,8 +2985,38 @@ const budgetManager = {
     },
 
     openTransactionHistoryModal: function (typeFilter = 'all') {
+        this.transactionHistoryCategoryFilter = '';
+        this.transactionHistoryWeekdayFilter = null;
         this.transactionHistoryTypeFilter = ['all', 'expense', 'income', 'transfer'].includes(typeFilter) ? typeFilter : 'all';
         this.renderTransactionHistoryModal(this.getTransactionsByMonth(this.selectedMonth));
+        const modal = document.getElementById('modal-budget-transaction-history');
+        if (!modal) return;
+        modal.classList.add('active');
+    },
+
+    openCategoryTransactionHistory: function (category) {
+        if (!category) return;
+
+        this.transactionHistoryCategoryFilter = category;
+        this.transactionHistoryWeekdayFilter = null;
+        this.transactionHistoryTypeFilter = 'expense';
+        this.renderTransactionHistoryModal(this.getTransactionsByMonth(this.selectedMonth));
+        this.closeTopCategoriesModal();
+
+        const modal = document.getElementById('modal-budget-transaction-history');
+        if (!modal) return;
+        modal.classList.add('active');
+    },
+
+    openWeekdayTransactionHistory: function (dayIndex) {
+        if (!Number.isInteger(dayIndex)) return;
+
+        this.transactionHistoryCategoryFilter = '';
+        this.transactionHistoryWeekdayFilter = dayIndex;
+        this.transactionHistoryTypeFilter = 'all';
+        this.renderTransactionHistoryModal(this.getTransactionsByMonth(this.selectedMonth));
+        this.closeSpendingDayRankModal();
+
         const modal = document.getElementById('modal-budget-transaction-history');
         if (!modal) return;
         modal.classList.add('active');
@@ -2937,16 +3026,21 @@ const budgetManager = {
         const modal = document.getElementById('modal-budget-transaction-history');
         if (!modal) return;
         modal.classList.remove('active');
+        this.transactionHistoryCategoryFilter = '';
+        this.transactionHistoryWeekdayFilter = null;
     },
 
     renderTransactionHistoryModal: function (monthTransactions) {
         const listEl = document.getElementById('budget-history-modal-list');
         const titleEl = document.getElementById('budget-history-modal-title');
         const subtitleEl = document.getElementById('budget-history-modal-subtitle');
+        const filterEl = document.getElementById('budget-history-modal-filter');
         if (!listEl || !titleEl || !subtitleEl) return;
 
         const typeFilter = this.transactionHistoryTypeFilter || 'all';
-        const filteredTransactions = this.getTransactionsForDisplay(monthTransactions, { typeFilter });
+        const categoryFilter = this.transactionHistoryCategoryFilter || '';
+        const weekdayFilter = Number.isInteger(this.transactionHistoryWeekdayFilter) ? this.transactionHistoryWeekdayFilter : null;
+        const filteredTransactions = this.getTransactionsForDisplay(monthTransactions, { typeFilter, categoryFilter, weekdayFilter });
         const totalCount = filteredTransactions.length;
         const filterLabelMap = {
             all: 'Riwayat Bulan Ini',
@@ -2954,16 +3048,37 @@ const budgetManager = {
             income: 'Riwayat Pemasukan',
             transfer: 'Riwayat Transfer'
         };
+        const categoryName = categoryFilter ? (i18n.t('budget_cat_' + categoryFilter) || categoryFilter) : '';
+        const weekdayName = weekdayFilter !== null ? this.getWeekdayLabel(weekdayFilter) : '';
+        const hasCustomHistoryFilter = !!categoryFilter || weekdayFilter !== null;
 
-        titleEl.innerText = filterLabelMap[typeFilter] || 'Riwayat Bulan Ini';
-        subtitleEl.innerText = `${this.getMonthLabel(this.selectedMonth)} • ${totalCount} transaksi`;
-        this.renderTransactionHistoryTypeFilter();
+        titleEl.innerText = categoryFilter
+            ? `History ${categoryName}`
+            : (weekdayFilter !== null
+                ? `History Hari ${weekdayName}`
+                : (filterLabelMap[typeFilter] || 'Riwayat Bulan Ini'));
+        subtitleEl.innerText = categoryFilter
+            ? `${this.getMonthLabel(this.selectedMonth)} • ${totalCount} transaksi di kategori ini`
+            : (weekdayFilter !== null
+                ? `${this.getMonthLabel(this.selectedMonth)} • ${totalCount} transaksi pada hari ${weekdayName}`
+                : `${this.getMonthLabel(this.selectedMonth)} • ${totalCount} transaksi`);
+        if (filterEl) {
+            filterEl.style.display = hasCustomHistoryFilter ? 'none' : 'inline-flex';
+        }
+        if (!hasCustomHistoryFilter) {
+            this.renderTransactionHistoryTypeFilter();
+        }
         listEl.innerHTML = '';
 
         if (filteredTransactions.length === 0) {
             listEl.innerHTML = this.getTransactionEmptyStateMarkup({
                 typeFilter,
-                monthDate: this.selectedMonth
+                monthDate: this.selectedMonth,
+                customText: categoryFilter
+                    ? `Belum ada transaksi untuk kategori ${categoryName} di ${this.getMonthLabel(this.selectedMonth)}.`
+                    : (weekdayFilter !== null
+                        ? `Belum ada transaksi pada hari ${weekdayName} di ${this.getMonthLabel(this.selectedMonth)}.`
+                        : '')
             });
             return;
         }
