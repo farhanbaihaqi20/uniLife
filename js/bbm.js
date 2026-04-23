@@ -48,6 +48,7 @@
         selectedLocationFilter: 'all',
         selectedFuelKey: 'pertalite',
         moreActionsBound: false,
+        homeEntryPointsBound: false,
 
         init: function () {
             if (this.initialized) return;
@@ -256,40 +257,44 @@
         },
 
         injectHomeEntryPoints: function () {
-            if (document.getElementById('bbm-home-menu-card')) return;
-
             // Penanda: ubah selector parent menu Home di sini jika struktur berbeda (contoh: '.home-grid').
             const homeMenuContainer = document.querySelector('.quick-actions');
             if (!homeMenuContainer) return;
 
-            const menuCard = document.createElement('button');
-            menuCard.type = 'button';
-            menuCard.id = 'bbm-home-menu-card';
-            menuCard.className = 'card bbm-home-card';
-            menuCard.innerHTML = `
-                <div class="bbm-home-card-icon bbm-home-card-icon-main"><i class="ph ph-gas-pump"></i></div>
-                <span>BBM</span>
-            `;
-            menuCard.addEventListener('click', () => this.openSection());
+            let menuCard = document.getElementById('bbm-home-menu-card');
+            if (!menuCard) {
+                menuCard = document.createElement('button');
+                menuCard.type = 'button';
+                menuCard.id = 'bbm-home-menu-card';
+                menuCard.className = 'card home-quick-btn';
+                menuCard.innerHTML = `
+                    <div class="home-quick-icon" data-tone="bbm"><i class="ph ph-gas-pump"></i></div>
+                    <span>BBM</span>
+                `;
+                homeMenuContainer.appendChild(menuCard);
+            }
 
-            homeMenuContainer.appendChild(menuCard);
-
-            if (!document.getElementById('calendar-home-menu-card')) {
-                const calendarCard = document.createElement('button');
+            let calendarCard = document.getElementById('calendar-home-menu-card');
+            if (!calendarCard) {
+                calendarCard = document.createElement('button');
                 calendarCard.type = 'button';
                 calendarCard.id = 'calendar-home-menu-card';
-                calendarCard.className = 'card bbm-home-card';
+                calendarCard.className = 'card home-quick-btn';
                 calendarCard.innerHTML = `
-                    <div class="bbm-home-card-icon" style="background:rgba(37, 99, 235, 0.12); color:#2563EB;"><i class="ph ph-calendar-dots"></i></div>
+                    <div class="home-quick-icon" data-tone="calendar"><i class="ph ph-calendar-dots"></i></div>
                     <span>Kalender</span>
                 `;
+                homeMenuContainer.appendChild(calendarCard);
+            }
+
+            if (!this.homeEntryPointsBound) {
+                menuCard.addEventListener('click', () => this.openSection());
                 calendarCard.addEventListener('click', () => {
                     if (typeof window.openView === 'function') {
                         window.openView('view-calendar', 'view-calendar');
                     }
                 });
-
-                homeMenuContainer.appendChild(calendarCard);
+                this.homeEntryPointsBound = true;
             }
         },
 
