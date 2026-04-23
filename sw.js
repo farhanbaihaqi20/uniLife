@@ -1,5 +1,5 @@
 // PENTING: Increment versi ini setiap kali ada update code!
-const CACHE_VERSION = '1.3.5'; // v1.3.5 - UniLife Complete App
+const CACHE_VERSION = '1.4'; // v1.4 - UniLife Complete App
 const CACHE_NAME = `unilife-tracker-v${CACHE_VERSION}`;
 
 // Static assets yang jarang berubah (agresif caching)git
