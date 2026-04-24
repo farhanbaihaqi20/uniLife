@@ -11,6 +11,7 @@ const budgetManager = {
     spendingDayRankEntries: [],
     savingsGoals: [],
     recurringBills: [],
+    impulseWishlist: [],
     activeSavingsGoalId: null,
     monthAnimationTimer: null,
     recentInterestFundIds: [],
@@ -22,6 +23,7 @@ const budgetManager = {
     transactionHistoryCategoryFilter: '',
     transactionHistoryWeekdayFilter: null,
     transactionHistoryReturnTarget: '',
+    weeklyReportActiveIndex: null,
     isBalanceVisible: true,
     savingsGoalActionsBound: false,
     savingsGoalSwipeBound: false,
@@ -36,10 +38,12 @@ const budgetManager = {
         this.transactions = this.normalizeTransactions(Storage.getBudgetTransactions());
         this.savingsGoals = this.normalizeSavingsGoals(Storage.getBudgetSavingsGoals());
         this.recurringBills = this.normalizeRecurringBills(Storage.getBudgetRecurringBills());
+        this.impulseWishlist = this.normalizeImpulseWishlist(Storage.getBudgetImpulseWishlist());
         this.applyPendingAccountInterest();
         Storage.setBudgetTransactions(this.transactions);
         Storage.setBudgetAccounts(this.accounts);
         Storage.setBudgetRecurringBills(this.recurringBills);
+        Storage.setBudgetImpulseWishlist(this.impulseWishlist);
         this.monthlyLimit = Storage.getBudgetLimit();
         this.isBalanceVisible = Storage.get('unilife_budget_balance_visible', true) !== false;
         this.baseBalance = this.getTotalInitialBalance();
@@ -386,6 +390,15 @@ const budgetManager = {
         return 'Rp ••••••';
     },
 
+    escapeHtml: function (value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    },
+
     toggleBalanceVisibility: function (event) {
         if (event) {
             event.preventDefault();
@@ -711,6 +724,64 @@ const budgetManager = {
                 if (a.dueDay !== b.dueDay) return a.dueDay - b.dueDay;
                 return new Date(b.createdAt) - new Date(a.createdAt);
             });
+    },
+
+    normalizeImpulseWishlist: function (items) {
+        const source = Array.isArray(items) ? items : [];
+        const allowedStatuses = ['cooling', 'approved', 'cancelled'];
+        const allowedCooldowns = [24, 72, 168];
+
+        return source
+            .map((item) => {
+                const createdAt = item?.createdAt && !Number.isNaN(new Date(item.createdAt).getTime())
+                    ? new Date(item.createdAt)
+                    : new Date();
+                const rawCooldown = Number(item?.cooldownHours) || 72;
+                const cooldownHours = allowedCooldowns.includes(rawCooldown) ? rawCooldown : 72;
+                const reviewAtRaw = item?.reviewAt ? new Date(item.reviewAt) : null;
+                const fallbackReviewAt = new Date(createdAt);
+                fallbackReviewAt.setHours(fallbackReviewAt.getHours() + cooldownHours);
+                const reviewAt = reviewAtRaw && !Number.isNaN(reviewAtRaw.getTime()) ? reviewAtRaw : fallbackReviewAt;
+                const status = allowedStatuses.includes(item?.status) ? item.status : 'cooling';
+
+                return {
+                    id: item?.id || ((typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-${Math.random().toString(16).slice(2)}`),
+                    name: String(item?.name || '').trim() || 'Wishlist',
+                    amount: Math.max(0, Number(item?.amount) || 0),
+                    category: String(item?.category || 'shopping').trim() || 'shopping',
+                    reason: String(item?.reason || '').trim(),
+                    cooldownHours,
+                    status,
+                    createdAt: createdAt.toISOString(),
+                    reviewAt: reviewAt.toISOString(),
+                    decidedAt: item?.decidedAt || null,
+                    decisionNote: String(item?.decisionNote || '').trim()
+                };
+            })
+            .filter((item) => item.amount > 0)
+            .sort((a, b) => {
+                const statusScore = { cooling: 0, approved: 1, cancelled: 2 };
+                const leftReady = this.getImpulseWishlistState(a).key === 'review' ? -1 : 0;
+                const rightReady = this.getImpulseWishlistState(b).key === 'review' ? -1 : 0;
+                if (leftReady !== rightReady) return leftReady - rightReady;
+                if ((statusScore[a.status] ?? 9) !== (statusScore[b.status] ?? 9)) {
+                    return (statusScore[a.status] ?? 9) - (statusScore[b.status] ?? 9);
+                }
+                return new Date(b.createdAt) - new Date(a.createdAt);
+            });
+    },
+
+    getImpulseWishlistState: function (item) {
+        if (!item) return { key: 'unknown', label: 'Unknown', tone: 'muted' };
+        if (item.status === 'approved') return { key: 'approved', label: 'Disetujui', tone: 'safe' };
+        if (item.status === 'cancelled') return { key: 'cancelled', label: 'Dibatalkan', tone: 'muted' };
+
+        const reviewAt = new Date(item.reviewAt);
+        if (!Number.isNaN(reviewAt.getTime()) && reviewAt <= new Date()) {
+            return { key: 'review', label: 'Review Sekarang', tone: 'warning' };
+        }
+
+        return { key: 'cooling', label: 'Cooling Down', tone: 'cooling' };
     },
 
     getMonthKey: function (monthDate = this.selectedMonth) {
@@ -1055,6 +1126,8 @@ const budgetManager = {
 
         // Update Limit Progress
         this.renderLimitProgress(monthTotals.expense);
+        this.renderWeeklyAllowanceCard(currentMonthTx);
+        this.renderImpulseWishlistCard();
         this.renderSavingsGoalCard();
         this.renderRecurringBillsCard();
 
@@ -2388,6 +2461,267 @@ const budgetManager = {
         }
     },
 
+    calculateWeeklyAllowancePlan: function (monthTransactions = this.getTransactionsByMonth(this.selectedMonth)) {
+        const now = new Date();
+        const monthDate = this.selectedMonth instanceof Date ? this.selectedMonth : new Date(this.selectedMonth);
+        const isCurrentMonth = this.isSameMonth(monthDate, now);
+        const referenceDate = isCurrentMonth
+            ? now
+            : new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+        const weekStartRaw = this.getStartOfWeek(referenceDate);
+        const weekStart = weekStartRaw || new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
+        const weekEndExclusive = new Date(weekStart);
+        weekEndExclusive.setDate(weekEndExclusive.getDate() + 7);
+        const weekEndVisible = new Date(weekEndExclusive);
+        weekEndVisible.setDate(weekEndVisible.getDate() - 1);
+
+        const weeklyBudget = this.monthlyLimit > 0 ? Math.round(this.monthlyLimit / 4) : 0;
+        const weekExpense = this.sumExpenseBetweenDates(weekStart, weekEndExclusive, monthTransactions);
+        const remaining = weeklyBudget - weekExpense;
+        const usageRatio = weeklyBudget > 0 ? weekExpense / weeklyBudget : 0;
+        const progressPercent = weeklyBudget > 0 ? Math.min(100, Math.round(usageRatio * 100)) : 0;
+
+        const todayStart = this.getStartOfDay(referenceDate) || referenceDate;
+        const endForDaily = isCurrentMonth ? weekEndExclusive : new Date(weekEndExclusive);
+        const msPerDay = 1000 * 60 * 60 * 24;
+        const remainingDays = isCurrentMonth
+            ? Math.max(1, Math.ceil((endForDaily - todayStart) / msPerDay))
+            : 0;
+        const dailySafe = remainingDays > 0 ? Math.max(0, Math.floor(remaining / remainingDays)) : 0;
+
+        let tone = 'muted';
+        let status = 'Belum aktif';
+        let note = 'Atur batas bulanan dulu untuk mengaktifkan jatah mingguan otomatis.';
+
+        if (weeklyBudget > 0) {
+            tone = 'safe';
+            status = 'Aman';
+            note = `Pakai pola anak kos: ${this.formatCurrency(this.monthlyLimit)} dibagi 4 minggu, jadi ${this.formatCurrency(weeklyBudget)} per minggu.`;
+
+            if (!isCurrentMonth) {
+                status = usageRatio > 1 ? 'Lewat Jatah' : 'Realisasi';
+                tone = usageRatio > 1 ? 'danger' : 'safe';
+                note = usageRatio > 1
+                    ? `Minggu ini lewat ${this.formatCurrency(Math.abs(remaining))} dari jatah. Ini bisa jadi bahan evaluasi bulan itu.`
+                    : `Minggu ini masih menyisakan ${this.formatCurrency(Math.max(0, remaining))} dari jatah.`;
+            } else if (usageRatio >= 1) {
+                status = 'Mode Hemat';
+                tone = 'danger';
+                note = `Jatah minggu ini sudah lewat ${this.formatCurrency(Math.abs(remaining))}. Tahan belanja fleksibel sampai minggu baru.`;
+            } else if (usageRatio >= 0.8) {
+                status = 'Mepet';
+                tone = 'warning';
+                note = `Sisa ${this.formatCurrency(Math.max(0, remaining))}. Aman per hari sekitar ${this.formatCurrency(dailySafe)} sampai akhir minggu.`;
+            } else {
+                note = `Sisa ${this.formatCurrency(Math.max(0, remaining))}. Kamu masih aman sekitar ${this.formatCurrency(dailySafe)} per hari minggu ini.`;
+            }
+        }
+
+        return {
+            weeklyBudget,
+            weekExpense,
+            remaining,
+            dailySafe,
+            progressPercent,
+            usageRatio,
+            status,
+            tone,
+            note,
+            weekStart,
+            weekEndVisible,
+            isCurrentMonth
+        };
+    },
+
+    renderWeeklyAllowanceCard: function (monthTransactions = this.getTransactionsByMonth(this.selectedMonth)) {
+        const shell = document.querySelector('.budget-weekly-allowance-shell');
+        const amountEl = document.getElementById('budget-weekly-allowance-amount');
+        const rangeEl = document.getElementById('budget-weekly-allowance-range');
+        const usedEl = document.getElementById('budget-weekly-allowance-used');
+        const leftEl = document.getElementById('budget-weekly-allowance-left');
+        const dailyEl = document.getElementById('budget-weekly-allowance-daily');
+        const paceEl = document.getElementById('budget-weekly-allowance-pace');
+        const progressEl = document.getElementById('budget-weekly-allowance-progress');
+        const statusEl = document.getElementById('budget-weekly-allowance-status');
+        const noteEl = document.getElementById('budget-weekly-allowance-note');
+
+        if (!shell || !amountEl || !rangeEl || !usedEl || !leftEl || !dailyEl || !paceEl || !progressEl || !statusEl || !noteEl) return;
+
+        const plan = this.calculateWeeklyAllowancePlan(monthTransactions);
+        const locale = (typeof i18n !== 'undefined' && typeof i18n.locale === 'function') ? i18n.locale() : 'id-ID';
+        const startLabel = plan.weekStart.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+        const endLabel = plan.weekEndVisible.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+        const pacePercent = plan.weeklyBudget > 0 ? Math.round(plan.usageRatio * 100) : 0;
+
+        shell.dataset.tone = plan.tone;
+        statusEl.innerText = plan.status;
+        statusEl.dataset.tone = plan.tone;
+        amountEl.innerText = this.formatCurrency(plan.weeklyBudget);
+        rangeEl.innerText = plan.weeklyBudget > 0
+            ? `${startLabel} - ${endLabel} • basis limit / 4 minggu`
+            : 'Atur batas bulanan dulu untuk mengaktifkan mode ini.';
+        usedEl.innerText = this.formatCurrency(plan.weekExpense);
+        leftEl.innerText = plan.remaining < 0
+            ? `-${this.formatCurrency(Math.abs(plan.remaining))}`
+            : this.formatCurrency(plan.remaining);
+        leftEl.style.color = plan.remaining < 0 ? 'var(--danger)' : 'var(--text-main)';
+        dailyEl.innerText = this.formatCurrency(plan.dailySafe);
+        paceEl.innerText = `${pacePercent}%`;
+        paceEl.style.color = plan.tone === 'muted'
+            ? 'var(--text-main)'
+            : (plan.tone === 'danger'
+            ? 'var(--danger)'
+            : (plan.tone === 'warning' ? 'var(--warning)' : 'var(--success)'));
+        progressEl.style.width = `${plan.progressPercent}%`;
+        noteEl.innerText = plan.note;
+    },
+
+    persistImpulseWishlist: function () {
+        this.impulseWishlist = this.normalizeImpulseWishlist(this.impulseWishlist);
+        Storage.setBudgetImpulseWishlist(this.impulseWishlist);
+        window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_impulse_wishlist' } }));
+        this.updateDashboard();
+    },
+
+    getImpulseWishlistTimeLabel: function (item) {
+        const state = this.getImpulseWishlistState(item);
+        if (state.key === 'approved') return 'Sudah kamu izinkan untuk dibeli';
+        if (state.key === 'cancelled') return 'Kamu berhasil menahan checkout ini';
+        if (state.key === 'review') return 'Cooldown selesai, saatnya tanya ulang';
+
+        const reviewAt = new Date(item.reviewAt);
+        const diffMs = reviewAt - new Date();
+        if (Number.isNaN(reviewAt.getTime()) || diffMs <= 0) return 'Siap ditinjau';
+
+        const totalMinutes = Math.ceil(diffMs / 60000);
+        const days = Math.floor(totalMinutes / 1440);
+        const hours = Math.floor((totalMinutes % 1440) / 60);
+        const minutes = totalMinutes % 60;
+
+        if (days > 0) return `${days} hari ${hours} jam lagi`;
+        if (hours > 0) return `${hours} jam ${minutes} menit lagi`;
+        return `${minutes} menit lagi`;
+    },
+
+    getImpulseWishlistImpactNote: function (item) {
+        const amount = Math.max(0, Number(item?.amount) || 0);
+        if (amount <= 0) return 'Nominal belum terbaca.';
+
+        const weeklyPlan = this.calculateWeeklyAllowancePlan(this.getTransactionsByMonth(this.selectedMonth));
+        if (weeklyPlan.weeklyBudget > 0) {
+            if (amount > weeklyPlan.remaining) {
+                return `Kalau dibeli sekarang, jatah mingguan bisa minus ${this.formatCurrency(amount - Math.max(0, weeklyPlan.remaining))}.`;
+            }
+            const daysEquivalent = weeklyPlan.dailySafe > 0 ? Math.max(1, Math.ceil(amount / weeklyPlan.dailySafe)) : 0;
+            if (daysEquivalent > 0) {
+                return `Setara kira-kira ${daysEquivalent} hari jatah aman minggu ini.`;
+            }
+        }
+
+        const monthlyRatio = this.monthlyLimit > 0 ? Math.round((amount / this.monthlyLimit) * 100) : 0;
+        return monthlyRatio > 0
+            ? `Sekitar ${monthlyRatio}% dari limit bulananmu.`
+            : 'Bandingkan dulu dengan kebutuhan makan, transport, dan tagihan wajib.';
+    },
+
+    renderImpulseWishlistCard: function () {
+        const emptyEl = document.getElementById('budget-impulse-empty');
+        const listEl = document.getElementById('budget-impulse-list');
+        const summaryEl = document.getElementById('budget-impulse-summary');
+        const savedEl = document.getElementById('budget-impulse-saved');
+        const reviewCountEl = document.getElementById('budget-impulse-review-count');
+        const resetSavedBtn = document.getElementById('budget-impulse-reset-saved');
+        if (!emptyEl || !listEl || !summaryEl || !savedEl || !reviewCountEl) return;
+
+        this.impulseWishlist = this.normalizeImpulseWishlist(this.impulseWishlist);
+        const activeItems = this.impulseWishlist.filter((item) => {
+            const state = this.getImpulseWishlistState(item);
+            return state.key === 'cooling' || state.key === 'review';
+        });
+        const reviewItems = activeItems.filter((item) => this.getImpulseWishlistState(item).key === 'review');
+        const cancelledTotal = this.impulseWishlist
+            .filter((item) => item.status === 'cancelled')
+            .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+
+        summaryEl.innerText = activeItems.length > 0
+            ? `${activeItems.length} barang sedang ditahan biar kepala tetap dingin`
+            : 'Tidak ada checkout yang sedang ditahan';
+        savedEl.innerText = this.formatCurrency(cancelledTotal);
+        reviewCountEl.innerText = `${reviewItems.length} item`;
+        if (resetSavedBtn) {
+            resetSavedBtn.disabled = cancelledTotal <= 0;
+            resetSavedBtn.title = cancelledTotal > 0
+                ? 'Reset uang terselamatkan'
+                : 'Belum ada uang terselamatkan untuk direset';
+        }
+
+        if (activeItems.length === 0) {
+            emptyEl.style.display = 'block';
+            listEl.style.display = 'none';
+            listEl.innerHTML = '';
+            return;
+        }
+
+        emptyEl.style.display = 'none';
+        listEl.style.display = 'grid';
+        listEl.innerHTML = '';
+
+        activeItems.slice(0, 4).forEach((item) => {
+            const state = this.getImpulseWishlistState(item);
+            const card = document.createElement('div');
+            card.className = 'budget-impulse-item';
+            card.dataset.tone = state.tone;
+            card.innerHTML = `
+                <div class="budget-impulse-item-top">
+                    <div>
+                        <p class="budget-impulse-item-name">${this.escapeHtml(item.name)}</p>
+                        <p class="budget-impulse-item-meta">${this.escapeHtml(item.reason || 'Belum ada alasan tertulis')}</p>
+                    </div>
+                    <span class="budget-impulse-chip" data-tone="${state.tone}">${state.label}</span>
+                </div>
+                <div class="budget-impulse-item-mid">
+                    <strong>${this.formatCurrency(Number(item.amount) || 0)}</strong>
+                    <small>${this.getImpulseWishlistTimeLabel(item)}</small>
+                </div>
+                <p class="budget-impulse-impact">${this.escapeHtml(this.getImpulseWishlistImpactNote(item))}</p>
+                <div class="budget-impulse-item-actions">
+                    ${state.key === 'review'
+                        ? `<button type="button" class="btn btn-primary" data-impulse-buy="${item.id}"><i class="ph ph-shopping-bag-open"></i> Masih Mau</button>
+                           <button type="button" class="btn btn-outline" data-impulse-snooze="${item.id}"><i class="ph ph-clock-countdown"></i> Tunda Lagi</button>`
+                        : `<button type="button" class="btn btn-outline" data-impulse-snooze="${item.id}"><i class="ph ph-clock-countdown"></i> Tunda</button>`
+                    }
+                    <button type="button" class="btn btn-outline" data-impulse-cancel="${item.id}"><i class="ph ph-x-circle"></i> Batalin</button>
+                </div>
+            `;
+
+            const buyBtn = card.querySelector('[data-impulse-buy]');
+            if (buyBtn) buyBtn.onclick = () => this.approveImpulseWishlistItem(item.id);
+
+            const snoozeBtn = card.querySelector('[data-impulse-snooze]');
+            if (snoozeBtn) snoozeBtn.onclick = () => this.snoozeImpulseWishlistItem(item.id, 24);
+
+            const cancelBtn = card.querySelector('[data-impulse-cancel]');
+            if (cancelBtn) cancelBtn.onclick = () => this.cancelImpulseWishlistItem(item.id);
+
+            listEl.appendChild(card);
+        });
+    },
+
+    resetImpulseSavedAmount: function () {
+        const cancelledItems = this.impulseWishlist.filter((item) => item.status === 'cancelled');
+        if (cancelledItems.length === 0) {
+            if (typeof inboxManager !== 'undefined') inboxManager.showToast('Belum ada uang terselamatkan untuk direset');
+            return;
+        }
+
+        const confirmed = confirm('Reset angka uang terselamatkan? Item wishlist aktif tidak akan dihapus.');
+        if (!confirmed) return;
+
+        this.impulseWishlist = this.impulseWishlist.filter((item) => item.status !== 'cancelled');
+        this.persistImpulseWishlist();
+        if (typeof inboxManager !== 'undefined') inboxManager.showToast('Uang terselamatkan berhasil direset');
+    },
+
     renderManualBalanceInfo: function () {
         const infoEl = document.getElementById('budget-manual-balance-info');
         if (!infoEl) return;
@@ -2725,6 +3059,7 @@ const budgetManager = {
     },
 
     openWeeklyComparisonModal: function () {
+        this.weeklyReportActiveIndex = null;
         this.renderWeeklyComparisonModal();
         const modal = document.getElementById('modal-budget-weekly-comparison');
         if (modal) modal.classList.add('active');
@@ -2737,6 +3072,11 @@ const budgetManager = {
             this.weeklyComparisonChart.destroy();
             this.weeklyComparisonChart = null;
         }
+    },
+
+    setWeeklyReportWeek: function (weekIndex) {
+        this.weeklyReportActiveIndex = Number.isInteger(weekIndex) ? weekIndex : null;
+        this.renderWeeklyComparisonModal();
     },
 
     getYearlyExpenseSeries: function (year = this.selectedMonth.getFullYear()) {
@@ -2803,6 +3143,168 @@ const budgetManager = {
         }
 
         return result;
+    },
+
+    getTransactionsBetweenDates: function (startDate, endDate, transactions = this.transactions) {
+        const start = this.getStartOfDay(startDate);
+        const end = this.getStartOfDay(endDate);
+        if (!start || !end) return [];
+
+        return (Array.isArray(transactions) ? transactions : []).filter((tx) => {
+            if (!tx || tx.isTransfer) return false;
+            const txDate = this.getTransactionDate(tx);
+            if (Number.isNaN(txDate.getTime())) return false;
+            return txDate >= start && txDate < end;
+        });
+    },
+
+    calculateWeeklyReport: function (week, previousWeek = null) {
+        const weekTx = this.getTransactionsBetweenDates(week.start, week.endExclusive, this.transactions);
+        const previousTx = previousWeek
+            ? this.getTransactionsBetweenDates(previousWeek.start, previousWeek.endExclusive, this.transactions)
+            : [];
+        const totals = this.calculateTotals(weekTx);
+        const previousTotals = this.calculateTotals(previousTx);
+        const expenseTx = weekTx.filter((tx) => tx?.type === 'expense' && !tx?.isTransfer);
+        const previousExpenseTx = previousTx.filter((tx) => tx?.type === 'expense' && !tx?.isTransfer);
+        const byCategory = this.getExpensesByCategory(expenseTx);
+        const previousByCategory = this.getExpensesByCategory(previousExpenseTx);
+        const categoryEntries = Object.entries(byCategory).sort((a, b) => b[1] - a[1]);
+        const topCategory = categoryEntries[0] || null;
+        const categoryRiseEntries = Object.keys({ ...byCategory, ...previousByCategory })
+            .map((category) => ({
+                category,
+                current: Number(byCategory[category]) || 0,
+                previous: Number(previousByCategory[category]) || 0,
+                delta: (Number(byCategory[category]) || 0) - (Number(previousByCategory[category]) || 0)
+            }))
+            .filter((entry) => entry.delta > 0)
+            .sort((a, b) => b.delta - a.delta);
+        const topRise = categoryRiseEntries[0] || null;
+        const topTransactions = [...expenseTx]
+            .sort((a, b) => (Number(b.amount) || 0) - (Number(a.amount) || 0))
+            .slice(0, 3);
+        const quickWinTransactions = topTransactions.slice(0, 2);
+        const quickWinAmount = quickWinTransactions.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+        const net = totals.income - totals.expense;
+        const deltaExpense = totals.expense - previousTotals.expense;
+
+        let status = 'Aman';
+        let tone = 'safe';
+        if (totals.expense <= 0) {
+            status = 'Belum Ada Data';
+            tone = 'muted';
+        } else if (previousWeek && deltaExpense > 0) {
+            status = 'Naik';
+            tone = 'warning';
+        } else if (previousWeek && deltaExpense < 0) {
+            status = 'Turun';
+            tone = 'safe';
+        }
+
+        return {
+            weekTx,
+            expenseTx,
+            totals,
+            previousTotals,
+            net,
+            deltaExpense,
+            topCategory,
+            topRise,
+            topTransactions,
+            quickWinTransactions,
+            quickWinAmount,
+            status,
+            tone
+        };
+    },
+
+    buildWeeklyReportStory: function (week, report, previousWeek = null) {
+        if (!report || report.totals.expense <= 0) {
+            return `${week.label} belum punya pengeluaran tercatat. Kalau ini memang minggu tenang, dompet lagi bisa napas.`;
+        }
+
+        const topCategoryName = report.topCategory
+            ? (i18n.t('budget_cat_' + report.topCategory[0]) || report.topCategory[0])
+            : 'pengeluaran';
+
+        if (previousWeek && report.deltaExpense > 0) {
+            return `${week.label} naik ${this.formatCurrency(report.deltaExpense)} dari ${previousWeek.label}. Titik bocor terbesar ada di ${topCategoryName}, jadi itu area pertama yang enak dicek.`;
+        }
+
+        if (previousWeek && report.deltaExpense < 0) {
+            return `${week.label} lebih hemat ${this.formatCurrency(Math.abs(report.deltaExpense))} dari ${previousWeek.label}. Ritme ini bagus dipertahankan, terutama kalau penurunan datang dari belanja fleksibel.`;
+        }
+
+        return `${week.label} punya pengeluaran ${this.formatCurrency(report.totals.expense)}. Kategori ${topCategoryName} paling dominan minggu ini, jadi cocok jadi fokus evaluasi kecil.`;
+    },
+
+    renderWeeklyReportDetails: function (week, previousWeek, report, formatRange, els) {
+        els['budget-weekly-report-title'].innerText = `${week.label} • ${formatRange(week.visibleStart, week.visibleEnd)}`;
+        els['budget-weekly-report-status'].innerText = report.status;
+        els['budget-weekly-report-status'].dataset.tone = report.tone;
+        els['budget-weekly-report-income'].innerText = this.formatCurrency(report.totals.income);
+        els['budget-weekly-report-expense'].innerText = this.formatCurrency(report.totals.expense);
+        els['budget-weekly-report-net'].innerText = `${report.net < 0 ? '-' : ''}${this.formatCurrency(Math.abs(report.net))}`;
+        els['budget-weekly-report-net'].style.color = report.net < 0 ? 'var(--danger)' : (report.net > 0 ? 'var(--success)' : 'var(--text-main)');
+        els['budget-weekly-report-count'].innerText = `${report.weekTx.length}`;
+
+        if (report.topCategory) {
+            const [category, amount] = report.topCategory;
+            const categoryName = i18n.t('budget_cat_' + category) || category;
+            const share = report.totals.expense > 0 ? Math.round((amount / report.totals.expense) * 100) : 0;
+            els['budget-weekly-report-leak'].innerText = `${categoryName} • ${this.formatCurrency(amount)}`;
+            els['budget-weekly-report-leak-note'].innerText = `${share}% dari pengeluaran minggu ini ada di kategori ini.`;
+        } else {
+            els['budget-weekly-report-leak'].innerText = '-';
+            els['budget-weekly-report-leak-note'].innerText = 'Belum ada pengeluaran minggu ini.';
+        }
+
+        if (report.topRise) {
+            const categoryName = i18n.t('budget_cat_' + report.topRise.category) || report.topRise.category;
+            els['budget-weekly-report-rise'].innerText = `${categoryName} +${this.formatCurrency(report.topRise.delta)}`;
+            els['budget-weekly-report-rise-note'].innerText = `Minggu lalu ${this.formatCurrency(report.topRise.previous)}, minggu ini ${this.formatCurrency(report.topRise.current)}.`;
+        } else if (!previousWeek) {
+            els['budget-weekly-report-rise'].innerText = 'Minggu pertama';
+            els['budget-weekly-report-rise-note'].innerText = 'Belum ada minggu sebelumnya untuk pembanding.';
+        } else {
+            els['budget-weekly-report-rise'].innerText = 'Tidak ada kenaikan';
+            els['budget-weekly-report-rise-note'].innerText = 'Kategori pengeluaran tidak naik dibanding minggu lalu.';
+        }
+
+        if (report.quickWinAmount > 0) {
+            els['budget-weekly-report-quickwin'].innerText = this.formatCurrency(report.quickWinAmount);
+            els['budget-weekly-report-quickwin-note'].innerText = `Potensi hemat kalau tahan ${report.quickWinTransactions.length} transaksi terbesar minggu ini.`;
+        } else {
+            els['budget-weekly-report-quickwin'].innerText = '-';
+            els['budget-weekly-report-quickwin-note'].innerText = 'Belum ada transaksi yang bisa dianalisis.';
+        }
+
+        const listEl = els['budget-weekly-report-top-list'];
+        listEl.innerHTML = '';
+        if (report.topTransactions.length === 0) {
+            listEl.innerHTML = '<div class="budget-weekly-report-empty">Belum ada transaksi pengeluaran minggu ini.</div>';
+            return;
+        }
+
+        report.topTransactions.forEach((tx, index) => {
+            const categoryName = i18n.t('budget_cat_' + tx.category) || tx.category;
+            const txDate = this.getTransactionDate(tx);
+            const dateLabel = Number.isNaN(txDate.getTime()) ? '-' : txDate.toLocaleDateString(i18n.locale(), { day: 'numeric', month: 'short' });
+            const row = document.createElement('button');
+            row.type = 'button';
+            row.className = 'budget-weekly-report-top-row';
+            row.onclick = () => this.openEditModal(tx.id);
+            row.innerHTML = `
+                <span class="budget-weekly-report-rank">#${index + 1}</span>
+                <span class="budget-weekly-report-top-main">
+                    <strong>${this.escapeHtml(tx.note || categoryName)}</strong>
+                    <small>${this.escapeHtml(categoryName)} • ${dateLabel}</small>
+                </span>
+                <span class="budget-weekly-report-top-amount">${this.formatCurrency(Number(tx.amount) || 0)}</span>
+            `;
+            listEl.appendChild(row);
+        });
     },
 
     renderYearlyComparisonModal: function () {
@@ -2980,9 +3482,17 @@ const budgetManager = {
         const trendDirectionEl = document.getElementById('budget-weekly-trend-direction');
         const trendNoteEl = document.getElementById('budget-weekly-trend-note');
         const storyEl = document.getElementById('budget-weekly-story');
+        const reportIds = [
+            'budget-weekly-report-tabs', 'budget-weekly-report-title', 'budget-weekly-report-status',
+            'budget-weekly-report-income', 'budget-weekly-report-expense', 'budget-weekly-report-net',
+            'budget-weekly-report-count', 'budget-weekly-report-leak', 'budget-weekly-report-leak-note',
+            'budget-weekly-report-rise', 'budget-weekly-report-rise-note', 'budget-weekly-report-quickwin',
+            'budget-weekly-report-quickwin-note', 'budget-weekly-report-top-list'
+        ];
+        const reportEls = Object.fromEntries(reportIds.map((id) => [id, document.getElementById(id)]));
         const canvas = document.getElementById('budgetWeeklyComparisonChart');
 
-        if (!subtitleEl || !activeExpenseEl || !activeNoteEl || !averageExpenseEl || !averageNoteEl || !peakLabelEl || !peakNoteEl || !trendDirectionEl || !trendNoteEl || !storyEl || !canvas) {
+        if (!subtitleEl || !activeExpenseEl || !activeNoteEl || !averageExpenseEl || !averageNoteEl || !peakLabelEl || !peakNoteEl || !trendDirectionEl || !trendNoteEl || !storyEl || Object.values(reportEls).some((el) => !el) || !canvas) {
             return;
         }
 
@@ -2998,6 +3508,20 @@ const budgetManager = {
             trendDirectionEl.innerText = '-';
             trendNoteEl.innerText = 'Belum ada data';
             storyEl.innerText = 'Belum ada cukup transaksi pengeluaran di bulan ini untuk membuat laporan mingguan.';
+            reportEls['budget-weekly-report-tabs'].innerHTML = '';
+            reportEls['budget-weekly-report-title'].innerText = '-';
+            reportEls['budget-weekly-report-status'].innerText = '-';
+            reportEls['budget-weekly-report-income'].innerText = 'Rp 0';
+            reportEls['budget-weekly-report-expense'].innerText = 'Rp 0';
+            reportEls['budget-weekly-report-net'].innerText = 'Rp 0';
+            reportEls['budget-weekly-report-count'].innerText = '0';
+            reportEls['budget-weekly-report-leak'].innerText = '-';
+            reportEls['budget-weekly-report-leak-note'].innerText = 'Belum ada kategori dominan.';
+            reportEls['budget-weekly-report-rise'].innerText = '-';
+            reportEls['budget-weekly-report-rise-note'].innerText = 'Belum ada pembanding.';
+            reportEls['budget-weekly-report-quickwin'].innerText = '-';
+            reportEls['budget-weekly-report-quickwin-note'].innerText = 'Catat transaksi dulu supaya saran lebih tajam.';
+            reportEls['budget-weekly-report-top-list'].innerHTML = '<div class="budget-weekly-report-empty">Belum ada transaksi minggu ini.</div>';
             return;
         }
 
@@ -3008,9 +3532,15 @@ const budgetManager = {
         const activeWeekStart = this.getStartOfWeek(activeReferenceDate);
         let activeIndex = weeklySeries.findIndex((item) => +item.start === +activeWeekStart);
         if (activeIndex < 0) activeIndex = weeklySeries.length - 1;
+        if (Number.isInteger(this.weeklyReportActiveIndex) && this.weeklyReportActiveIndex >= 0 && this.weeklyReportActiveIndex < weeklySeries.length) {
+            activeIndex = this.weeklyReportActiveIndex;
+        } else {
+            this.weeklyReportActiveIndex = activeIndex;
+        }
 
         const activeWeek = weeklySeries[activeIndex];
         const previousWeek = activeIndex > 0 ? weeklySeries[activeIndex - 1] : null;
+        const weeklyReport = this.calculateWeeklyReport(activeWeek, previousWeek);
         const weeksWithActivity = weeklySeries.filter((item) => item.expense > 0);
         const averageExpense = weeksWithActivity.length > 0
             ? Math.round(weeksWithActivity.reduce((sum, item) => sum + item.expense, 0) / weeksWithActivity.length)
@@ -3022,6 +3552,16 @@ const budgetManager = {
         const formatRange = (start, end) => `${start.toLocaleDateString(i18n.locale(), { day: 'numeric', month: 'short' })} - ${end.toLocaleDateString(i18n.locale(), { day: 'numeric', month: 'short' })}`;
 
         subtitleEl.innerText = `${this.getMonthLabel(this.selectedMonth)} • ${weeklySeries.length} pekan terpetakan`;
+        reportEls['budget-weekly-report-tabs'].innerHTML = '';
+        weeklySeries.forEach((week, index) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `budget-weekly-report-tab${index === activeIndex ? ' is-active' : ''}`;
+            btn.innerHTML = `<strong>${week.label}</strong><span>${formatRange(week.visibleStart, week.visibleEnd)}</span>`;
+            btn.onclick = () => this.setWeeklyReportWeek(index);
+            reportEls['budget-weekly-report-tabs'].appendChild(btn);
+        });
+
         activeExpenseEl.innerText = this.formatCurrency(activeWeek.expense);
         activeNoteEl.innerText = formatRange(activeWeek.visibleStart, activeWeek.visibleEnd);
 
@@ -3062,6 +3602,9 @@ const budgetManager = {
         } else {
             storyEl.innerText = `${activeWeek.label} masih bergerak dalam batas yang cukup wajar untuk ${this.getMonthLabel(this.selectedMonth)}. Grafik mingguan ini cocok dipakai untuk melihat kapan ritme pengeluaran mulai naik atau kembali tenang.`;
         }
+
+        storyEl.innerText = this.buildWeeklyReportStory(activeWeek, weeklyReport, previousWeek);
+        this.renderWeeklyReportDetails(activeWeek, previousWeek, weeklyReport, formatRange, reportEls);
 
         const labels = weeklySeries.map((item) => item.shortLabel);
         const values = weeklySeries.map((item) => item.expense);
@@ -4012,6 +4555,161 @@ const budgetManager = {
         if (typeof inboxManager !== 'undefined') inboxManager.showToast('Semua tujuan nabung berhasil di-reset');
     },
 
+    openImpulseWishlistModal: function (itemId = null) {
+        const modal = document.getElementById('modal-budget-impulse');
+        const titleEl = document.getElementById('budget-impulse-modal-title');
+        const idInput = document.getElementById('budget-impulse-id');
+        const nameInput = document.getElementById('budget-impulse-name');
+        const amountInput = document.getElementById('budget-impulse-amount');
+        const reasonInput = document.getElementById('budget-impulse-reason');
+        const cooldownInput = document.getElementById('budget-impulse-cooldown');
+        const deleteBtn = document.getElementById('budget-impulse-delete-btn');
+        if (!modal || !titleEl || !idInput || !nameInput || !amountInput || !reasonInput || !cooldownInput || !deleteBtn) return;
+
+        const item = itemId ? this.impulseWishlist.find((entry) => entry.id === itemId) : null;
+        titleEl.innerText = item ? 'Edit Wishlist Anti-Impulse' : 'Tambah Wishlist Anti-Impulse';
+        idInput.value = item?.id || '';
+        nameInput.value = item?.name || '';
+        this.setNominalInputValue('budget-impulse-amount', item?.amount || '');
+        reasonInput.value = item?.reason || '';
+        cooldownInput.value = String(item?.cooldownHours || 72);
+        deleteBtn.style.display = item ? 'inline-flex' : 'none';
+
+        modal.classList.add('active');
+        setTimeout(() => nameInput.focus(), 100);
+    },
+
+    closeImpulseWishlistModal: function () {
+        const modal = document.getElementById('modal-budget-impulse');
+        if (modal) modal.classList.remove('active');
+    },
+
+    saveImpulseWishlistItem: function (event) {
+        event.preventDefault();
+
+        const id = document.getElementById('budget-impulse-id')?.value || '';
+        const name = (document.getElementById('budget-impulse-name')?.value || '').trim();
+        const amount = this.parseNominalInput(document.getElementById('budget-impulse-amount')?.value || '');
+        const reason = (document.getElementById('budget-impulse-reason')?.value || '').trim();
+        const cooldownHours = Number(document.getElementById('budget-impulse-cooldown')?.value) || 72;
+
+        if (!name || amount <= 0) {
+            if (typeof inboxManager !== 'undefined') inboxManager.showToast(!name ? 'Nama barang wajib diisi' : 'Nominal wishlist tidak valid');
+            return;
+        }
+
+        const now = new Date();
+        const reviewAt = new Date(now);
+        reviewAt.setHours(reviewAt.getHours() + cooldownHours);
+        const previous = id ? this.impulseWishlist.find((entry) => entry.id === id) : null;
+
+        const nextItem = {
+            id: id || ((typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-${Math.random().toString(16).slice(2)}`),
+            name,
+            amount,
+            category: 'shopping',
+            reason,
+            cooldownHours,
+            status: 'cooling',
+            createdAt: previous?.createdAt || now.toISOString(),
+            reviewAt: reviewAt.toISOString(),
+            decidedAt: null,
+            decisionNote: ''
+        };
+
+        if (id) {
+            const index = this.impulseWishlist.findIndex((entry) => entry.id === id);
+            if (index > -1) this.impulseWishlist[index] = { ...this.impulseWishlist[index], ...nextItem };
+        } else {
+            this.impulseWishlist.unshift(nextItem);
+        }
+
+        this.closeImpulseWishlistModal();
+        this.persistImpulseWishlist();
+        if (typeof inboxManager !== 'undefined') inboxManager.showToast('Wishlist masuk ruang tunggu. Kita tahan checkout dulu.');
+    },
+
+    deleteImpulseWishlistItemFromModal: function () {
+        const id = document.getElementById('budget-impulse-id')?.value || '';
+        if (!id) return;
+        this.deleteImpulseWishlistItem(id);
+        this.closeImpulseWishlistModal();
+    },
+
+    deleteImpulseWishlistItem: function (itemId) {
+        const item = this.impulseWishlist.find((entry) => entry.id === itemId);
+        if (!item) return;
+        const confirmed = confirm(`Hapus wishlist "${item.name}"?`);
+        if (!confirmed) return;
+        this.impulseWishlist = this.impulseWishlist.filter((entry) => entry.id !== itemId);
+        this.persistImpulseWishlist();
+        if (typeof inboxManager !== 'undefined') inboxManager.showToast('Wishlist dihapus');
+    },
+
+    cancelImpulseWishlistItem: function (itemId) {
+        const item = this.impulseWishlist.find((entry) => entry.id === itemId);
+        if (!item) return;
+        const confirmed = confirm(`Batalin "${item.name}" dan simpan sebagai uang yang berhasil diselamatkan?`);
+        if (!confirmed) return;
+        const index = this.impulseWishlist.findIndex((entry) => entry.id === itemId);
+        if (index > -1) {
+            this.impulseWishlist[index] = {
+                ...this.impulseWishlist[index],
+                status: 'cancelled',
+                decidedAt: new Date().toISOString(),
+                decisionNote: 'Dibatalkan setelah cooldown'
+            };
+        }
+        this.persistImpulseWishlist();
+        if (typeof inboxManager !== 'undefined') inboxManager.showToast(`Mantap, kamu menyelamatkan ${this.formatCurrency(item.amount)}`);
+    },
+
+    snoozeImpulseWishlistItem: function (itemId, hours = 24) {
+        const item = this.impulseWishlist.find((entry) => entry.id === itemId);
+        if (!item) return;
+        const reviewAt = new Date();
+        reviewAt.setHours(reviewAt.getHours() + Math.max(1, Number(hours) || 24));
+        const index = this.impulseWishlist.findIndex((entry) => entry.id === itemId);
+        if (index > -1) {
+            this.impulseWishlist[index] = {
+                ...this.impulseWishlist[index],
+                status: 'cooling',
+                cooldownHours: Math.max(1, Number(hours) || 24),
+                reviewAt: reviewAt.toISOString()
+            };
+        }
+        this.persistImpulseWishlist();
+        if (typeof inboxManager !== 'undefined') inboxManager.showToast('Wishlist ditunda 24 jam lagi');
+    },
+
+    approveImpulseWishlistItem: function (itemId) {
+        const item = this.impulseWishlist.find((entry) => entry.id === itemId);
+        if (!item) return;
+
+        const index = this.impulseWishlist.findIndex((entry) => entry.id === itemId);
+        if (index > -1) {
+            this.impulseWishlist[index] = {
+                ...this.impulseWishlist[index],
+                status: 'approved',
+                decidedAt: new Date().toISOString(),
+                decisionNote: 'Tetap ingin membeli setelah cooldown'
+            };
+            Storage.setBudgetImpulseWishlist(this.normalizeImpulseWishlist(this.impulseWishlist));
+        }
+
+        this.openAddModal();
+        this.setNominalInputValue('budget-tx-amount', item.amount);
+        const shoppingCat = document.querySelector('input[name="budget-category"][value="shopping"]');
+        if (shoppingCat) shoppingCat.checked = true;
+        const noteInput = document.getElementById('budget-tx-note');
+        if (noteInput) noteInput.value = `Wishlist: ${item.name}`;
+        const titleEl = document.getElementById('budget-modal-title');
+        if (titleEl) titleEl.innerText = 'Catat Pembelian Wishlist';
+        this.previewFundSourceWarning();
+        this.updateDashboard();
+        if (typeof inboxManager !== 'undefined') inboxManager.showToast('Modal transaksi sudah disiapkan. Keputusan sadar, bukan checkout dadakan.');
+    },
+
     // --- Modal Logic ---
 
     openLimitModal: function () {
@@ -4187,6 +4885,7 @@ const budgetManager = {
         this.topCategoryEntries = [];
         this.savingsGoals = [];
         this.recurringBills = [];
+        this.impulseWishlist = [];
         this.activeSavingsGoalId = null;
         this.selectedMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
@@ -4196,17 +4895,20 @@ const budgetManager = {
         Storage.setBudgetBaseBalance(0);
         Storage.setBudgetSavingsGoals([]);
         Storage.setBudgetRecurringBills([]);
+        Storage.setBudgetImpulseWishlist([]);
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_tx' } }));
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_accounts' } }));
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_limit' } }));
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_base_balance' } }));
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_savings_goals' } }));
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_recurring_bills' } }));
+        window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_impulse_wishlist' } }));
 
         this.closeTopCategoriesModal();
         this.closeSavingsGoalModal();
         this.closeSavingsProgressModal();
         this.closeRecurringBillModal();
+        this.closeImpulseWishlistModal();
         this.closeTransactionHistoryModal();
         if (typeof inboxManager !== 'undefined') inboxManager.showToast('Catatan keuangan berhasil di-reset');
     },

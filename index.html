@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="assets/icon.png">
 
     <title>UniLife Tracker</title>
-    <link rel="stylesheet" href="css/styles.css?v=1.3.6
+    <link rel="stylesheet" href="css/styles.css?v=1.3.7
     ">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -1190,6 +1190,98 @@
                     </div>
                 </div>
 
+                <div class="card budget-weekly-allowance-shell budget-reveal-card">
+                    <div class="budget-weekly-allowance-glow budget-weekly-allowance-glow-a" aria-hidden="true"></div>
+                    <div class="budget-weekly-allowance-glow budget-weekly-allowance-glow-b" aria-hidden="true"></div>
+
+                    <div class="budget-weekly-allowance-head">
+                        <div>
+                            <p class="budget-weekly-allowance-kicker">
+                                <i class="ph ph-calendar-check"></i> Mode Uang Mingguan
+                            </p>
+                            <h3>Jatah aman buat minggu ini</h3>
+                        </div>
+                        <span id="budget-weekly-allowance-status" class="budget-weekly-allowance-status">Belum aktif</span>
+                    </div>
+
+                    <div class="budget-weekly-allowance-hero">
+                        <div>
+                            <p class="budget-weekly-allowance-label">Jatah Mingguan</p>
+                            <h4 id="budget-weekly-allowance-amount">Rp 0</h4>
+                            <small id="budget-weekly-allowance-range">Atur batas bulanan dulu untuk mengaktifkan mode ini.</small>
+                        </div>
+                        <button type="button" class="budget-weekly-allowance-action" onclick="budgetManager.openLimitModal()">
+                            <i class="ph ph-sliders-horizontal"></i>
+                            <span>Atur Limit</span>
+                        </button>
+                    </div>
+
+                    <div class="budget-weekly-allowance-progress-wrap">
+                        <div id="budget-weekly-allowance-progress" class="budget-weekly-allowance-progress"></div>
+                    </div>
+
+                    <div class="budget-weekly-allowance-grid">
+                        <div class="budget-weekly-allowance-stat">
+                            <span>Terpakai</span>
+                            <strong id="budget-weekly-allowance-used">Rp 0</strong>
+                        </div>
+                        <div class="budget-weekly-allowance-stat">
+                            <span>Sisa Aman</span>
+                            <strong id="budget-weekly-allowance-left">Rp 0</strong>
+                        </div>
+                        <div class="budget-weekly-allowance-stat">
+                            <span>Aman / Hari</span>
+                            <strong id="budget-weekly-allowance-daily">Rp 0</strong>
+                        </div>
+                        <div class="budget-weekly-allowance-stat">
+                            <span>Pace</span>
+                            <strong id="budget-weekly-allowance-pace">0%</strong>
+                        </div>
+                    </div>
+
+                    <p id="budget-weekly-allowance-note" class="budget-weekly-allowance-note">
+                        Mode ini cocok untuk uang bulanan anak kos: limit bulanan dibagi 4, lalu dipantau per minggu.
+                    </p>
+                </div>
+
+                <div class="card budget-impulse-shell budget-reveal-card">
+                    <div class="budget-impulse-head">
+                        <div>
+                            <p class="budget-impulse-kicker">
+                                <i class="ph ph-hourglass-medium"></i> Wishlist Anti-Impulse
+                            </p>
+                            <h3>Ruang tunggu sebelum checkout</h3>
+                            <p id="budget-impulse-summary">Tidak ada checkout yang sedang ditahan</p>
+                        </div>
+                        <button type="button" class="budget-impulse-add-btn" onclick="budgetManager.openImpulseWishlistModal()">
+                            <i class="ph ph-plus"></i> Tambah
+                        </button>
+                    </div>
+
+                    <div class="budget-impulse-mini-grid">
+                        <div class="budget-impulse-mini-card">
+                            <div class="budget-impulse-mini-card-head">
+                                <span>Uang terselamatkan</span>
+                                <button type="button" id="budget-impulse-reset-saved" class="budget-impulse-reset-saved-btn"
+                                    onclick="budgetManager.resetImpulseSavedAmount()" title="Reset uang terselamatkan">
+                                    <i class="ph ph-arrow-counter-clockwise"></i>
+                                </button>
+                            </div>
+                            <strong id="budget-impulse-saved">Rp 0</strong>
+                        </div>
+                        <div class="budget-impulse-mini-card">
+                            <span>Siap ditanya ulang</span>
+                            <strong id="budget-impulse-review-count">0 item</strong>
+                        </div>
+                    </div>
+
+                    <div id="budget-impulse-empty" class="budget-impulse-empty">
+                        <i class="ph ph-shopping-cart-simple"></i>
+                        <p>Masukkan barang yang bikin gatel checkout. App akan nahan 24 jam / 3 hari / 7 hari, lalu tanya: “Masih pengen beli?”</p>
+                    </div>
+                    <div id="budget-impulse-list" class="budget-impulse-list" style="display:none;"></div>
+                </div>
+
                 <div class="card budget-goal-shell budget-reveal-card" style="padding: 1rem; margin-bottom: 1.5rem;">
                     <div class="budget-goal-head" style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; margin-bottom:0.8rem;">
                         <h3 style="font-size: 1rem; font-weight: 700; color: var(--text-main); display:flex; align-items:center; gap:0.45rem;">
@@ -1359,10 +1451,10 @@
                         </button>
                     </div>
                     <button type="button" class="budget-weekly-summary budget-clickable-insight"
-                        onclick="budgetManager.openWeeklyComparisonModal()" title="Lihat tren mingguan dalam bulan ini">
-                        <p class="budget-weekly-summary-label">Ringkasan Mingguan Otomatis</p>
+                        onclick="budgetManager.openWeeklyComparisonModal()" title="Buka laporan keuangan mingguan">
+                        <p class="budget-weekly-summary-label">Laporan Keuangan Mingguan</p>
                         <h4 id="budget-weekly-expense">Rp 0</h4>
-                        <small id="budget-weekly-note">Belum ada data pengeluaran minggu ini</small>
+                        <small id="budget-weekly-note">Tap untuk buka summary per minggu</small>
                     </button>
                 </div>
 
@@ -2157,6 +2249,48 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="modal-budget-impulse">
+        <div class="modal-content budget-impulse-modal-content">
+            <button class="modal-close" onclick="budgetManager.closeImpulseWishlistModal()"><i class="ph ph-x"></i></button>
+            <h3 id="budget-impulse-modal-title">Tambah Wishlist Anti-Impulse</h3>
+            <p class="budget-impulse-modal-note">
+                Tahan dulu barang yang bikin impulsif. Setelah cooldown, tanyakan lagi ke diri sendiri: masih butuh, atau cuma capek nugas?
+            </p>
+
+            <form id="form-budget-impulse" onsubmit="budgetManager.saveImpulseWishlistItem(event)">
+                <input type="hidden" id="budget-impulse-id">
+                <div class="form-group">
+                    <label>Nama Barang</label>
+                    <input type="text" id="budget-impulse-name" required placeholder="Contoh: Headset Bluetooth">
+                </div>
+                <div class="form-group">
+                    <label>Perkiraan Harga (Rp)</label>
+                    <input type="text" inputmode="numeric" id="budget-impulse-amount" required placeholder="Contoh: 180.000" oninput="budgetManager.handleNominalInput('budget-impulse-amount')">
+                </div>
+                <div class="form-group">
+                    <label>Alasan Pengen Beli</label>
+                    <input type="text" id="budget-impulse-reason" placeholder="Contoh: Biar enak kelas online">
+                </div>
+                <div class="form-group">
+                    <label>Cooldown</label>
+                    <select id="budget-impulse-cooldown">
+                        <option value="24">24 jam - cek ulang besok</option>
+                        <option value="72" selected>3 hari - kepala dingin dulu</option>
+                        <option value="168">7 hari - barang mahal / rawan impulsif</option>
+                    </select>
+                </div>
+                <div class="budget-impulse-modal-actions">
+                    <button type="button" id="budget-impulse-delete-btn" class="btn btn-outline" style="display:none;" onclick="budgetManager.deleteImpulseWishlistItemFromModal()">
+                        <i class="ph ph-trash"></i> Hapus
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="ph ph-hourglass-medium"></i> Masukkan Ruang Tunggu
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Budget Top Categories Modal -->
     <div class="modal-overlay" id="modal-budget-top-categories">
         <div class="modal-content" style="max-height: 82vh; overflow-y: auto;">
@@ -2231,9 +2365,11 @@
     <div class="modal-overlay" id="modal-budget-weekly-comparison">
         <div class="modal-content" style="max-height: 84vh; overflow-y: auto;">
             <button class="modal-close" onclick="budgetManager.closeWeeklyComparisonModal()"><i class="ph ph-x"></i></button>
-            <h3>Tren Mingguan Dalam Bulan</h3>
+            <h3>Laporan Keuangan Mingguan</h3>
             <p id="budget-weekly-comparison-subtitle"
                 style="font-size: 0.84rem; color: var(--text-muted); margin-top: 0.25rem; margin-bottom: 1rem;">-</p>
+
+            <div id="budget-weekly-report-tabs" class="budget-weekly-report-tabs" aria-label="Pilih minggu laporan"></div>
 
             <div style="padding: 0.9rem; border: 1px solid rgba(14,165,233,0.16); border-radius: 16px; background: linear-gradient(180deg, rgba(125,211,252,0.14), rgba(14,165,233,0.03)); margin-bottom: 1rem;">
                 <div style="height: 240px; position: relative;">
@@ -2267,6 +2403,58 @@
             <div id="budget-weekly-story"
                 style="border: 1px solid var(--border-color); border-radius: 14px; padding: 0.9rem; background: var(--bg-card); color: var(--text-main); font-size: 0.82rem; line-height: 1.55;">
                 -
+            </div>
+
+            <div class="budget-weekly-report-panel">
+                <div class="budget-weekly-report-head">
+                    <div>
+                        <p class="budget-weekly-report-kicker">Summary Minggu Terpilih</p>
+                        <h4 id="budget-weekly-report-title">-</h4>
+                    </div>
+                    <span id="budget-weekly-report-status" class="budget-weekly-report-status">-</span>
+                </div>
+
+                <div class="budget-weekly-report-grid">
+                    <div class="budget-weekly-report-card">
+                        <span>Pemasukan</span>
+                        <strong id="budget-weekly-report-income">Rp 0</strong>
+                    </div>
+                    <div class="budget-weekly-report-card">
+                        <span>Pengeluaran</span>
+                        <strong id="budget-weekly-report-expense">Rp 0</strong>
+                    </div>
+                    <div class="budget-weekly-report-card">
+                        <span>Net Cashflow</span>
+                        <strong id="budget-weekly-report-net">Rp 0</strong>
+                    </div>
+                    <div class="budget-weekly-report-card">
+                        <span>Transaksi</span>
+                        <strong id="budget-weekly-report-count">0</strong>
+                    </div>
+                </div>
+
+                <div class="budget-weekly-report-insights">
+                    <div class="budget-weekly-report-insight">
+                        <span>Paling bocor</span>
+                        <strong id="budget-weekly-report-leak">-</strong>
+                        <small id="budget-weekly-report-leak-note">Belum ada kategori dominan.</small>
+                    </div>
+                    <div class="budget-weekly-report-insight">
+                        <span>Naik dari minggu lalu</span>
+                        <strong id="budget-weekly-report-rise">-</strong>
+                        <small id="budget-weekly-report-rise-note">Belum ada pembanding.</small>
+                    </div>
+                    <div class="budget-weekly-report-insight">
+                        <span>Quick win hemat</span>
+                        <strong id="budget-weekly-report-quickwin">-</strong>
+                        <small id="budget-weekly-report-quickwin-note">Catat transaksi dulu supaya saran lebih tajam.</small>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="budget-weekly-report-list-title">Transaksi terbesar minggu ini</p>
+                    <div id="budget-weekly-report-top-list" class="budget-weekly-report-top-list"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -2679,7 +2867,7 @@
     <!-- Scripts - Version parameter untuk cache-busting -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-    <script src="js/storage.js?v=1.4
+    <script src="js/storage.js?v=1.5
     "></script>
     <script src="js/i18n.js?v=1.4
     "></script>
@@ -2712,7 +2900,7 @@
     <script src="js/tasks.js?v=1.4
     "></script>
     <script src="js/health.js?v=1.0.0"></script>
-    <script src="js/budget.js?v=1.3.6"></script>
+    <script src="js/budget.js?v=1.3.7"></script>
     <script src="js/bbm.js?v=1.4"></script>
     <script src="js/sync.js?v=1.4"></script>
     <script src="js/call.js?v=1.4"></script>

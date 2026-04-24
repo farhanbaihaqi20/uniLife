@@ -108,6 +108,10 @@ const Storage = {
     getBudgetRecurringBills: () => Storage.get('unilife_budget_recurring_bills', []),
     setBudgetRecurringBills: (data) => Storage.set('unilife_budget_recurring_bills', data),
 
+    // Anti-impulse wishlist for delayed purchase decisions
+    getBudgetImpulseWishlist: () => Storage.get('unilife_budget_impulse_wishlist', []),
+    setBudgetImpulseWishlist: (data) => Storage.set('unilife_budget_impulse_wishlist', data),
+
     // Leveling progression (isolated from core academic modules)
     getLeveling: () => Storage.get('unilife_leveling', {
         version: 1,
