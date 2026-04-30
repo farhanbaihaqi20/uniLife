@@ -1387,15 +1387,20 @@
                 <div class="card budget-reveal-card" style="padding: 1rem; margin-bottom: 1.5rem;">
                     <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:0.75rem; margin-bottom:0.85rem;">
                         <div>
-                            <h3 style="font-size:1rem; margin-bottom:0.2rem;"><i class="ph ph-lightning"></i> Tagihan Rutin</h3>
+                            <h3 style="font-size:1rem; margin-bottom:0.2rem;"><i class="ph ph-lightning"></i> Tagihan</h3>
                             <p id="budget-recurring-summary" style="font-size:0.78rem; color:var(--text-muted);">Belum ada tagihan rutin yang dipantau</p>
                         </div>
-                        <button type="button" class="btn btn-outline" onclick="budgetManager.openRecurringBillModal()">
-                            <i class="ph ph-plus"></i> Tambah
-                        </button>
+                        <div style="display:flex; gap:0.5rem; flex-wrap:wrap; justify-content:flex-end;">
+                            <button type="button" class="btn btn-outline" style="padding:0.5rem 0.65rem;" onclick="budgetManager.openRecurringBillHistoryModal()">
+                                <i class="ph ph-clock-counter-clockwise"></i> Riwayat
+                            </button>
+                            <button type="button" class="btn btn-outline" style="padding:0.5rem 0.65rem;" onclick="budgetManager.openRecurringBillModal()">
+                                <i class="ph ph-plus"></i> Tambah
+                            </button>
+                        </div>
                     </div>
                     <div id="budget-recurring-empty" style="font-size:0.82rem; color:var(--text-muted); border:1px dashed var(--border-color); border-radius:14px; padding:0.95rem; text-align:center;">
-                        Tambahkan tagihan listrik, kos, Wi-Fi, air, atau langganan bulanan supaya pembayaran lebih rapi.
+                        Tambahkan tagihan kos, Wi-Fi, langganan, atau paylater supaya pembayaran bulanan lebih rapi.
                     </div>
                     <div id="budget-recurring-list" style="display:none; grid-template-columns:1fr; gap:0.75rem;"></div>
                 </div>
@@ -2544,12 +2549,45 @@
             <form id="form-budget-recurring-bill" onsubmit="budgetManager.saveRecurringBill(event)">
                 <input type="hidden" id="budget-recurring-id">
                 <div class="form-group">
+                    <label>Jenis Tagihan</label>
+                    <select id="budget-recurring-type" onchange="budgetManager.handleRecurringBillTypeChange()">
+                        <option value="recurring">Tagihan rutin</option>
+                        <option value="paylater">Paylater / Cicilan</option>
+                    </select>
+                </div>
+                <div class="form-group">
                     <label>Nama Tagihan</label>
                     <input type="text" id="budget-recurring-name" required placeholder="Contoh: Listrik Kos">
                 </div>
+                <div class="form-group" id="budget-paylater-original-wrap" style="display:none;">
+                    <label>Harga Asli Barang (Rp)</label>
+                    <input type="text" inputmode="numeric" id="budget-paylater-original" placeholder="Contoh: 1.000.000" oninput="budgetManager.handleNominalInput('budget-paylater-original'); budgetManager.renderPaylaterPreview();">
+                </div>
                 <div class="form-group">
-                    <label>Nominal (Rp)</label>
-                    <input type="text" inputmode="numeric" id="budget-recurring-amount" required placeholder="Contoh: 250.000" oninput="budgetManager.handleNominalInput('budget-recurring-amount')">
+                    <label id="budget-recurring-amount-label">Nominal (Rp)</label>
+                    <input type="text" inputmode="numeric" id="budget-recurring-amount" required placeholder="Contoh: 250.000" oninput="budgetManager.handleNominalInput('budget-recurring-amount'); budgetManager.renderPaylaterPreview();">
+                </div>
+                <div class="form-group" id="budget-paylater-installment-wrap" style="display:none;">
+                    <label>Jumlah Cicilan</label>
+                    <select id="budget-paylater-installments" onchange="budgetManager.renderPaylaterPreview()">
+                        <option value="1">1 kali</option>
+                        <option value="3">3 kali</option>
+                        <option value="6">6 kali</option>
+                        <option value="12">12 kali</option>
+                    </select>
+                </div>
+                <div id="budget-paylater-preview" style="display:none; border:1px solid var(--border-color); border-radius:12px; padding:0.75rem; margin-bottom:1rem; background:var(--bg-card);">
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.55rem;">
+                        <div>
+                            <small style="display:block; color:var(--text-muted); font-size:0.68rem;">Total bayar</small>
+                            <strong id="budget-paylater-total" style="font-size:0.9rem;">Rp 0</strong>
+                        </div>
+                        <div>
+                            <small style="display:block; color:var(--text-muted); font-size:0.68rem;">Lebih mahal</small>
+                            <strong id="budget-paylater-markup" style="font-size:0.9rem;">Rp 0</strong>
+                        </div>
+                    </div>
+                    <p id="budget-paylater-percent" style="font-size:0.74rem; color:var(--text-muted); margin-top:0.45rem;">Markup 0% dari harga asli.</p>
                 </div>
                 <div class="form-group row">
                     <div class="col">
@@ -2590,6 +2628,15 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-budget-recurring-history">
+        <div class="modal-content" style="max-height: 82vh; overflow-y: auto;">
+            <button class="modal-close" onclick="budgetManager.closeRecurringBillHistoryModal()"><i class="ph ph-x"></i></button>
+            <h3>Riwayat Tagihan</h3>
+            <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:1rem;">Tanggal tagihan rutin dan paylater ditambahkan.</p>
+            <div id="budget-recurring-history-list" style="display:flex; flex-direction:column; gap:0.7rem;"></div>
         </div>
     </div>
 

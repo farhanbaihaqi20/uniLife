@@ -706,10 +706,30 @@ const budgetManager = {
                 const dueDay = Math.min(31, Math.max(1, parseInt(bill?.dueDay, 10) || 1));
                 const category = String(bill?.category || '').trim() || 'other';
                 const fundSourceId = this.getAccountById(bill?.fundSourceId) ? bill.fundSourceId : defaultAccountId;
+                const type = bill?.type === 'paylater' ? 'paylater' : 'recurring';
+                const installmentCount = [1, 3, 6, 12].includes(Number(bill?.installmentCount))
+                    ? Number(bill.installmentCount)
+                    : 1;
+                const monthlyPayment = Math.max(0, Number(bill?.amount ?? bill?.monthlyPayment) || 0);
+                const originalAmount = type === 'paylater'
+                    ? Math.max(0, Number(bill?.originalAmount) || 0)
+                    : 0;
+                const totalPayment = type === 'paylater' ? monthlyPayment * installmentCount : monthlyPayment;
+                const markupAmount = type === 'paylater' ? Math.max(0, totalPayment - originalAmount) : 0;
+                const markupPercent = type === 'paylater' && originalAmount > 0
+                    ? (markupAmount / originalAmount) * 100
+                    : 0;
                 return {
                     id: bill?.id || ((typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-${Math.random().toString(16).slice(2)}`),
                     name: String(bill?.name || '').trim() || 'Tagihan Rutin',
-                    amount: Math.max(0, Number(bill?.amount) || 0),
+                    type,
+                    amount: monthlyPayment,
+                    originalAmount,
+                    installmentCount,
+                    totalPayment,
+                    markupAmount,
+                    markupPercent,
+            startMonth: this.getMonthKey(bill?.startMonth || bill?.createdAt || new Date()),
                     category,
                     dueDay,
                     fundSourceId,
@@ -798,6 +818,43 @@ const budgetManager = {
         return new Date(date.getFullYear(), date.getMonth(), dueDay, 12, 0, 0);
     },
 
+    getBillStartMonthForDueDay: function (dueDay, monthDate = this.selectedMonth) {
+        const baseDate = monthDate instanceof Date ? monthDate : new Date(monthDate);
+        const safeBaseDate = Number.isNaN(baseDate.getTime()) ? new Date() : baseDate;
+        const candidateBill = { dueDay };
+        const dueDate = this.getRecurringBillDueDate(candidateBill, safeBaseDate);
+        const now = new Date();
+
+        if (dueDate && this.isSameMonth(safeBaseDate, now)) {
+            const dueStart = this.getStartOfDay(dueDate);
+            const todayStart = this.getStartOfDay(now);
+            if (dueStart && todayStart && dueStart < todayStart) {
+                return this.getMonthKey(new Date(safeBaseDate.getFullYear(), safeBaseDate.getMonth() + 1, 1));
+            }
+        }
+
+        return this.getMonthKey(safeBaseDate);
+    },
+
+    isRecurringBillScheduledForMonth: function (bill, monthDate = this.selectedMonth) {
+        if (!bill) return false;
+        const monthKey = this.getMonthKey(monthDate);
+        if (!monthKey) return false;
+
+        const startMonth = this.getMonthKey(bill.startMonth || bill.createdAt || new Date());
+        if (startMonth && monthKey < startMonth) return false;
+
+        const createdAt = bill.createdAt ? new Date(bill.createdAt) : null;
+        const dueDate = this.getRecurringBillDueDate(bill, monthDate);
+        if (createdAt && dueDate && !Number.isNaN(createdAt.getTime()) && this.getMonthKey(createdAt) === monthKey) {
+            const dueStart = this.getStartOfDay(dueDate);
+            const createdStart = this.getStartOfDay(createdAt);
+            if (dueStart && createdStart && dueStart < createdStart) return false;
+        }
+
+        return true;
+    },
+
     getRecurringBillPaymentTransaction: function (billId, monthDate = this.selectedMonth) {
         const monthKey = this.getMonthKey(monthDate);
         if (!monthKey) return null;
@@ -811,6 +868,40 @@ const budgetManager = {
         }) || null;
     },
 
+    getRecurringBillPaymentTransactions: function (billId) {
+        return this.transactions.filter((tx) => {
+            return tx
+                && tx.type === 'expense'
+                && (tx?.relation?.recurring_bill_id === billId || tx?.recurringBillId === billId);
+        });
+    },
+
+    getPaylaterInstallmentNumber: function (bill, monthDate = this.selectedMonth) {
+        if (bill?.type !== 'paylater') return null;
+        const startKey = this.getMonthKey(bill.startMonth || bill.createdAt || new Date());
+        const monthKey = this.getMonthKey(monthDate);
+        if (!startKey || !monthKey) return null;
+
+        const startDate = new Date(`${startKey}-01T12:00:00`);
+        const activeDate = new Date(`${monthKey}-01T12:00:00`);
+        if (Number.isNaN(startDate.getTime()) || Number.isNaN(activeDate.getTime())) return null;
+
+        const diff = (activeDate.getFullYear() - startDate.getFullYear()) * 12
+            + (activeDate.getMonth() - startDate.getMonth());
+        const installmentNumber = diff + 1;
+        const installmentCount = Number(bill.installmentCount) || 1;
+        if (installmentNumber < 1 || installmentNumber > installmentCount) return null;
+        return installmentNumber;
+    },
+
+    getPaylaterPaidInstallmentCount: function (bill) {
+        if (!bill || bill.type !== 'paylater') return 0;
+        return Math.min(
+            Number(bill.installmentCount) || 1,
+            this.getRecurringBillPaymentTransactions(bill.id).length
+        );
+    },
+
     getRecurringBillStatus: function (bill, monthDate = this.selectedMonth) {
         const dueDate = this.getRecurringBillDueDate(bill, monthDate);
         if (!dueDate) {
@@ -818,8 +909,30 @@ const budgetManager = {
         }
 
         const paymentTx = this.getRecurringBillPaymentTransaction(bill.id, monthDate);
+        if (bill.type === 'paylater') {
+            const installmentNumber = this.getPaylaterInstallmentNumber(bill, monthDate);
+            const paidInstallments = this.getPaylaterPaidInstallmentCount(bill);
+            const installmentCount = Number(bill.installmentCount) || 1;
+            if (paidInstallments >= installmentCount && !paymentTx) {
+                return { key: 'completed', label: 'Lunas', tone: 'success', dueDate, paymentTx, installmentNumber, paidInstallments };
+            }
+            if (bill.isActive === false) {
+                return { key: 'paused', label: 'Nonaktif', tone: 'muted', dueDate, paymentTx: null, installmentNumber, paidInstallments };
+            }
+            if (!installmentNumber) {
+                return { key: 'planned', label: 'Di luar periode', tone: 'muted', dueDate, paymentTx: null, installmentNumber, paidInstallments };
+            }
+            if (paymentTx) {
+                return { key: 'paid', label: `Cicilan ${installmentNumber}/${installmentCount}`, tone: 'success', dueDate, paymentTx, installmentNumber, paidInstallments };
+            }
+        }
+
         if (paymentTx) {
             return { key: 'paid', label: 'Sudah dibayar', tone: 'success', dueDate, paymentTx };
+        }
+
+        if (!this.isRecurringBillScheduledForMonth(bill, monthDate)) {
+            return { key: 'not_due', label: 'Mulai bulan depan', tone: 'muted', dueDate, paymentTx: null };
         }
 
         const now = new Date();
@@ -1147,6 +1260,10 @@ const budgetManager = {
         if (historyModal && historyModal.classList.contains('active')) {
             this.renderTransactionHistoryModal(currentMonthTx);
         }
+        const recurringHistoryModal = document.getElementById('modal-budget-recurring-history');
+        if (recurringHistoryModal && recurringHistoryModal.classList.contains('active')) {
+            this.renderRecurringBillHistoryModal();
+        }
     },
 
     renderSavingsGoalCard: function () {
@@ -1266,8 +1383,15 @@ const budgetManager = {
         const summaryEl = document.getElementById('budget-recurring-summary');
         if (!emptyEl || !listEl || !summaryEl) return;
 
-        const activeBills = this.recurringBills.filter((bill) => bill.isActive !== false);
-        if (activeBills.length === 0) {
+        const allBills = Array.isArray(this.recurringBills) ? this.recurringBills : [];
+        const activeBills = allBills.filter((bill) => bill.isActive !== false);
+        const monthlyBills = activeBills.filter((bill) => {
+            const status = this.getRecurringBillStatus(bill, this.selectedMonth);
+            if (status.key === 'completed' || status.key === 'paused' || status.key === 'not_due') return false;
+            if (bill.type === 'paylater') return !!status.installmentNumber;
+            return true;
+        });
+        if (allBills.length === 0) {
             emptyEl.style.display = 'block';
             listEl.style.display = 'none';
             listEl.innerHTML = '';
@@ -1275,11 +1399,11 @@ const budgetManager = {
             return;
         }
 
-        const selectedMonthBills = [...this.recurringBills]
+        const selectedMonthBills = [...allBills]
             .sort((a, b) => {
                 const left = this.getRecurringBillStatus(a, this.selectedMonth);
                 const right = this.getRecurringBillStatus(b, this.selectedMonth);
-                const score = { overdue: 0, upcoming: 1, planned: 2, paid: 3, paused: 4, unknown: 5 };
+                const score = { overdue: 0, upcoming: 1, planned: 2, paid: 3, completed: 4, not_due: 5, paused: 6, unknown: 7 };
                 const leftScore = score[left.key] ?? 99;
                 const rightScore = score[right.key] ?? 99;
                 if (leftScore !== rightScore) return leftScore - rightScore;
@@ -1288,14 +1412,21 @@ const budgetManager = {
             })
             .slice(0, 4);
 
-        const paidCount = activeBills.filter((bill) => this.getRecurringBillPaymentTransaction(bill.id, this.selectedMonth)).length;
-        const unpaidAmount = activeBills.reduce((sum, bill) => {
+        const monthlyTotal = monthlyBills.reduce((sum, bill) => sum + (Number(bill.amount) || 0), 0);
+        const paidAmount = monthlyBills.reduce((sum, bill) => {
+            return this.getRecurringBillPaymentTransaction(bill.id, this.selectedMonth)
+                ? sum + (Number(bill.amount) || 0)
+                : sum;
+        }, 0);
+        const unpaidAmount = monthlyBills.reduce((sum, bill) => {
             return this.getRecurringBillPaymentTransaction(bill.id, this.selectedMonth)
                 ? sum
                 : sum + (Number(bill.amount) || 0);
         }, 0);
 
-        summaryEl.innerText = `${paidCount}/${activeBills.length} tagihan sudah dicatat • Sisa ${this.formatCurrency(unpaidAmount)}`;
+        summaryEl.innerText = monthlyBills.length > 0
+            ? `Total bulan ini ${this.formatCurrency(monthlyTotal)} • Dibayar ${this.formatCurrency(paidAmount)} • Sisa ${this.formatCurrency(unpaidAmount)}`
+            : (activeBills.length > 0 ? 'Tidak ada tagihan jatuh tempo bulan ini' : 'Semua tagihan sedang nonaktif');
         emptyEl.style.display = 'none';
         listEl.style.display = 'grid';
         listEl.innerHTML = '';
@@ -1317,6 +1448,21 @@ const budgetManager = {
             const paymentLabel = status.paymentTx
                 ? `Dibayar via ${this.getFundSourceLabelById(status.paymentTx.fundSourceId)}`
                 : `Sumber dana default ${this.getFundSourceLabelById(bill.fundSourceId)}`;
+            const isPaylater = bill.type === 'paylater';
+            const installmentCount = Number(bill.installmentCount) || 1;
+            const paidInstallments = isPaylater ? this.getPaylaterPaidInstallmentCount(bill) : 0;
+            const installmentLabel = isPaylater
+                ? `Cicilan ${Math.min(installmentCount, Math.max(status.installmentNumber || paidInstallments, paidInstallments))}/${installmentCount}`
+                : '';
+            const markupLabel = isPaylater
+                ? `Markup ${Math.max(0, Number(bill.markupPercent) || 0).toFixed(1).replace('.0', '')}%`
+                : '';
+            const metaLabel = isPaylater
+                ? `${installmentLabel} • ${markupLabel}`
+                : `${i18n.t('budget_cat_' + bill.category) || bill.category} • Jatuh tempo ${dueLabel}`;
+            const canPay = bill.isActive !== false
+                && !['completed', 'not_due'].includes(status.key)
+                && !(isPaylater && !status.installmentNumber);
 
             const card = document.createElement('div');
             card.className = 'card';
@@ -1329,8 +1475,8 @@ const budgetManager = {
             card.innerHTML = `
                 <div style="display:flex; justify-content:space-between; gap:0.8rem; align-items:flex-start;">
                     <div>
-                        <p style="font-size:0.95rem; font-weight:700; color:var(--text-main); margin-bottom:0.18rem;">${bill.name}</p>
-                        <p style="font-size:0.76rem; color:var(--text-muted);">${i18n.t('budget_cat_' + bill.category) || bill.category} • Jatuh tempo ${dueLabel}</p>
+                        <p style="font-size:0.95rem; font-weight:700; color:var(--text-main); margin-bottom:0.18rem;">${this.escapeHtml(isPaylater ? `Paylater - ${bill.name}` : bill.name)}</p>
+                        <p style="font-size:0.76rem; color:var(--text-muted);">${this.escapeHtml(metaLabel)}</p>
                     </div>
                     <span style="font-size:0.72rem; font-weight:700; color:${tone.text}; border:1px solid ${tone.border}; background:rgba(255,255,255,0.55); border-radius:999px; padding:0.26rem 0.55rem; white-space:nowrap;">${status.label}</span>
                 </div>
@@ -1347,9 +1493,9 @@ const budgetManager = {
                             ? `<button type="button" class="btn btn-outline" data-bill-open-tx="${status.paymentTx.id}" style="padding:0.45rem 0.65rem; border-color:rgba(16,185,129,0.35); color:#059669;">
                                 <i class="ph ph-receipt"></i>
                             </button>`
-                            : `<button type="button" class="btn btn-primary" data-bill-pay="${bill.id}" style="padding:0.45rem 0.75rem;">
+                            : (canPay ? `<button type="button" class="btn btn-primary" data-bill-pay="${bill.id}" style="padding:0.45rem 0.75rem;">
                                 <i class="ph ph-check-circle"></i> Bayar
-                            </button>`
+                            </button>` : '')
                         }
                     </div>
                 </div>
@@ -1498,7 +1644,13 @@ const budgetManager = {
     },
 
     getRecurringBillMonthSummary: function (monthDate = this.selectedMonth) {
-        const activeBills = (Array.isArray(this.recurringBills) ? this.recurringBills : []).filter((bill) => bill?.isActive !== false);
+        const activeBills = (Array.isArray(this.recurringBills) ? this.recurringBills : []).filter((bill) => {
+            if (bill?.isActive === false) return false;
+            const status = this.getRecurringBillStatus(bill, monthDate);
+            if (status.key === 'completed' || status.key === 'paused' || status.key === 'not_due') return false;
+            if (bill.type === 'paylater') return !!status.installmentNumber;
+            return true;
+        });
         const isCurrentMonth = this.isSameMonth(monthDate, new Date());
         const summary = {
             activeCount: activeBills.length,
@@ -4149,28 +4301,88 @@ const budgetManager = {
         this.updateDashboard();
     },
 
+    calculatePaylaterPreview: function () {
+        const originalAmount = this.parseNominalInput(document.getElementById('budget-paylater-original')?.value || '');
+        const monthlyPayment = this.parseNominalInput(document.getElementById('budget-recurring-amount')?.value || '');
+        const installmentCount = Number(document.getElementById('budget-paylater-installments')?.value) || 1;
+        const totalPayment = monthlyPayment * installmentCount;
+        const markupAmount = Math.max(0, totalPayment - originalAmount);
+        const markupPercent = originalAmount > 0 ? (markupAmount / originalAmount) * 100 : 0;
+        return { originalAmount, monthlyPayment, installmentCount, totalPayment, markupAmount, markupPercent };
+    },
+
+    renderPaylaterPreview: function () {
+        const previewEl = document.getElementById('budget-paylater-preview');
+        const totalEl = document.getElementById('budget-paylater-total');
+        const markupEl = document.getElementById('budget-paylater-markup');
+        const percentEl = document.getElementById('budget-paylater-percent');
+        if (!previewEl || !totalEl || !markupEl || !percentEl) return;
+
+        const type = document.getElementById('budget-recurring-type')?.value || 'recurring';
+        if (type !== 'paylater') {
+            previewEl.style.display = 'none';
+            return;
+        }
+
+        const preview = this.calculatePaylaterPreview();
+        previewEl.style.display = 'block';
+        totalEl.innerText = this.formatCurrency(preview.totalPayment);
+        markupEl.innerText = this.formatCurrency(preview.markupAmount);
+        percentEl.innerText = `Markup ${preview.markupPercent.toFixed(1).replace('.0', '')}% dari harga asli.`;
+    },
+
+    handleRecurringBillTypeChange: function () {
+        const type = document.getElementById('budget-recurring-type')?.value || 'recurring';
+        const isPaylater = type === 'paylater';
+        const titleEl = document.getElementById('budget-recurring-modal-title');
+        const nameInput = document.getElementById('budget-recurring-name');
+        const amountLabel = document.getElementById('budget-recurring-amount-label');
+        const originalWrap = document.getElementById('budget-paylater-original-wrap');
+        const installmentWrap = document.getElementById('budget-paylater-installment-wrap');
+
+        if (titleEl && !document.getElementById('budget-recurring-id')?.value) {
+            titleEl.innerText = isPaylater ? 'Tambah Paylater' : 'Tambah Tagihan Rutin';
+        }
+        if (nameInput) {
+            nameInput.placeholder = isPaylater ? 'Contoh: Headset' : 'Contoh: Listrik Kos';
+        }
+        if (amountLabel) {
+            amountLabel.innerText = isPaylater ? 'Tagihan per Bulan (Rp)' : 'Nominal (Rp)';
+        }
+        if (originalWrap) originalWrap.style.display = isPaylater ? 'block' : 'none';
+        if (installmentWrap) installmentWrap.style.display = isPaylater ? 'block' : 'none';
+
+        this.renderPaylaterPreview();
+    },
+
     openRecurringBillModal: function (billId = null) {
         const modal = document.getElementById('modal-budget-recurring-bill');
         const titleEl = document.getElementById('budget-recurring-modal-title');
         const idInput = document.getElementById('budget-recurring-id');
+        const typeInput = document.getElementById('budget-recurring-type');
         const nameInput = document.getElementById('budget-recurring-name');
         const amountInput = document.getElementById('budget-recurring-amount');
+        const originalInput = document.getElementById('budget-paylater-original');
+        const installmentInput = document.getElementById('budget-paylater-installments');
         const dueDayInput = document.getElementById('budget-recurring-due-day');
         const fundSourceInput = document.getElementById('budget-recurring-fund-source');
         const categoryInput = document.getElementById('budget-recurring-category');
         const noteInput = document.getElementById('budget-recurring-note');
         const activeInput = document.getElementById('budget-recurring-active');
         const deleteBtn = document.getElementById('budget-recurring-delete-btn');
-        if (!modal || !titleEl || !idInput || !nameInput || !amountInput || !dueDayInput || !fundSourceInput || !categoryInput || !noteInput || !activeInput || !deleteBtn) return;
+        if (!modal || !titleEl || !idInput || !typeInput || !nameInput || !amountInput || !originalInput || !installmentInput || !dueDayInput || !fundSourceInput || !categoryInput || !noteInput || !activeInput || !deleteBtn) return;
 
         this.populateFundSourceSelect('budget-recurring-fund-source');
         const bill = billId ? this.recurringBills.find((entry) => entry.id === billId) : null;
 
         if (bill) {
-            titleEl.innerText = 'Edit Tagihan Rutin';
+            titleEl.innerText = bill.type === 'paylater' ? 'Edit Paylater' : 'Edit Tagihan Rutin';
             idInput.value = bill.id;
+            typeInput.value = bill.type === 'paylater' ? 'paylater' : 'recurring';
             nameInput.value = bill.name;
             this.setNominalInputValue('budget-recurring-amount', bill.amount);
+            this.setNominalInputValue('budget-paylater-original', bill.originalAmount || '');
+            installmentInput.value = String(bill.installmentCount || 1);
             dueDayInput.value = bill.dueDay;
             fundSourceInput.value = bill.fundSourceId;
             categoryInput.value = bill.category;
@@ -4180,8 +4392,11 @@ const budgetManager = {
         } else {
             titleEl.innerText = 'Tambah Tagihan Rutin';
             idInput.value = '';
+            typeInput.value = 'recurring';
             nameInput.value = '';
             this.setNominalInputValue('budget-recurring-amount', '');
+            this.setNominalInputValue('budget-paylater-original', '');
+            installmentInput.value = '3';
             dueDayInput.value = '5';
             fundSourceInput.value = this.getDefaultAccountId();
             categoryInput.value = 'other';
@@ -4190,6 +4405,7 @@ const budgetManager = {
             deleteBtn.style.display = 'none';
         }
 
+        this.handleRecurringBillTypeChange();
         modal.classList.add('active');
         setTimeout(() => nameInput.focus(), 100);
     },
@@ -4199,12 +4415,87 @@ const budgetManager = {
         if (modal) modal.classList.remove('active');
     },
 
+    openRecurringBillHistoryModal: function () {
+        this.renderRecurringBillHistoryModal();
+        const modal = document.getElementById('modal-budget-recurring-history');
+        if (modal) modal.classList.add('active');
+    },
+
+    closeRecurringBillHistoryModal: function () {
+        const modal = document.getElementById('modal-budget-recurring-history');
+        if (modal) modal.classList.remove('active');
+    },
+
+    renderRecurringBillHistoryModal: function () {
+        const listEl = document.getElementById('budget-recurring-history-list');
+        if (!listEl) return;
+
+        const bills = [...(Array.isArray(this.recurringBills) ? this.recurringBills : [])]
+            .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+        if (bills.length === 0) {
+            listEl.innerHTML = `
+                <div style="font-size:0.82rem; color:var(--text-muted); border:1px dashed var(--border-color); border-radius:12px; padding:1rem; text-align:center;">
+                    Belum ada tagihan yang pernah ditambahkan.
+                </div>
+            `;
+            return;
+        }
+
+        listEl.innerHTML = '';
+        bills.forEach((bill) => {
+            const createdAt = bill.createdAt ? new Date(bill.createdAt) : null;
+            const createdLabel = createdAt && !Number.isNaN(createdAt.getTime())
+                ? createdAt.toLocaleDateString(i18n.locale(), { day: 'numeric', month: 'short', year: 'numeric' })
+                : 'Tanggal tidak tersedia';
+            const createdTime = createdAt && !Number.isNaN(createdAt.getTime())
+                ? createdAt.toLocaleTimeString(i18n.locale(), { hour: '2-digit', minute: '2-digit' })
+                : '';
+            const isPaylater = bill.type === 'paylater';
+            const title = isPaylater ? `Paylater - ${bill.name}` : bill.name;
+            const typeLabel = isPaylater ? `Paylater ${bill.installmentCount || 1}x` : 'Tagihan rutin';
+            const amountLabel = isPaylater
+                ? `${this.formatCurrency(Number(bill.amount) || 0)}/bulan`
+                : this.formatCurrency(Number(bill.amount) || 0);
+            const extraLabel = isPaylater
+                ? `Markup ${Math.max(0, Number(bill.markupPercent) || 0).toFixed(1).replace('.0', '')}%`
+                : `Jatuh tempo tanggal ${bill.dueDay || 1}`;
+
+            const row = document.createElement('div');
+            row.style.border = '1px solid var(--border-color)';
+            row.style.borderRadius = '12px';
+            row.style.padding = '0.85rem';
+            row.style.background = 'var(--bg-card)';
+            row.innerHTML = `
+                <div style="display:flex; justify-content:space-between; gap:0.75rem; align-items:flex-start;">
+                    <div style="min-width:0;">
+                        <p style="font-size:0.92rem; font-weight:700; color:var(--text-main); margin-bottom:0.18rem;">${this.escapeHtml(title)}</p>
+                        <p style="font-size:0.75rem; color:var(--text-muted);">${this.escapeHtml(typeLabel)} • ${this.escapeHtml(extraLabel)}</p>
+                    </div>
+                    <span style="font-size:0.72rem; font-weight:700; color:${bill.isActive === false ? '#64748b' : '#059669'}; white-space:nowrap;">
+                        ${bill.isActive === false ? 'Nonaktif' : 'Aktif'}
+                    </span>
+                </div>
+                <div style="display:flex; justify-content:space-between; gap:0.75rem; align-items:flex-end; margin-top:0.65rem;">
+                    <div>
+                        <small style="display:block; font-size:0.68rem; color:var(--text-muted);">Ditambahkan</small>
+                        <strong style="font-size:0.82rem; color:var(--text-main);">${this.escapeHtml(createdLabel)}${createdTime ? `, ${this.escapeHtml(createdTime)}` : ''}</strong>
+                    </div>
+                    <strong style="font-size:0.86rem; color:var(--text-main); text-align:right;">${this.escapeHtml(amountLabel)}</strong>
+                </div>
+            `;
+            listEl.appendChild(row);
+        });
+    },
+
     saveRecurringBill: function (event) {
         event.preventDefault();
 
         const id = document.getElementById('budget-recurring-id')?.value || '';
+        const type = document.getElementById('budget-recurring-type')?.value === 'paylater' ? 'paylater' : 'recurring';
         const name = (document.getElementById('budget-recurring-name')?.value || '').trim();
         const amount = this.parseNominalInput(document.getElementById('budget-recurring-amount')?.value || '');
+        const paylaterPreview = this.calculatePaylaterPreview();
         const dueDay = Math.min(31, Math.max(1, parseInt(document.getElementById('budget-recurring-due-day')?.value, 10) || 1));
         const fundSourceId = document.getElementById('budget-recurring-fund-source')?.value || '';
         const category = document.getElementById('budget-recurring-category')?.value || 'other';
@@ -4219,22 +4510,35 @@ const budgetManager = {
             if (typeof inboxManager !== 'undefined') inboxManager.showToast('Nominal tagihan tidak valid');
             return;
         }
+        if (type === 'paylater' && paylaterPreview.originalAmount <= 0) {
+            if (typeof inboxManager !== 'undefined') inboxManager.showToast('Harga asli barang wajib diisi');
+            return;
+        }
         if (!this.getAccountById(fundSourceId)) {
             if (typeof inboxManager !== 'undefined') inboxManager.showToast('Sumber dana tagihan tidak valid');
             return;
         }
 
+        const existingBill = id ? this.recurringBills.find((entry) => entry.id === id) : null;
+        const startMonth = existingBill?.startMonth || this.getBillStartMonthForDueDay(dueDay, this.selectedMonth || new Date());
         const nextBill = {
             id: id || ((typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-${Math.random().toString(16).slice(2)}`),
             name,
+            type,
             amount,
+            originalAmount: type === 'paylater' ? paylaterPreview.originalAmount : 0,
+            installmentCount: type === 'paylater' ? paylaterPreview.installmentCount : 1,
+            totalPayment: type === 'paylater' ? paylaterPreview.totalPayment : amount,
+            markupAmount: type === 'paylater' ? paylaterPreview.markupAmount : 0,
+            markupPercent: type === 'paylater' ? paylaterPreview.markupPercent : 0,
+            startMonth,
             dueDay,
             fundSourceId,
             category,
             note,
             isActive,
             createdAt: id
-                ? (this.recurringBills.find((entry) => entry.id === id)?.createdAt || new Date().toISOString())
+                ? (existingBill?.createdAt || new Date().toISOString())
                 : new Date().toISOString()
         };
 
@@ -4274,6 +4578,22 @@ const budgetManager = {
         if (bill.isActive === false) {
             if (typeof inboxManager !== 'undefined') inboxManager.showToast('Aktifkan tagihan dulu sebelum mencatat pembayaran');
             return;
+        }
+        const billStatus = this.getRecurringBillStatus(bill, this.selectedMonth);
+        if (billStatus.key === 'not_due') {
+            if (typeof inboxManager !== 'undefined') inboxManager.showToast('Tagihan ini belum masuk jadwal bulan ini');
+            return;
+        }
+        if (bill.type === 'paylater') {
+            const status = billStatus;
+            if (status.key === 'completed') {
+                if (typeof inboxManager !== 'undefined') inboxManager.showToast('Cicilan paylater ini sudah lunas');
+                return;
+            }
+            if (!status.installmentNumber) {
+                if (typeof inboxManager !== 'undefined') inboxManager.showToast('Bulan ini di luar jadwal cicilan paylater');
+                return;
+            }
         }
 
         const existingPayment = this.getRecurringBillPaymentTransaction(bill.id, this.selectedMonth);
@@ -4908,6 +5228,7 @@ const budgetManager = {
         this.closeSavingsGoalModal();
         this.closeSavingsProgressModal();
         this.closeRecurringBillModal();
+        this.closeRecurringBillHistoryModal();
         this.closeImpulseWishlistModal();
         this.closeTransactionHistoryModal();
         if (typeof inboxManager !== 'undefined') inboxManager.showToast('Catatan keuangan berhasil di-reset');
