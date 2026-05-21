@@ -13,6 +13,7 @@ const budgetManager = {
     recurringBills: [],
     impulseWishlist: [],
     debtRecords: [],
+    reconciliation: {},
     activeSavingsGoalId: null,
     monthAnimationTimer: null,
     recentInterestFundIds: [],
@@ -23,6 +24,11 @@ const budgetManager = {
     transactionHistoryTypeFilter: 'all',
     transactionHistoryCategoryFilter: '',
     transactionHistoryWeekdayFilter: null,
+    transactionHistorySearchQuery: '',
+    transactionHistoryTagFilter: '',
+    transactionHistoryDatePreset: 'selected_month',
+    transactionHistoryCustomStart: '',
+    transactionHistoryCustomEnd: '',
     transactionHistoryReturnTarget: '',
     weeklyReportActiveIndex: null,
     isBalanceVisible: true,
@@ -41,12 +47,14 @@ const budgetManager = {
         this.recurringBills = this.normalizeRecurringBills(Storage.getBudgetRecurringBills());
         this.impulseWishlist = this.normalizeImpulseWishlist(Storage.getBudgetImpulseWishlist());
         this.debtRecords = this.normalizeDebtRecords(Storage.getBudgetDebtRecords());
+        this.reconciliation = this.normalizeReconciliation(Storage.getBudgetReconciliation());
         this.applyPendingAccountInterest();
         Storage.setBudgetTransactions(this.transactions);
         Storage.setBudgetAccounts(this.accounts);
         Storage.setBudgetRecurringBills(this.recurringBills);
         Storage.setBudgetImpulseWishlist(this.impulseWishlist);
         Storage.setBudgetDebtRecords(this.debtRecords);
+        Storage.setBudgetReconciliation(this.reconciliation);
         this.monthlyLimit = Storage.getBudgetLimit();
         this.isBalanceVisible = Storage.get('unilife_budget_balance_visible', true) !== false;
         this.baseBalance = this.getTotalInitialBalance();
@@ -348,6 +356,85 @@ const budgetManager = {
         this.renderTransactionHistoryModal(this.getTransactionsByMonth(this.selectedMonth));
     },
 
+    setTransactionHistorySearchQuery: function (value) {
+        this.transactionHistorySearchQuery = String(value || '');
+        this.renderTransactionHistoryModal(this.getTransactionsByMonth(this.selectedMonth));
+    },
+
+    clearTransactionHistorySearch: function () {
+        this.transactionHistorySearchQuery = '';
+        const input = document.getElementById('budget-history-search');
+        if (input) input.value = '';
+        this.renderTransactionHistoryModal(this.getTransactionsByMonth(this.selectedMonth));
+    },
+
+    setTransactionHistoryTagFilter: function (tag) {
+        this.transactionHistoryTagFilter = this.normalizeTagValue(tag);
+        this.renderTransactionHistoryModal(this.getTransactionsByMonth(this.selectedMonth));
+    },
+
+    getTransactionTagSummary: function (transactions) {
+        const summary = new Map();
+        (Array.isArray(transactions) ? transactions : []).forEach((tx) => {
+            this.getTransactionTags(tx).forEach((tag) => {
+                summary.set(tag, (summary.get(tag) || 0) + 1);
+            });
+        });
+
+        return Array.from(summary.entries())
+            .map(([tag, count]) => ({ tag, count }))
+            .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag))
+            .slice(0, 12);
+    },
+
+    renderTransactionHistoryTagFilter: function (transactions) {
+        const tagFilterEl = document.getElementById('budget-history-tag-filter');
+        if (!tagFilterEl) return;
+
+        const tags = this.getTransactionTagSummary(transactions);
+        if (tags.length === 0) {
+            tagFilterEl.style.display = 'none';
+            tagFilterEl.innerHTML = '';
+            return;
+        }
+
+        const activeTag = this.transactionHistoryTagFilter || '';
+        tagFilterEl.style.display = 'flex';
+        tagFilterEl.innerHTML = `
+            <button type="button" class="budget-history-tag-btn ${activeTag ? '' : 'is-active'}" onclick="budgetManager.setTransactionHistoryTagFilter('')">Semua tag</button>
+            ${tags.map((entry) => `
+                <button type="button" class="budget-history-tag-btn ${entry.tag === activeTag ? 'is-active' : ''}" onclick="budgetManager.setTransactionHistoryTagFilter('${this.escapeHtml(entry.tag)}')">
+                    #${this.escapeHtml(entry.tag)} <span>${entry.count}</span>
+                </button>
+            `).join('')}
+        `;
+    },
+
+    setTransactionHistoryDatePreset: function (preset) {
+        const allowed = ['selected_month', 'current_week', 'previous_month', 'custom'];
+        this.transactionHistoryDatePreset = allowed.includes(preset) ? preset : 'selected_month';
+
+        if (this.transactionHistoryDatePreset === 'custom' && (!this.transactionHistoryCustomStart || !this.transactionHistoryCustomEnd)) {
+            const monthStart = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth(), 1);
+            const monthEnd = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth() + 1, 0);
+            this.transactionHistoryCustomStart = this.toDateInputValue(monthStart);
+            this.transactionHistoryCustomEnd = this.toDateInputValue(monthEnd);
+        }
+
+        this.renderTransactionHistoryModal(this.getTransactionsByMonth(this.selectedMonth));
+    },
+
+    setTransactionHistoryCustomDate: function (field, value) {
+        if (field === 'start') {
+            this.transactionHistoryCustomStart = String(value || '');
+        } else if (field === 'end') {
+            this.transactionHistoryCustomEnd = String(value || '');
+        }
+
+        this.transactionHistoryDatePreset = 'custom';
+        this.renderTransactionHistoryModal(this.getTransactionsByMonth(this.selectedMonth));
+    },
+
     renderTransactionSourceFilter: function () {
         const allBtn = document.getElementById('budget-tx-filter-all');
         const cashBtn = document.getElementById('budget-tx-filter-cash');
@@ -418,6 +505,59 @@ const budgetManager = {
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
+    },
+
+    normalizeTagValue: function (value) {
+        return String(value ?? '')
+            .trim()
+            .replace(/^#+/, '')
+            .replace(/['"`<>\\]/g, '')
+            .replace(/\s+/g, ' ')
+            .slice(0, 28)
+            .toLowerCase();
+    },
+
+    normalizeTransactionTags: function (value) {
+        const source = Array.isArray(value)
+            ? value
+            : String(value || '').split(/[,;\n]+/);
+        const seen = new Set();
+        const tags = [];
+
+        source.forEach((item) => {
+            const tag = this.normalizeTagValue(item);
+            if (!tag || seen.has(tag)) return;
+            seen.add(tag);
+            tags.push(tag);
+        });
+
+        return tags.slice(0, 10);
+    },
+
+    mergeTransactionTags: function (...tagGroups) {
+        return this.normalizeTransactionTags(tagGroups.flatMap((group) => Array.isArray(group) ? group : [group]));
+    },
+
+    getTransactionTags: function (tx) {
+        return this.normalizeTransactionTags(tx?.tags || []);
+    },
+
+    getTagsInputValue: function (inputId) {
+        return this.normalizeTransactionTags(document.getElementById(inputId)?.value || '');
+    },
+
+    setTagsInputValue: function (inputId, tags) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+        input.value = this.normalizeTransactionTags(tags).join(', ');
+    },
+
+    addQuickTagToInput: function (inputId, tag) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+        const nextTags = this.mergeTransactionTags(input.value, tag);
+        input.value = nextTags.join(', ');
+        input.focus();
     },
 
     toggleBalanceVisibility: function (event) {
@@ -541,6 +681,7 @@ const budgetManager = {
 
         this.applyNominalInputFormatting(input);
         if (withPreviewWarning) this.previewFundSourceWarning();
+        if (inputId === 'budget-tx-amount') this.updateSplitBillSummary();
     },
 
     getDefaultBudgetAccounts: function () {
@@ -692,7 +833,8 @@ const budgetManager = {
             amount: Math.max(0, Number(tx?.amount) || 0),
             createdAt: tx?.createdAt || tx?.timestamp || tx?.date || new Date().toISOString(),
             fundSourceId: this.getAccountById(tx?.fundSourceId) ? tx.fundSourceId : defaultAccountId,
-            isDebtFlow: !!tx?.isDebtFlow
+            isDebtFlow: !!tx?.isDebtFlow,
+            tags: this.normalizeTransactionTags(tx?.tags || [])
         }));
     },
 
@@ -718,6 +860,8 @@ const budgetManager = {
                     dueDate,
                     status,
                     openedTxId: record?.openedTxId || '',
+                    splitBillGroupId: record?.splitBillGroupId || '',
+                    tags: this.normalizeTransactionTags(record?.tags || []),
                     createdAt: record?.createdAt || new Date().toISOString(),
                     updatedAt: record?.updatedAt || record?.createdAt || new Date().toISOString()
                 };
@@ -727,6 +871,33 @@ const budgetManager = {
                 if (a.status !== b.status) return a.status === 'active' ? -1 : 1;
                 return new Date(b.createdAt) - new Date(a.createdAt);
             });
+    },
+
+    normalizeReconciliation: function (entries) {
+        const source = entries && typeof entries === 'object' && !Array.isArray(entries) ? entries : {};
+        const normalized = {};
+
+        Object.keys(source).forEach((accountId) => {
+            if (!this.getAccountById(accountId)) return;
+            const entry = source[accountId] || {};
+            const hasRealBalance = entry.realBalance !== null && entry.realBalance !== undefined && entry.realBalance !== '';
+            normalized[accountId] = {
+                realBalance: hasRealBalance ? Number(entry.realBalance) || 0 : null,
+                checkedAt: entry.checkedAt || null
+            };
+        });
+
+        return normalized;
+    },
+
+    getLastTransactionForAccount: function (accountId) {
+        return [...(Array.isArray(this.transactions) ? this.transactions : [])]
+            .filter((tx) => tx?.fundSourceId === accountId)
+            .sort((a, b) => {
+                const dateDiff = this.getTransactionDate(b) - this.getTransactionDate(a);
+                if (dateDiff !== 0) return dateDiff;
+                return new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date);
+            })[0] || null;
     },
 
     getDebtRecordStats: function (record) {
@@ -1315,6 +1486,7 @@ const budgetManager = {
         this.transactions = this.normalizeTransactions(this.transactions);
         this.recurringBills = this.normalizeRecurringBills(this.recurringBills);
         this.debtRecords = this.normalizeDebtRecords(this.debtRecords);
+        this.reconciliation = this.normalizeReconciliation(this.reconciliation);
         const interestApplied = this.applyPendingAccountInterest();
         if (interestApplied) {
             this.persistBudgetSilently();
@@ -1348,6 +1520,10 @@ const budgetManager = {
 
         this.renderManualBalanceInfo();
         this.renderFundBreakdown();
+        const reconciliationModal = document.getElementById('modal-budget-reconciliation');
+        if (reconciliationModal && reconciliationModal.classList.contains('active')) {
+            this.renderReconciliationModal();
+        }
         if (this.interestVisualTimer) {
             clearTimeout(this.interestVisualTimer);
             this.interestVisualTimer = null;
@@ -2321,11 +2497,56 @@ const budgetManager = {
         });
     },
 
+    getTransactionHistoryDateRange: function () {
+        const preset = this.transactionHistoryDatePreset || 'selected_month';
+        const selectedStart = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth(), 1);
+        let start = selectedStart;
+        let endExclusive = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth() + 1, 1);
+        let label = this.getMonthLabel(this.selectedMonth);
+
+        if (preset === 'current_week') {
+            start = this.getStartOfWeek(new Date()) || this.getStartOfDay(new Date());
+            endExclusive = new Date(start);
+            endExclusive.setDate(endExclusive.getDate() + 7);
+            label = 'Minggu ini';
+        } else if (preset === 'previous_month') {
+            start = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth() - 1, 1);
+            endExclusive = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth(), 1);
+            label = this.getMonthLabel(start);
+        } else if (preset === 'custom') {
+            const customStart = this.parseLocalDateKey(this.transactionHistoryCustomStart);
+            const customEnd = this.parseLocalDateKey(this.transactionHistoryCustomEnd);
+            if (customStart && customEnd) {
+                start = customStart <= customEnd ? customStart : customEnd;
+                const inclusiveEnd = customStart <= customEnd ? customEnd : customStart;
+                endExclusive = new Date(inclusiveEnd);
+                endExclusive.setDate(endExclusive.getDate() + 1);
+                label = `${this.toDateInputValue(start)} sampai ${this.toDateInputValue(inclusiveEnd)}`;
+            }
+        }
+
+        return { start, endExclusive, label, preset };
+    },
+
+    getTransactionsBetweenDateRange: function (startDate, endExclusive, transactions = this.transactions) {
+        const start = this.getStartOfDay(startDate);
+        const end = this.getStartOfDay(endExclusive);
+        if (!start || !end) return [];
+
+        return (Array.isArray(transactions) ? transactions : []).filter((tx) => {
+            const txDate = this.getTransactionDate(tx);
+            if (Number.isNaN(txDate.getTime())) return false;
+            return txDate >= start && txDate < end;
+        });
+    },
+
     getTransactionsForDisplay: function (transactions, options = {}) {
         const sourceTypeFilter = options.sourceTypeFilter || 'all';
         const typeFilter = options.typeFilter || 'all';
         const categoryFilter = options.categoryFilter || '';
         const weekdayFilter = Number.isInteger(options.weekdayFilter) ? options.weekdayFilter : null;
+        const searchQuery = String(options.searchQuery || '').trim().toLowerCase();
+        const tagFilter = this.normalizeTagValue(options.tagFilter || '');
 
         return (Array.isArray(transactions) ? transactions : []).filter((tx) => {
             if (!tx) return false;
@@ -2358,6 +2579,14 @@ const budgetManager = {
                     }
                 }
 
+                if (searchQuery && !this.transactionMatchesSearch(tx, searchQuery)) {
+                    return false;
+                }
+
+                if (tagFilter && !this.getTransactionTags(tx).includes(tagFilter)) {
+                    return false;
+                }
+
                 return true;
             }
 
@@ -2377,8 +2606,46 @@ const budgetManager = {
                 }
             }
 
+            if (searchQuery && !this.transactionMatchesSearch(tx, searchQuery)) {
+                return false;
+            }
+
+            if (tagFilter && !this.getTransactionTags(tx).includes(tagFilter)) {
+                return false;
+            }
+
             return true;
         });
+    },
+
+    transactionMatchesSearch: function (tx, normalizedQuery) {
+        if (!tx || !normalizedQuery) return true;
+
+        const categoryName = i18n.t('budget_cat_' + tx.category) || tx.category || '';
+        const fundSourceName = this.getFundSourceLabelById(tx.fundSourceId);
+        const typeLabel = tx.isTransfer
+            ? (tx.transferDirection === 'in' ? 'transfer masuk' : 'transfer keluar')
+            : (tx.isDebtFlow ? this.getDebtFlowLabel(tx) : (tx.type === 'income' ? 'pemasukan' : 'pengeluaran'));
+        const debtRecord = tx.debtId ? this.debtRecords.find((record) => record.id === tx.debtId) : null;
+        const dateLabel = this.toDateInputValue(this.getTransactionDate(tx));
+
+        const haystack = [
+            tx.note,
+            tx.category,
+            categoryName,
+            fundSourceName,
+            typeLabel,
+            tx.amount,
+            dateLabel,
+            this.getTransactionTags(tx).join(' '),
+            this.getTransactionTags(tx).map((tag) => `#${tag}`).join(' '),
+            debtRecord?.personName,
+            debtRecord?.description
+        ]
+            .map((value) => String(value || '').toLowerCase())
+            .join(' ');
+
+        return haystack.includes(normalizedQuery);
     },
 
     getSortedTransactionsForDisplay: function (transactions) {
@@ -2491,6 +2758,9 @@ const budgetManager = {
                     return `<span class="budget-tx-badge is-${badge.tone}">${badge.label}</span>`;
                 }).join('')}</div>`
                 : '';
+            const tagMarkup = this.getTransactionTags(tx).length > 0
+                ? `<div class="budget-tx-tags">${this.getTransactionTags(tx).map((tag) => `<span>#${this.escapeHtml(tag)}</span>`).join('')}</div>`
+                : '';
 
             const typeLabel = isTransfer
                 ? (isTransferIn ? 'Transfer Masuk' : 'Transfer Keluar')
@@ -2514,6 +2784,7 @@ const budgetManager = {
                         ${tx.note || catName}
                     </h4>
                     ${badgeMarkup}
+                    ${tagMarkup}
                     <p style="font-size: 0.75rem; color: var(--text-muted);">${typeLabel} &bull; ${fundSourceName} &bull; ${timeLabel}</p>
                 </div>
                 <div style="text-align: right;">
@@ -2711,7 +2982,7 @@ const budgetManager = {
             return;
         }
 
-        const header = ['Tanggal', 'Tipe', 'Sumber Dana', 'Kategori', 'Nominal', 'Catatan'];
+        const header = ['Tanggal', 'Tipe', 'Sumber Dana', 'Kategori', 'Nominal', 'Catatan', 'Tag'];
         const rows = currentMonthTx.map((tx) => {
             const date = this.toDateInputValue(this.getTransactionDate(tx));
             const typeLabel = tx.isTransfer
@@ -2720,7 +2991,8 @@ const budgetManager = {
             const fundSourceName = this.getFundSourceLabelById(tx.fundSourceId);
             const catName = i18n.t('budget_cat_' + tx.category) || tx.category;
             const safeNote = (tx.note || '').replace(/\"/g, '""');
-            return [date, typeLabel, fundSourceName, catName, tx.amount, safeNote];
+            const tagText = this.getTransactionTags(tx).map((tag) => `#${tag}`).join(' ');
+            return [date, typeLabel, fundSourceName, catName, tx.amount, safeNote, tagText];
         });
 
         const csvContent = [header, ...rows]
@@ -3165,6 +3437,131 @@ const budgetManager = {
             `;
             container.appendChild(chip);
         });
+    },
+
+    openReconciliationModal: function () {
+        this.reconciliation = this.normalizeReconciliation(Storage.getBudgetReconciliation());
+        this.renderReconciliationModal();
+        const modal = document.getElementById('modal-budget-reconciliation');
+        if (!modal) return;
+        modal.classList.add('active');
+    },
+
+    closeReconciliationModal: function () {
+        document.getElementById('modal-budget-reconciliation')?.classList.remove('active');
+    },
+
+    renderReconciliationModal: function () {
+        const listEl = document.getElementById('budget-reconciliation-list');
+        const summaryEl = document.getElementById('budget-reconciliation-summary');
+        if (!listEl) return;
+
+        const balances = this.calculateAccountBalances(this.transactions);
+        const entries = this.accounts.map((account) => {
+            const appBalance = Number(balances[account.id]) || 0;
+            const reconciliationEntry = this.reconciliation[account.id] || {};
+            const realBalance = reconciliationEntry.realBalance;
+            const hasRealBalance = typeof realBalance === 'number' && Number.isFinite(realBalance);
+            const diff = hasRealBalance ? realBalance - appBalance : null;
+            return { account, appBalance, realBalance, hasRealBalance, diff, checkedAt: reconciliationEntry.checkedAt || null };
+        });
+
+        const checkedEntries = entries.filter((entry) => entry.hasRealBalance);
+        const totalAbsDiff = checkedEntries.reduce((sum, entry) => sum + Math.abs(entry.diff), 0);
+        if (summaryEl) {
+            summaryEl.innerText = checkedEntries.length === 0
+                ? 'Masukkan saldo real dari mbanking/e-wallet untuk melihat selisih tanpa mengubah data app.'
+                : `${checkedEntries.length}/${entries.length} sumber dicek • total selisih ${this.formatSensitiveCurrency(totalAbsDiff)}`;
+        }
+
+        listEl.innerHTML = '';
+
+        entries.forEach(({ account, appBalance, realBalance, hasRealBalance, diff, checkedAt }) => {
+            const lastTx = this.getLastTransactionForAccount(account.id);
+            const lastTxDate = lastTx ? this.getTransactionDate(lastTx) : null;
+            const lastTxName = lastTx
+                ? (lastTx.note || (lastTx.isDebtFlow ? this.getDebtFlowLabel(lastTx) : (i18n.t('budget_cat_' + lastTx.category) || lastTx.category || 'Transaksi')))
+                : '';
+            const lastTxLabel = lastTx
+                ? `${lastTx.type === 'income' ? '+' : '-'}${this.formatCurrency(Number(lastTx.amount) || 0)} • ${lastTxName}`
+                : 'Belum ada transaksi di sumber ini';
+            const lastTxTime = lastTxDate && !Number.isNaN(lastTxDate.getTime())
+                ? lastTxDate.toLocaleDateString(i18n.locale(), { day: '2-digit', month: 'short', year: 'numeric' })
+                : '';
+            const diffTone = !hasRealBalance || diff === 0 ? 'neutral' : (diff > 0 ? 'positive' : 'negative');
+            const checkedText = checkedAt
+                ? `Dicek ${new Date(checkedAt).toLocaleString(i18n.locale(), { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}`
+                : 'Belum pernah dicek';
+
+            const row = document.createElement('div');
+            row.className = 'budget-reconciliation-row';
+            row.innerHTML = `
+                <div class="budget-reconciliation-row-head">
+                    <div>
+                        <h4>${this.escapeHtml(account.name)}</h4>
+                        <small>${this.escapeHtml(account.type.toUpperCase())} • ${this.escapeHtml(checkedText)}</small>
+                    </div>
+                    <span class="budget-reconciliation-diff" data-tone="${diffTone}">
+                        ${hasRealBalance ? (diff === 0 ? 'Pas' : `${diff > 0 ? '+' : '-'}${this.formatSensitiveCurrency(Math.abs(diff))}`) : 'Belum dicek'}
+                    </span>
+                </div>
+                <div class="budget-reconciliation-grid">
+                    <div>
+                        <span>Saldo app</span>
+                        <strong>${this.formatSensitiveCurrency(appBalance)}</strong>
+                    </div>
+                    <label>
+                        <span>Saldo real</span>
+                        <input type="text" inputmode="numeric" class="budget-reconciliation-real-input" data-account-id="${this.escapeHtml(account.id)}" value="${hasRealBalance ? this.formatNominalInput(realBalance) : ''}" placeholder="Contoh: 125.000">
+                    </label>
+                </div>
+                <div class="budget-reconciliation-last">
+                    <i class="ph ph-clock-counter-clockwise"></i>
+                    <p><strong>Transaksi terakhir</strong><br><span>${this.escapeHtml(lastTxLabel)}${lastTxTime ? ` • ${this.escapeHtml(lastTxTime)}` : ''}</span></p>
+                </div>
+                <div class="budget-reconciliation-actions">
+                    <button type="button" class="btn btn-primary" onclick="budgetManager.saveReconciliationEntry('${this.escapeHtml(account.id)}')">
+                        <i class="ph ph-check"></i> Simpan Cek
+                    </button>
+                    <button type="button" class="btn btn-outline" onclick="budgetManager.clearReconciliationEntry('${this.escapeHtml(account.id)}')">
+                        <i class="ph ph-x"></i>
+                    </button>
+                </div>
+            `;
+
+            const input = row.querySelector('.budget-reconciliation-real-input');
+            if (input) {
+                input.addEventListener('input', () => this.applyNominalInputFormatting(input));
+            }
+
+            listEl.appendChild(row);
+        });
+    },
+
+    saveReconciliationEntry: function (accountId) {
+        const account = this.getAccountById(accountId);
+        if (!account) return;
+
+        const input = Array.from(document.querySelectorAll('.budget-reconciliation-real-input'))
+            .find((element) => element.dataset.accountId === accountId);
+        const realBalance = this.parseNominalInput(input?.value || '');
+
+        this.reconciliation = this.normalizeReconciliation(this.reconciliation);
+        this.reconciliation[accountId] = {
+            realBalance,
+            checkedAt: new Date().toISOString()
+        };
+
+        Storage.setBudgetReconciliation(this.reconciliation);
+        this.renderReconciliationModal();
+        if (typeof inboxManager !== 'undefined') inboxManager.showToast(`Cek saldo ${account.name} disimpan`);
+    },
+
+    clearReconciliationEntry: function (accountId) {
+        if (!this.reconciliation || typeof this.reconciliation !== 'object') this.reconciliation = {};
+        delete this.reconciliation[accountId];
+        Storage.setBudgetReconciliation(this.reconciliation);
+        this.renderReconciliationModal();
     },
 
     renderChart: function (currentMonthTx) {
@@ -4185,8 +4582,11 @@ const budgetManager = {
     openTransactionHistoryModal: function (typeFilter = 'all') {
         this.transactionHistoryCategoryFilter = '';
         this.transactionHistoryWeekdayFilter = null;
+        this.transactionHistorySearchQuery = '';
+        this.transactionHistoryTagFilter = '';
+        this.transactionHistoryDatePreset = 'selected_month';
         this.transactionHistoryReturnTarget = '';
-        this.transactionHistoryTypeFilter = ['all', 'expense', 'income', 'transfer'].includes(typeFilter) ? typeFilter : 'all';
+        this.transactionHistoryTypeFilter = ['all', 'expense', 'income', 'transfer', 'debt'].includes(typeFilter) ? typeFilter : 'all';
         this.renderTransactionHistoryModal(this.getTransactionsByMonth(this.selectedMonth));
         const modal = document.getElementById('modal-budget-transaction-history');
         if (!modal) return;
@@ -4198,6 +4598,9 @@ const budgetManager = {
 
         this.transactionHistoryCategoryFilter = category;
         this.transactionHistoryWeekdayFilter = null;
+        this.transactionHistorySearchQuery = '';
+        this.transactionHistoryTagFilter = '';
+        this.transactionHistoryDatePreset = 'selected_month';
         this.transactionHistoryReturnTarget = 'top-categories';
         this.transactionHistoryTypeFilter = 'expense';
         this.renderTransactionHistoryModal(this.getTransactionsByMonth(this.selectedMonth));
@@ -4213,6 +4616,9 @@ const budgetManager = {
 
         this.transactionHistoryCategoryFilter = '';
         this.transactionHistoryWeekdayFilter = dayIndex;
+        this.transactionHistorySearchQuery = '';
+        this.transactionHistoryTagFilter = '';
+        this.transactionHistoryDatePreset = 'selected_month';
         this.transactionHistoryReturnTarget = 'spending-days';
         this.transactionHistoryTypeFilter = 'all';
         this.renderTransactionHistoryModal(this.getTransactionsByMonth(this.selectedMonth));
@@ -4229,6 +4635,9 @@ const budgetManager = {
         modal.classList.remove('active');
         this.transactionHistoryCategoryFilter = '';
         this.transactionHistoryWeekdayFilter = null;
+        this.transactionHistorySearchQuery = '';
+        this.transactionHistoryTagFilter = '';
+        this.transactionHistoryDatePreset = 'selected_month';
         this.transactionHistoryReturnTarget = '';
     },
 
@@ -4267,19 +4676,33 @@ const budgetManager = {
         const titleEl = document.getElementById('budget-history-modal-title');
         const subtitleEl = document.getElementById('budget-history-modal-subtitle');
         const filterEl = document.getElementById('budget-history-modal-filter');
+        const dateFilterEl = document.getElementById('budget-history-date-filter');
+        const customDateEl = document.getElementById('budget-history-custom-date');
+        const customStartEl = document.getElementById('budget-history-custom-start');
+        const customEndEl = document.getElementById('budget-history-custom-end');
+        const searchWrapEl = document.getElementById('budget-history-search-wrap');
+        const searchInputEl = document.getElementById('budget-history-search');
+        const clearSearchBtn = document.getElementById('budget-history-search-clear');
         const backBtn = document.getElementById('budget-history-back-btn');
         if (!listEl || !titleEl || !subtitleEl) return;
 
         const typeFilter = this.transactionHistoryTypeFilter || 'all';
         const categoryFilter = this.transactionHistoryCategoryFilter || '';
         const weekdayFilter = Number.isInteger(this.transactionHistoryWeekdayFilter) ? this.transactionHistoryWeekdayFilter : null;
-        const filteredTransactions = this.getTransactionsForDisplay(monthTransactions, { typeFilter, categoryFilter, weekdayFilter });
+        const searchQuery = this.transactionHistorySearchQuery || '';
+        const tagFilter = this.transactionHistoryTagFilter || '';
+        const displaySearchQuery = searchQuery.trim();
+        const dateRange = this.getTransactionHistoryDateRange();
+        const rangeTransactions = this.getTransactionsBetweenDateRange(dateRange.start, dateRange.endExclusive, this.transactions);
+        const preTagTransactions = this.getTransactionsForDisplay(rangeTransactions, { typeFilter, categoryFilter, weekdayFilter, searchQuery });
+        const filteredTransactions = this.getTransactionsForDisplay(rangeTransactions, { typeFilter, categoryFilter, weekdayFilter, searchQuery, tagFilter });
         const totalCount = filteredTransactions.length;
         const filterLabelMap = {
             all: 'Riwayat Bulan Ini',
             expense: 'Riwayat Pengeluaran',
             income: 'Riwayat Pemasukan',
-            transfer: 'Riwayat Transfer'
+            transfer: 'Riwayat Transfer',
+            debt: 'Riwayat Utang/Piutang'
         };
         const categoryName = categoryFilter ? (i18n.t('budget_cat_' + categoryFilter) || categoryFilter) : '';
         const weekdayName = weekdayFilter !== null ? this.getWeekdayLabel(weekdayFilter) : '';
@@ -4296,9 +4719,45 @@ const budgetManager = {
             : (weekdayFilter !== null
                 ? `${this.getMonthLabel(this.selectedMonth)} • ${totalCount} transaksi pada hari ${weekdayName}`
                 : `${this.getMonthLabel(this.selectedMonth)} • ${totalCount} transaksi`);
+        subtitleEl.innerText = categoryFilter
+            ? `${dateRange.label} • ${totalCount} transaksi di kategori ini`
+            : (weekdayFilter !== null
+                ? `${dateRange.label} • ${totalCount} transaksi pada hari ${weekdayName}`
+                : `${dateRange.label} • ${totalCount} transaksi`);
+        if (displaySearchQuery) {
+            subtitleEl.innerText += ` cocok untuk "${displaySearchQuery}"`;
+        }
+        if (tagFilter) {
+            subtitleEl.innerText += ` dengan tag #${tagFilter}`;
+        }
         if (filterEl) {
             filterEl.style.display = hasCustomHistoryFilter ? 'none' : 'inline-flex';
         }
+        if (dateFilterEl) {
+            dateFilterEl.style.display = 'inline-flex';
+            dateFilterEl.querySelectorAll('[data-history-date-preset]').forEach((button) => {
+                button.classList.toggle('is-active', button.dataset.historyDatePreset === dateRange.preset);
+            });
+        }
+        if (customDateEl) {
+            customDateEl.style.display = dateRange.preset === 'custom' ? 'grid' : 'none';
+        }
+        if (customStartEl && customStartEl.value !== this.transactionHistoryCustomStart) {
+            customStartEl.value = this.transactionHistoryCustomStart || '';
+        }
+        if (customEndEl && customEndEl.value !== this.transactionHistoryCustomEnd) {
+            customEndEl.value = this.transactionHistoryCustomEnd || '';
+        }
+        if (searchWrapEl) {
+            searchWrapEl.style.display = 'flex';
+        }
+        if (searchInputEl && searchInputEl.value !== searchQuery) {
+            searchInputEl.value = searchQuery;
+        }
+        if (clearSearchBtn) {
+            clearSearchBtn.style.display = displaySearchQuery ? 'inline-flex' : 'none';
+        }
+        this.renderTransactionHistoryTagFilter(preTagTransactions);
         if (backBtn) {
             backBtn.style.display = hasCustomHistoryFilter && returnTarget ? 'inline-flex' : 'none';
             backBtn.innerHTML = `<i class="ph ph-arrow-left"></i>${returnTarget === 'spending-days' ? 'Kembali ke ranking harian' : 'Kembali ke ranking kategori'}`;
@@ -4313,15 +4772,17 @@ const budgetManager = {
                 typeFilter,
                 monthDate: this.selectedMonth,
                 customText: categoryFilter
-                    ? `Belum ada transaksi untuk kategori ${categoryName} di ${this.getMonthLabel(this.selectedMonth)}.`
+                    ? (displaySearchQuery
+                        ? `Tidak ada transaksi kategori ${categoryName} yang cocok dengan "${displaySearchQuery}".`
+                        : `Belum ada transaksi untuk kategori ${categoryName} di ${dateRange.label}.`)
                     : (weekdayFilter !== null
-                        ? `Belum ada transaksi pada hari ${weekdayName} di ${this.getMonthLabel(this.selectedMonth)}.`
-                        : '')
+                        ? `Belum ada transaksi pada hari ${weekdayName} di ${dateRange.label}.`
+                        : (displaySearchQuery ? `Tidak ada transaksi yang cocok dengan "${displaySearchQuery}".` : ''))
             });
             return;
         }
 
-        this.renderTransactionCards(listEl, filteredTransactions, monthTransactions);
+        this.renderTransactionCards(listEl, filteredTransactions, rangeTransactions);
     },
 
     animateMonthTransition: function () {
@@ -5339,11 +5800,13 @@ const budgetManager = {
 
         this.accounts = this.normalizeAccounts(nextAccounts);
         this.transactions = this.normalizeTransactions(this.transactions);
+        this.reconciliation = this.normalizeReconciliation(this.reconciliation);
 
         this.baseBalance = this.getTotalInitialBalance();
         Storage.setBudgetAccounts(this.accounts);
         Storage.setBudgetBaseBalance(this.baseBalance);
         Storage.setBudgetTransactions(this.transactions);
+        Storage.setBudgetReconciliation(this.reconciliation);
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_accounts' } }));
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_base_balance' } }));
 
@@ -5371,11 +5834,143 @@ const budgetManager = {
         if (typeof inboxManager !== 'undefined') inboxManager.showToast('Limit berhasil disimpan');
     },
 
+    resetSplitBillPanel: function () {
+        const toggle = document.getElementById('budget-split-enabled');
+        const panel = document.getElementById('budget-split-panel');
+        const list = document.getElementById('budget-split-friends-list');
+        const countInput = document.getElementById('budget-split-total-people');
+
+        if (toggle) toggle.checked = false;
+        if (panel) panel.style.display = 'none';
+        if (list) list.innerHTML = '';
+        if (countInput) countInput.value = '3';
+        this.updateSplitBillSummary();
+    },
+
+    updateSplitBillAvailability: function () {
+        const toggleWrap = document.getElementById('budget-split-toggle-wrap');
+        const toggle = document.getElementById('budget-split-enabled');
+        const type = document.querySelector('input[name="budget-type"]:checked')?.value || 'expense';
+        const isEditing = !!document.getElementById('budget-tx-id')?.value;
+        const canSplit = type === 'expense' && !isEditing;
+
+        if (toggleWrap) toggleWrap.style.display = canSplit ? 'block' : 'none';
+        if (!canSplit && toggle?.checked) {
+            toggle.checked = false;
+            const panel = document.getElementById('budget-split-panel');
+            if (panel) panel.style.display = 'none';
+        }
+
+        this.updateSplitBillSummary();
+    },
+
+    toggleSplitBillPanel: function () {
+        const toggle = document.getElementById('budget-split-enabled');
+        const panel = document.getElementById('budget-split-panel');
+        if (!toggle || !panel) return;
+
+        panel.style.display = toggle.checked ? 'block' : 'none';
+        if (toggle.checked && document.querySelectorAll('.budget-split-row').length === 0) {
+            this.addSplitBillFriendRow();
+            this.addSplitBillFriendRow();
+        }
+        this.updateSplitBillSummary();
+    },
+
+    addSplitBillFriendRow: function (personName = '', amount = '') {
+        const list = document.getElementById('budget-split-friends-list');
+        if (!list) return;
+
+        const row = document.createElement('div');
+        row.className = 'budget-split-row';
+        row.innerHTML = `
+            <input type="text" class="budget-split-person" placeholder="Nama teman" value="${this.escapeHtml(personName)}" oninput="budgetManager.updateSplitBillSummary()">
+            <input type="text" inputmode="numeric" class="budget-split-amount" placeholder="Nominal" value="${this.formatNominalInput(amount)}" oninput="budgetManager.applyNominalInputFormatting(this); budgetManager.updateSplitBillSummary()">
+            <button type="button" class="budget-split-remove" onclick="budgetManager.removeSplitBillFriendRow(this)" aria-label="Hapus teman">
+                <i class="ph ph-x"></i>
+            </button>
+        `;
+        list.appendChild(row);
+        this.updateSplitBillSummary();
+    },
+
+    removeSplitBillFriendRow: function (button) {
+        const row = button?.closest?.('.budget-split-row');
+        if (row) row.remove();
+        this.updateSplitBillSummary();
+    },
+
+    applyEqualSplitBill: function () {
+        const totalAmount = this.parseNominalInput(document.getElementById('budget-tx-amount')?.value || '');
+        const peopleCount = Math.max(2, Math.min(12, Number(document.getElementById('budget-split-total-people')?.value) || 2));
+        const list = document.getElementById('budget-split-friends-list');
+        if (!list) return;
+
+        if (totalAmount <= 0) {
+            if (typeof inboxManager !== 'undefined') inboxManager.showToast('Isi total nominal dulu');
+            return;
+        }
+
+        const friendShare = Math.floor(totalAmount / peopleCount);
+        list.innerHTML = '';
+        for (let index = 1; index < peopleCount; index += 1) {
+            this.addSplitBillFriendRow('', friendShare);
+        }
+        this.updateSplitBillSummary();
+    },
+
+    getSplitBillData: function (totalAmount, type, id) {
+        const toggle = document.getElementById('budget-split-enabled');
+        const enabled = !!toggle?.checked && type === 'expense' && !id;
+        if (!enabled) {
+            return { enabled: false, friends: [], friendTotal: 0, ownAmount: totalAmount };
+        }
+
+        const friends = Array.from(document.querySelectorAll('.budget-split-row')).map((row) => {
+            const personName = String(row.querySelector('.budget-split-person')?.value || '').trim();
+            const amount = this.parseNominalInput(row.querySelector('.budget-split-amount')?.value || '');
+            return { personName, amount };
+        }).filter((entry) => entry.personName || entry.amount > 0);
+        const friendTotal = friends.reduce((sum, entry) => sum + entry.amount, 0);
+
+        return {
+            enabled,
+            friends,
+            friendTotal,
+            ownAmount: Math.max(0, totalAmount - friendTotal)
+        };
+    },
+
+    updateSplitBillSummary: function () {
+        const summary = document.getElementById('budget-split-summary');
+        if (!summary) return;
+
+        const totalAmount = this.parseNominalInput(document.getElementById('budget-tx-amount')?.value || '');
+        const type = document.querySelector('input[name="budget-type"]:checked')?.value || 'expense';
+        const id = document.getElementById('budget-tx-id')?.value || '';
+        const splitData = this.getSplitBillData(totalAmount, type, id);
+
+        if (!splitData.enabled) {
+            summary.innerHTML = 'Aktifkan split bill untuk memisahkan porsi pribadi dan piutang teman.';
+            summary.dataset.tone = 'muted';
+            return;
+        }
+
+        const isOver = splitData.friendTotal > totalAmount;
+        const ownAmount = totalAmount - splitData.friendTotal;
+        summary.dataset.tone = isOver ? 'danger' : 'safe';
+        summary.innerHTML = isOver
+            ? `Piutang teman melebihi total bayar sebesar ${this.formatCurrency(splitData.friendTotal - totalAmount)}.`
+            : `Budget pribadi: <strong>${this.formatCurrency(Math.max(0, ownAmount))}</strong> &bull; Piutang teman: <strong>${this.formatCurrency(splitData.friendTotal)}</strong>`;
+    },
+
     openAddModal: function () {
         document.getElementById('budget-modal-title').innerText = i18n.t('budget_add_transaction') || 'Tambah Transaksi';
         document.getElementById('form-budget-add').reset();
         document.getElementById('budget-tx-id').value = '';
         this.setNominalInputValue('budget-tx-amount', '');
+        this.setTagsInputValue('budget-tx-tags', []);
+        this.resetSplitBillPanel();
         document.getElementById('budget-tx-date').value = this.getSuggestedTransactionDate();
         document.getElementById('budget-btn-delete').style.display = 'none';
         this.populateFundSourceSelect('budget-fund-source');
@@ -5394,6 +5989,8 @@ const budgetManager = {
         document.getElementById('budget-tx-id').value = tx.id;
         this.setNominalInputValue('budget-tx-amount', tx.amount);
         document.getElementById('budget-tx-note').value = tx.note || '';
+        this.setTagsInputValue('budget-tx-tags', tx.tags || []);
+        this.resetSplitBillPanel();
         document.getElementById('budget-tx-date').value = this.toDateInputValue(this.getTransactionDate(tx));
         this.populateFundSourceSelect('budget-fund-source', tx.fundSourceId);
 
@@ -5407,6 +6004,7 @@ const budgetManager = {
         if (catRadio) catRadio.checked = true;
 
         document.getElementById('budget-btn-delete').style.display = 'block';
+        this.updateSplitBillAvailability();
         document.getElementById('modal-budget-add').classList.add('active');
     },
 
@@ -5428,6 +6026,7 @@ const budgetManager = {
         document.getElementById('budget-debt-date').value = this.getSuggestedTransactionDate();
         document.getElementById('budget-debt-due-date').value = '';
         this.setNominalInputValue('budget-debt-amount', '');
+        this.setTagsInputValue('budget-debt-tags', []);
         this.populateFundSourceSelect('budget-debt-fund-source');
         this.handleDebtTypeChange();
 
@@ -5472,6 +6071,7 @@ const budgetManager = {
         const txDateRaw = document.getElementById('budget-debt-date')?.value || this.getSuggestedTransactionDate();
         const dueDate = document.getElementById('budget-debt-due-date')?.value || '';
         const description = (document.getElementById('budget-debt-description')?.value || '').trim();
+        const tags = this.mergeTransactionTags(this.getTagsInputValue('budget-debt-tags'), type === 'receivable' ? 'talangan' : 'utang');
 
         if (!personName) {
             if (typeof inboxManager !== 'undefined') inboxManager.showToast('Nama orang belum diisi');
@@ -5511,6 +6111,8 @@ const budgetManager = {
             dueDate,
             status: 'active',
             openedTxId: txId,
+            splitBillGroupId: '',
+            tags,
             createdAt: nowIso,
             updatedAt: nowIso
         };
@@ -5525,7 +6127,8 @@ const budgetManager = {
             fundSourceId,
             isDebtFlow: true,
             debtId,
-            debtFlowType: type === 'receivable' ? 'receivable_out' : 'payable_in'
+            debtFlowType: type === 'receivable' ? 'receivable_out' : 'payable_in',
+            tags
         };
 
         this.debtRecords.push(record);
@@ -5607,7 +6210,9 @@ const budgetManager = {
             fundSourceId,
             isDebtFlow: true,
             debtId: record.id,
-            debtFlowType: record.type === 'receivable' ? 'receivable_in' : 'payable_out'
+            debtFlowType: record.type === 'receivable' ? 'receivable_in' : 'payable_out',
+            splitBillGroupId: record.splitBillGroupId || '',
+            tags: this.mergeTransactionTags(record.tags || [], record.type === 'receivable' ? 'pelunasan' : 'utang')
         };
 
         this.transactions.push(tx);
@@ -5651,6 +6256,7 @@ const budgetManager = {
         this.recurringBills = [];
         this.impulseWishlist = [];
         this.debtRecords = [];
+        this.reconciliation = {};
         this.activeSavingsGoalId = null;
         this.selectedMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
@@ -5662,6 +6268,7 @@ const budgetManager = {
         Storage.setBudgetRecurringBills([]);
         Storage.setBudgetImpulseWishlist([]);
         Storage.setBudgetDebtRecords([]);
+        Storage.setBudgetReconciliation({});
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_tx' } }));
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_accounts' } }));
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_limit' } }));
@@ -5670,6 +6277,7 @@ const budgetManager = {
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_recurring_bills' } }));
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_impulse_wishlist' } }));
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_debt_records' } }));
+        window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_reconciliation' } }));
 
         this.closeTopCategoriesModal();
         this.closeSavingsGoalModal();
@@ -5679,6 +6287,7 @@ const budgetManager = {
         this.closeImpulseWishlistModal();
         this.closeDebtModal();
         this.closeDebtPaymentModal();
+        this.closeReconciliationModal();
         this.closeTransactionHistoryModal();
         if (typeof inboxManager !== 'undefined') inboxManager.showToast('Catatan keuangan berhasil di-reset');
     },
@@ -5733,6 +6342,7 @@ const budgetManager = {
         }
 
         this.previewFundSourceWarning();
+        this.updateSplitBillAvailability();
     },
 
     syncFromBbm: function (action, payload) {
@@ -5798,9 +6408,11 @@ const budgetManager = {
         const note = document.getElementById('budget-tx-note').value.trim();
         const txDateRaw = document.getElementById('budget-tx-date').value;
         const fundSourceId = document.getElementById('budget-fund-source').value;
+        const tags = this.getTagsInputValue('budget-tx-tags');
 
         const catName = type === 'expense' ? 'budget-category' : 'budget-category-inc';
         const category = document.querySelector(`input[name="${catName}"]:checked`).value;
+        const splitData = this.getSplitBillData(amount, type, id);
 
         if (amount <= 0) {
             if (typeof inboxManager !== 'undefined') inboxManager.showToast('Nominal tidak valid!');
@@ -5810,6 +6422,24 @@ const budgetManager = {
         if (!this.getAccountById(fundSourceId)) {
             if (typeof inboxManager !== 'undefined') inboxManager.showToast('Sumber dana tidak valid');
             return;
+        }
+
+        if (splitData.enabled) {
+            if (splitData.friends.length === 0) {
+                if (typeof inboxManager !== 'undefined') inboxManager.showToast('Minimal isi 1 teman untuk split bill');
+                return;
+            }
+
+            const invalidFriend = splitData.friends.find((entry) => !entry.personName || entry.amount <= 0);
+            if (invalidFriend) {
+                if (typeof inboxManager !== 'undefined') inboxManager.showToast('Nama teman dan nominal split wajib lengkap');
+                return;
+            }
+
+            if (splitData.friendTotal > amount) {
+                if (typeof inboxManager !== 'undefined') inboxManager.showToast('Total piutang teman tidak boleh melebihi total bayar');
+                return;
+            }
         }
 
         if (type === 'expense') {
@@ -5837,9 +6467,69 @@ const budgetManager = {
                     note,
                     date: txDate,
                     createdAt: this.transactions[index].createdAt || new Date().toISOString(),
-                    fundSourceId
+                    fundSourceId,
+                    tags
                 };
             }
+        } else if (splitData.enabled) {
+            const nowIso = new Date().toISOString();
+            const splitBillGroupId = (typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-split`;
+            const splitTags = this.mergeTransactionTags(tags, 'split-bill');
+            const debtTags = this.mergeTransactionTags(tags, 'split-bill', 'talangan');
+
+            if (splitData.ownAmount > 0) {
+                this.transactions.push({
+                    id: (typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-own`,
+                    type,
+                    amount: splitData.ownAmount,
+                    category,
+                    note: note || 'Split bill - porsi saya',
+                    date: txDate,
+                    createdAt: nowIso,
+                    fundSourceId,
+                    splitBillGroupId,
+                    splitBillRole: 'owner_share',
+                    tags: splitTags
+                });
+            }
+
+            splitData.friends.forEach((friend, index) => {
+                const debtId = (typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-split-debt-${index}`;
+                const txId = (typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-split-tx-${index}`;
+                const description = note || 'Split bill';
+
+                this.debtRecords.push({
+                    id: debtId,
+                    type: 'receivable',
+                    personName: friend.personName,
+                    description,
+                    originalAmount: friend.amount,
+                    fundSourceId,
+                    dueDate: '',
+                    status: 'active',
+                    openedTxId: txId,
+                    splitBillGroupId,
+                    tags: debtTags,
+                    createdAt: nowIso,
+                    updatedAt: nowIso
+                });
+
+                this.transactions.push({
+                    id: txId,
+                    type: 'expense',
+                    amount: friend.amount,
+                    category: 'other',
+                    note: `${description} - talangan ${friend.personName}`,
+                    date: txDate,
+                    createdAt: nowIso,
+                    fundSourceId,
+                    isDebtFlow: true,
+                    debtId,
+                    debtFlowType: 'receivable_out',
+                    splitBillGroupId,
+                    tags: debtTags
+                });
+            });
         } else {
             // Add new
             const newTx = {
@@ -5850,7 +6540,8 @@ const budgetManager = {
                 note,
                 date: txDate,
                 createdAt: new Date().toISOString(),
-                fundSourceId
+                fundSourceId,
+                tags
             };
             this.transactions.push(newTx);
         }
@@ -5859,20 +6550,34 @@ const budgetManager = {
         const savedDate = new Date(txDate);
         this.selectedMonth = new Date(savedDate.getFullYear(), savedDate.getMonth(), 1);
 
-        Storage.setBudgetTransactions(this.transactions);
+        if (splitData.enabled) {
+            this.persistDebtLedgerState();
+            window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_debt_records' } }));
+        } else {
+            Storage.setBudgetTransactions(this.transactions);
+        }
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_tx' } }));
 
         this.closeAddModal();
-        if (typeof inboxManager !== 'undefined') inboxManager.showToast('Transaksi berhasil disimpan');
+        if (typeof inboxManager !== 'undefined') inboxManager.showToast(splitData.enabled ? 'Split bill dan piutang berhasil dicatat' : 'Transaksi berhasil disimpan');
     },
 
     deleteTransaction: function () {
         const id = document.getElementById('budget-tx-id').value;
         if (!id) return;
+        const tx = this.transactions.find((entry) => entry.id === id);
+        const splitBillGroupId = tx?.splitBillGroupId || '';
 
         if (confirm(i18n.t('budget_delete_confirm') || 'Hapus transaksi ini?')) {
-            this.transactions = this.transactions.filter(t => t.id !== id);
-            Storage.setBudgetTransactions(this.transactions);
+            if (splitBillGroupId && tx?.splitBillRole === 'owner_share') {
+                this.debtRecords = this.debtRecords.filter((record) => record.splitBillGroupId !== splitBillGroupId);
+                this.transactions = this.transactions.filter((entry) => entry.id !== id && entry.splitBillGroupId !== splitBillGroupId);
+                this.persistDebtLedgerState();
+                window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_debt_records' } }));
+            } else {
+                this.transactions = this.transactions.filter(t => t.id !== id);
+                Storage.setBudgetTransactions(this.transactions);
+            }
             window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_tx' } }));
 
             this.closeAddModal();

@@ -1050,6 +1050,10 @@
                                         onclick="budgetManager.openRecurringBillModal(); budgetManager.closeMoreActions();">
                                         <i class="ph ph-lightning"></i> Tagihan
                                     </button>
+                                    <button type="button" class="btn btn-outline budget-action-btn" role="menuitem"
+                                        onclick="budgetManager.openReconciliationModal(); budgetManager.closeMoreActions();">
+                                        <i class="ph ph-scales"></i> Cek Mutasi
+                                    </button>
                                     <button type="button" class="btn btn-outline budget-action-btn budget-action-btn-clone" role="menuitem"
                                         onclick="budgetManager.cloneLastMonthExpenses(); budgetManager.closeMoreActions();">
                                         <i class="ph ph-copy"></i> Clone
@@ -2141,6 +2145,32 @@
                     <small style="color: var(--text-muted); font-size: 0.75rem;">Sistem akan memberi warning jika saldo sumber dana kurang.</small>
                 </div>
 
+                <div id="budget-split-toggle-wrap" class="budget-split-toggle-wrap">
+                    <label class="budget-split-toggle">
+                        <input type="checkbox" id="budget-split-enabled" onchange="budgetManager.toggleSplitBillPanel()">
+                        <span>
+                            <strong>Split bill / talangan</strong>
+                            <small>Saldo turun sesuai total bayar, budget cuma kena porsi pribadimu.</small>
+                        </span>
+                    </label>
+                    <div id="budget-split-panel" class="budget-split-panel" style="display:none;">
+                        <div class="budget-split-equal-row">
+                            <label>
+                                <span>Total orang</span>
+                                <input type="number" id="budget-split-total-people" min="2" max="12" value="3">
+                            </label>
+                            <button type="button" class="btn btn-outline" onclick="budgetManager.applyEqualSplitBill()">
+                                <i class="ph ph-divide"></i> Bagi rata
+                            </button>
+                        </div>
+                        <div id="budget-split-friends-list" class="budget-split-friends-list"></div>
+                        <button type="button" class="budget-split-add" onclick="budgetManager.addSplitBillFriendRow()">
+                            <i class="ph ph-plus"></i> Tambah teman
+                        </button>
+                        <p id="budget-split-summary" class="budget-split-summary">Aktifkan split bill untuk memisahkan porsi pribadi dan piutang teman.</p>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label data-i18n="budget_category" style="margin-bottom: 0.5rem; display: block;">Kategori</label>
 
@@ -2231,6 +2261,19 @@
                 </div>
 
                 <div class="form-group">
+                    <label>Tag / Label (Opsional)</label>
+                    <input type="text" id="budget-tx-tags" placeholder="Cth: kampus, kos, teman">
+                    <div class="budget-quick-tags">
+                        <button type="button" onclick="budgetManager.addQuickTagToInput('budget-tx-tags', 'kampus')">#kampus</button>
+                        <button type="button" onclick="budgetManager.addQuickTagToInput('budget-tx-tags', 'kos')">#kos</button>
+                        <button type="button" onclick="budgetManager.addQuickTagToInput('budget-tx-tags', 'teman')">#teman</button>
+                        <button type="button" onclick="budgetManager.addQuickTagToInput('budget-tx-tags', 'urgent')">#urgent</button>
+                        <button type="button" onclick="budgetManager.addQuickTagToInput('budget-tx-tags', 'nongkrong')">#nongkrong</button>
+                        <button type="button" onclick="budgetManager.addQuickTagToInput('budget-tx-tags', 'talangan')">#talangan</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
                     <label>Tanggal Transaksi</label>
                     <input type="date" id="budget-tx-date" required>
                 </div>
@@ -2291,6 +2334,17 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="modal-budget-reconciliation">
+        <div class="modal-content budget-reconciliation-modal-content">
+            <button class="modal-close" onclick="budgetManager.closeReconciliationModal()"><i class="ph ph-x"></i></button>
+            <h3>Cek Mutasi Sumber Dana</h3>
+            <p id="budget-reconciliation-summary" class="budget-reconciliation-summary">
+                Masukkan saldo real dari mbanking/e-wallet untuk melihat selisih tanpa mengubah data app.
+            </p>
+            <div id="budget-reconciliation-list" class="budget-reconciliation-list"></div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="modal-budget-debt">
         <div class="modal-content">
             <button class="modal-close" onclick="budgetManager.closeDebtModal()"><i class="ph ph-x"></i></button>
@@ -2337,6 +2391,17 @@
                 <div class="form-group">
                     <label>Catatan</label>
                     <input type="text" id="budget-debt-description" placeholder="Contoh: Talang makan siang">
+                </div>
+
+                <div class="form-group">
+                    <label>Tag / Label (Opsional)</label>
+                    <input type="text" id="budget-debt-tags" placeholder="Cth: teman, talangan, nongkrong">
+                    <div class="budget-quick-tags">
+                        <button type="button" onclick="budgetManager.addQuickTagToInput('budget-debt-tags', 'teman')">#teman</button>
+                        <button type="button" onclick="budgetManager.addQuickTagToInput('budget-debt-tags', 'talangan')">#talangan</button>
+                        <button type="button" onclick="budgetManager.addQuickTagToInput('budget-debt-tags', 'kampus')">#kampus</button>
+                        <button type="button" onclick="budgetManager.addQuickTagToInput('budget-debt-tags', 'nongkrong')">#nongkrong</button>
+                    </div>
                 </div>
 
                 <button type="submit" id="budget-debt-save-btn" class="btn btn-primary full-width mt-4">
@@ -2615,6 +2680,39 @@
                 <button id="budget-history-filter-debt" class="budget-history-filter-btn" type="button"
                     onclick="budgetManager.setTransactionHistoryTypeFilter('debt')">Utang</button>
             </div>
+
+            <div id="budget-history-date-filter" class="budget-history-date-filter" style="margin-bottom: 0.75rem;">
+                <button type="button" data-history-date-preset="selected_month" class="budget-history-date-btn is-active"
+                    onclick="budgetManager.setTransactionHistoryDatePreset('selected_month')">Bulan dipilih</button>
+                <button type="button" data-history-date-preset="current_week" class="budget-history-date-btn"
+                    onclick="budgetManager.setTransactionHistoryDatePreset('current_week')">Minggu ini</button>
+                <button type="button" data-history-date-preset="previous_month" class="budget-history-date-btn"
+                    onclick="budgetManager.setTransactionHistoryDatePreset('previous_month')">Bulan lalu</button>
+                <button type="button" data-history-date-preset="custom" class="budget-history-date-btn"
+                    onclick="budgetManager.setTransactionHistoryDatePreset('custom')">Custom</button>
+            </div>
+
+            <div id="budget-history-custom-date" class="budget-history-custom-date" style="display:none;">
+                <label>
+                    <span>Dari</span>
+                    <input id="budget-history-custom-start" type="date" onchange="budgetManager.setTransactionHistoryCustomDate('start', this.value)">
+                </label>
+                <label>
+                    <span>Sampai</span>
+                    <input id="budget-history-custom-end" type="date" onchange="budgetManager.setTransactionHistoryCustomDate('end', this.value)">
+                </label>
+            </div>
+
+            <div id="budget-history-search-wrap" class="budget-history-search-wrap">
+                <i class="ph ph-magnifying-glass"></i>
+                <input id="budget-history-search" type="search" placeholder="Cari catatan, nama, kategori, sumber dana, tag..."
+                    oninput="budgetManager.setTransactionHistorySearchQuery(this.value)">
+                <button id="budget-history-search-clear" type="button" onclick="budgetManager.clearTransactionHistorySearch()" style="display:none;" aria-label="Hapus pencarian">
+                    <i class="ph ph-x"></i>
+                </button>
+            </div>
+
+            <div id="budget-history-tag-filter" class="budget-history-tag-filter" style="display:none;"></div>
 
             <div id="budget-history-modal-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
                 <!-- Rendered by JS -->

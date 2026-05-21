@@ -116,6 +116,10 @@ const Storage = {
     getBudgetDebtRecords: () => Storage.get('unilife_budget_debt_records', []),
     setBudgetDebtRecords: (data) => Storage.set('unilife_budget_debt_records', data),
 
+    // Read-only balance reconciliation notes for matching app balance with real account balances
+    getBudgetReconciliation: () => Storage.get('unilife_budget_reconciliation', {}),
+    setBudgetReconciliation: (data) => Storage.set('unilife_budget_reconciliation', data),
+
     // Leveling progression (isolated from core academic modules)
     getLeveling: () => Storage.get('unilife_leveling', {
         version: 1,
