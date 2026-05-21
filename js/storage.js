@@ -112,6 +112,10 @@ const Storage = {
     getBudgetImpulseWishlist: () => Storage.get('unilife_budget_impulse_wishlist', []),
     setBudgetImpulseWishlist: (data) => Storage.set('unilife_budget_impulse_wishlist', data),
 
+    // Debt / receivable ledger linked to budget transactions
+    getBudgetDebtRecords: () => Storage.get('unilife_budget_debt_records', []),
+    setBudgetDebtRecords: (data) => Storage.set('unilife_budget_debt_records', data),
+
     // Leveling progression (isolated from core academic modules)
     getLeveling: () => Storage.get('unilife_leveling', {
         version: 1,

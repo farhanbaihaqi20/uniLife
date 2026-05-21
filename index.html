@@ -1282,6 +1282,43 @@
                     <div id="budget-impulse-list" class="budget-impulse-list" style="display:none;"></div>
                 </div>
 
+                <div class="card budget-debt-shell budget-reveal-card">
+                    <div class="budget-debt-head">
+                        <div>
+                            <p class="budget-debt-kicker">
+                                <i class="ph ph-handshake"></i> Utang & Piutang
+                            </p>
+                            <h3>Talangan tetap tercatat, budget tetap bersih</h3>
+                            <p id="budget-debt-summary">Belum ada utang/piutang aktif</p>
+                        </div>
+                        <div class="budget-debt-actions-head">
+                            <button type="button" class="budget-debt-add-btn" onclick="budgetManager.openDebtModal('receivable')">
+                                <i class="ph ph-plus"></i> Piutang
+                            </button>
+                            <button type="button" class="budget-debt-add-btn budget-debt-add-btn-alt" onclick="budgetManager.openDebtModal('payable')">
+                                <i class="ph ph-plus"></i> Utang
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="budget-debt-mini-grid">
+                        <div class="budget-debt-mini-card">
+                            <span>Teman masih utang</span>
+                            <strong id="budget-debt-receivable">Rp 0</strong>
+                        </div>
+                        <div class="budget-debt-mini-card">
+                            <span>Saya masih utang</span>
+                            <strong id="budget-debt-payable">Rp 0</strong>
+                        </div>
+                    </div>
+
+                    <div id="budget-debt-empty" class="budget-debt-empty">
+                        <i class="ph ph-receipt"></i>
+                        <p>Catat talangan sebagai piutang supaya saldo sumber dana tetap sama seperti mutasi bank, tanpa membuat limit bulanan terlihat jebol.</p>
+                    </div>
+                    <div id="budget-debt-list" class="budget-debt-list" style="display:none;"></div>
+                </div>
+
                 <div class="card budget-goal-shell budget-reveal-card" style="padding: 1rem; margin-bottom: 1.5rem;">
                     <div class="budget-goal-head" style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; margin-bottom:0.8rem;">
                         <h3 style="font-size: 1rem; font-weight: 700; color: var(--text-main); display:flex; align-items:center; gap:0.45rem;">
@@ -2254,6 +2291,96 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="modal-budget-debt">
+        <div class="modal-content">
+            <button class="modal-close" onclick="budgetManager.closeDebtModal()"><i class="ph ph-x"></i></button>
+            <h3 id="budget-debt-modal-title">Catat Piutang / Talangan</h3>
+            <p id="budget-debt-modal-note" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem; margin-bottom: 1.25rem;">
+                Saldo sumber dana berkurang sesuai mutasi nyata, tapi tidak dihitung sebagai pengeluaran bulanan.
+            </p>
+
+            <form id="form-budget-debt" onsubmit="budgetManager.saveDebtRecord(event)">
+                <div class="form-group">
+                    <label>Jenis Catatan</label>
+                    <select id="budget-debt-type" onchange="budgetManager.handleDebtTypeChange()">
+                        <option value="receivable">Piutang - teman utang ke saya</option>
+                        <option value="payable">Utang - saya utang ke orang</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label id="budget-debt-person-label">Siapa yang kamu talangi?</label>
+                    <input type="text" id="budget-debt-person" required placeholder="Contoh: Budi">
+                </div>
+
+                <div class="form-group">
+                    <label>Nominal (Rp)</label>
+                    <input type="text" inputmode="numeric" id="budget-debt-amount" required placeholder="Contoh: 50.000" oninput="budgetManager.handleNominalInput('budget-debt-amount')">
+                </div>
+
+                <div class="form-group">
+                    <label id="budget-debt-fund-label">Sumber dana talangan</label>
+                    <select id="budget-debt-fund-source" required></select>
+                </div>
+
+                <div class="form-group row">
+                    <div class="col">
+                        <label>Tanggal</label>
+                        <input type="date" id="budget-debt-date" required>
+                    </div>
+                    <div class="col">
+                        <label>Jatuh Tempo</label>
+                        <input type="date" id="budget-debt-due-date">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Catatan</label>
+                    <input type="text" id="budget-debt-description" placeholder="Contoh: Talang makan siang">
+                </div>
+
+                <button type="submit" id="budget-debt-save-btn" class="btn btn-primary full-width mt-4">
+                    <i class="ph ph-plus"></i> Simpan Piutang
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-budget-debt-payment">
+        <div class="modal-content">
+            <button class="modal-close" onclick="budgetManager.closeDebtPaymentModal()"><i class="ph ph-x"></i></button>
+            <h3 id="budget-debt-payment-title">Catat Pelunasan Piutang</h3>
+            <p id="budget-debt-payment-note" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem; margin-bottom: 1.25rem;">-</p>
+
+            <form id="form-budget-debt-payment" onsubmit="budgetManager.saveDebtPayment(event)">
+                <input type="hidden" id="budget-debt-payment-id">
+                <div class="form-group">
+                    <label>Nominal Bayar (Rp)</label>
+                    <input type="text" inputmode="numeric" id="budget-debt-payment-amount" required placeholder="Contoh: 50.000" oninput="budgetManager.handleNominalInput('budget-debt-payment-amount')">
+                </div>
+
+                <div class="form-group">
+                    <label>Sumber Dana</label>
+                    <select id="budget-debt-payment-fund-source" required></select>
+                </div>
+
+                <div class="form-group">
+                    <label>Tanggal</label>
+                    <input type="date" id="budget-debt-payment-date" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Catatan</label>
+                    <input type="text" id="budget-debt-payment-description" placeholder="Contoh: Transfer balik via DANA">
+                </div>
+
+                <button type="submit" class="btn btn-primary full-width mt-4">
+                    <i class="ph ph-hand-coins"></i> Simpan Pembayaran
+                </button>
+            </form>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="modal-budget-impulse">
         <div class="modal-content budget-impulse-modal-content">
             <button class="modal-close" onclick="budgetManager.closeImpulseWishlistModal()"><i class="ph ph-x"></i></button>
@@ -2485,6 +2612,8 @@
                     onclick="budgetManager.setTransactionHistoryTypeFilter('income')">Pemasukan</button>
                 <button id="budget-history-filter-transfer" class="budget-history-filter-btn" type="button"
                     onclick="budgetManager.setTransactionHistoryTypeFilter('transfer')">Transfer</button>
+                <button id="budget-history-filter-debt" class="budget-history-filter-btn" type="button"
+                    onclick="budgetManager.setTransactionHistoryTypeFilter('debt')">Utang</button>
             </div>
 
             <div id="budget-history-modal-list" style="display: flex; flex-direction: column; gap: 0.75rem;">

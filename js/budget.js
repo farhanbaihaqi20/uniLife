@@ -12,6 +12,7 @@ const budgetManager = {
     savingsGoals: [],
     recurringBills: [],
     impulseWishlist: [],
+    debtRecords: [],
     activeSavingsGoalId: null,
     monthAnimationTimer: null,
     recentInterestFundIds: [],
@@ -39,11 +40,13 @@ const budgetManager = {
         this.savingsGoals = this.normalizeSavingsGoals(Storage.getBudgetSavingsGoals());
         this.recurringBills = this.normalizeRecurringBills(Storage.getBudgetRecurringBills());
         this.impulseWishlist = this.normalizeImpulseWishlist(Storage.getBudgetImpulseWishlist());
+        this.debtRecords = this.normalizeDebtRecords(Storage.getBudgetDebtRecords());
         this.applyPendingAccountInterest();
         Storage.setBudgetTransactions(this.transactions);
         Storage.setBudgetAccounts(this.accounts);
         Storage.setBudgetRecurringBills(this.recurringBills);
         Storage.setBudgetImpulseWishlist(this.impulseWishlist);
+        Storage.setBudgetDebtRecords(this.debtRecords);
         this.monthlyLimit = Storage.getBudgetLimit();
         this.isBalanceVisible = Storage.get('unilife_budget_balance_visible', true) !== false;
         this.baseBalance = this.getTotalInitialBalance();
@@ -274,20 +277,24 @@ const budgetManager = {
     calculateTotals: function (transactions = this.transactions) {
         let income = 0;
         let expense = 0;
+        let balance = 0;
 
         transactions.forEach(tx => {
             if (!tx || tx.isTransfer) return;
+            const amount = Number(tx.amount) || 0;
             if (tx.type === 'income') {
-                income += tx.amount;
+                balance += amount;
+                if (!tx.isDebtFlow) income += amount;
             } else {
-                expense += tx.amount;
+                balance -= amount;
+                if (!tx.isDebtFlow) expense += amount;
             }
         });
 
         return {
             income,
             expense,
-            balance: income - expense
+            balance
         };
     },
 
@@ -334,7 +341,7 @@ const budgetManager = {
     },
 
     setTransactionHistoryTypeFilter: function (filterType) {
-        const allowed = ['all', 'expense', 'income', 'transfer'];
+        const allowed = ['all', 'expense', 'income', 'transfer', 'debt'];
         const nextFilter = allowed.includes(filterType) ? filterType : 'all';
         if (this.transactionHistoryTypeFilter === nextFilter) return;
         this.transactionHistoryTypeFilter = nextFilter;
@@ -360,23 +367,37 @@ const budgetManager = {
         const expenseBtn = document.getElementById('budget-history-filter-expense');
         const incomeBtn = document.getElementById('budget-history-filter-income');
         const transferBtn = document.getElementById('budget-history-filter-transfer');
-        if (!allBtn || !expenseBtn || !incomeBtn || !transferBtn) return;
+        const debtBtn = document.getElementById('budget-history-filter-debt');
+        if (!allBtn || !expenseBtn || !incomeBtn || !transferBtn || !debtBtn) return;
 
         const active = this.transactionHistoryTypeFilter;
         allBtn.classList.toggle('is-active', active === 'all');
         expenseBtn.classList.toggle('is-active', active === 'expense');
         incomeBtn.classList.toggle('is-active', active === 'income');
         transferBtn.classList.toggle('is-active', active === 'transfer');
+        debtBtn.classList.toggle('is-active', active === 'debt');
     },
 
     getExpensesByCategory: function (transactions) {
         const categories = {};
         transactions.forEach(tx => {
-            if (tx.type === 'expense' && !tx.isTransfer) {
+            if (this.isBudgetExpense(tx)) {
                 categories[tx.category] = (categories[tx.category] || 0) + tx.amount;
             }
         });
         return categories;
+    },
+
+    isBudgetTrackedTransaction: function (tx) {
+        return !!tx && !tx.isTransfer && !tx.isDebtFlow;
+    },
+
+    isBudgetExpense: function (tx) {
+        return this.isBudgetTrackedTransaction(tx) && tx.type === 'expense';
+    },
+
+    isBudgetIncome: function (tx) {
+        return this.isBudgetTrackedTransaction(tx) && tx.type === 'income';
     },
 
     formatCurrency: function (amount) {
@@ -668,9 +689,100 @@ const budgetManager = {
         const source = Array.isArray(transactions) ? transactions : [];
         return source.map((tx) => ({
             ...tx,
+            amount: Math.max(0, Number(tx?.amount) || 0),
             createdAt: tx?.createdAt || tx?.timestamp || tx?.date || new Date().toISOString(),
-            fundSourceId: this.getAccountById(tx?.fundSourceId) ? tx.fundSourceId : defaultAccountId
+            fundSourceId: this.getAccountById(tx?.fundSourceId) ? tx.fundSourceId : defaultAccountId,
+            isDebtFlow: !!tx?.isDebtFlow
         }));
+    },
+
+    normalizeDebtRecords: function (records) {
+        const source = Array.isArray(records) ? records : [];
+        const defaultAccountId = this.getDefaultAccountId();
+
+        return source
+            .map((record) => {
+                const type = record?.type === 'payable' ? 'payable' : 'receivable';
+                const originalAmount = Math.max(0, Number(record?.originalAmount ?? record?.amount) || 0);
+                const dueDate = record?.dueDate ? this.toDateInputValue(new Date(record.dueDate)) : '';
+                const fundSourceId = this.getAccountById(record?.fundSourceId) ? record.fundSourceId : defaultAccountId;
+                const status = ['active', 'paid', 'cancelled'].includes(record?.status) ? record.status : 'active';
+
+                return {
+                    id: record?.id || ((typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-${Math.random().toString(16).slice(2)}`),
+                    type,
+                    personName: String(record?.personName || record?.person || '').trim() || 'Teman',
+                    description: String(record?.description || record?.note || '').trim(),
+                    originalAmount,
+                    fundSourceId,
+                    dueDate,
+                    status,
+                    openedTxId: record?.openedTxId || '',
+                    createdAt: record?.createdAt || new Date().toISOString(),
+                    updatedAt: record?.updatedAt || record?.createdAt || new Date().toISOString()
+                };
+            })
+            .filter((record) => record.originalAmount > 0)
+            .sort((a, b) => {
+                if (a.status !== b.status) return a.status === 'active' ? -1 : 1;
+                return new Date(b.createdAt) - new Date(a.createdAt);
+            });
+    },
+
+    getDebtRecordStats: function (record) {
+        if (!record) return { principal: 0, paid: 0, remaining: 0, progress: 0 };
+
+        const linked = this.transactions.filter((tx) => tx?.isDebtFlow && tx.debtId === record.id);
+        let principal = 0;
+        let paid = 0;
+
+        linked.forEach((tx) => {
+            const amount = Number(tx.amount) || 0;
+            if (record.type === 'receivable') {
+                if (tx.debtFlowType === 'receivable_out' || (tx.type === 'expense' && tx.id === record.openedTxId)) principal += amount;
+                if (tx.debtFlowType === 'receivable_in') paid += amount;
+            } else {
+                if (tx.debtFlowType === 'payable_in' || (tx.type === 'income' && tx.id === record.openedTxId)) principal += amount;
+                if (tx.debtFlowType === 'payable_out') paid += amount;
+            }
+        });
+
+        if (principal <= 0) principal = Math.max(0, Number(record.originalAmount) || 0);
+        paid = Math.min(principal, Math.max(0, paid));
+        const remaining = Math.max(0, principal - paid);
+        const progress = principal > 0 ? Math.round((paid / principal) * 100) : 0;
+
+        return { principal, paid, remaining, progress };
+    },
+
+    getDebtLedgerSummary: function () {
+        return this.debtRecords.reduce((summary, record) => {
+            if (!record || record.status === 'cancelled') return summary;
+            const stats = this.getDebtRecordStats(record);
+            if (stats.remaining <= 0 || record.status === 'paid') return summary;
+
+            if (record.type === 'receivable') {
+                summary.receivable += stats.remaining;
+                summary.receivableCount += 1;
+            } else {
+                summary.payable += stats.remaining;
+                summary.payableCount += 1;
+            }
+            return summary;
+        }, { receivable: 0, payable: 0, receivableCount: 0, payableCount: 0 });
+    },
+
+    getDebtTypeLabel: function (type) {
+        return type === 'payable' ? 'Utang Saya' : 'Piutang Teman';
+    },
+
+    getDebtFlowLabel: function (tx) {
+        const flowType = tx?.debtFlowType || '';
+        if (flowType === 'receivable_out') return 'Talangan';
+        if (flowType === 'receivable_in') return 'Pelunasan Piutang';
+        if (flowType === 'payable_in') return 'Utang Diterima';
+        if (flowType === 'payable_out') return 'Bayar Utang';
+        return 'Utang/Piutang';
     },
 
     normalizeSavingsGoals: function (goals) {
@@ -1170,6 +1282,18 @@ const budgetManager = {
         }
     },
 
+    persistDebtLedgerState: function () {
+        this.transactions = this.normalizeTransactions(this.transactions);
+        this.debtRecords = this.normalizeDebtRecords(this.debtRecords);
+
+        try {
+            localStorage.setItem('unilife_budget_transactions', JSON.stringify(this.transactions));
+            localStorage.setItem('unilife_budget_debt_records', JSON.stringify(this.debtRecords));
+        } catch (error) {
+            console.error('Failed to persist debt ledger state', error);
+        }
+    },
+
     migrateLegacyBaseBalance: function () {
         const oldBaseBalance = Number(Storage.getBudgetBaseBalance()) || 0;
         const hasAccountsKey = !!localStorage.getItem('unilife_budget_accounts');
@@ -1190,6 +1314,7 @@ const budgetManager = {
         this.baseBalance = this.getTotalInitialBalance();
         this.transactions = this.normalizeTransactions(this.transactions);
         this.recurringBills = this.normalizeRecurringBills(this.recurringBills);
+        this.debtRecords = this.normalizeDebtRecords(this.debtRecords);
         const interestApplied = this.applyPendingAccountInterest();
         if (interestApplied) {
             this.persistBudgetSilently();
@@ -1241,6 +1366,7 @@ const budgetManager = {
         this.renderLimitProgress(monthTotals.expense);
         this.renderWeeklyAllowanceCard(currentMonthTx);
         this.renderImpulseWishlistCard();
+        this.renderDebtLedgerCard();
         this.renderSavingsGoalCard();
         this.renderRecurringBillsCard();
 
@@ -1264,6 +1390,79 @@ const budgetManager = {
         if (recurringHistoryModal && recurringHistoryModal.classList.contains('active')) {
             this.renderRecurringBillHistoryModal();
         }
+    },
+
+    renderDebtLedgerCard: function () {
+        const summaryEl = document.getElementById('budget-debt-summary');
+        const receivableEl = document.getElementById('budget-debt-receivable');
+        const payableEl = document.getElementById('budget-debt-payable');
+        const emptyEl = document.getElementById('budget-debt-empty');
+        const listEl = document.getElementById('budget-debt-list');
+        if (!summaryEl || !receivableEl || !payableEl || !emptyEl || !listEl) return;
+
+        const summary = this.getDebtLedgerSummary();
+        receivableEl.innerText = this.formatSensitiveCurrency(summary.receivable);
+        payableEl.innerText = this.formatSensitiveCurrency(summary.payable);
+
+        const activeRecords = this.debtRecords
+            .map((record) => ({ record, stats: this.getDebtRecordStats(record) }))
+            .filter((entry) => entry.record.status !== 'cancelled' && entry.stats.remaining > 0)
+            .sort((a, b) => {
+                if (a.record.type !== b.record.type) return a.record.type === 'receivable' ? -1 : 1;
+                return new Date(a.record.createdAt) - new Date(b.record.createdAt);
+            });
+
+        const totalActive = activeRecords.length;
+        if (totalActive === 0) {
+            summaryEl.innerText = 'Belum ada utang/piutang aktif';
+            emptyEl.style.display = 'block';
+            listEl.style.display = 'none';
+            listEl.innerHTML = '';
+            return;
+        }
+
+        summaryEl.innerText = `${summary.receivableCount} piutang aktif, ${summary.payableCount} utang aktif`;
+        emptyEl.style.display = 'none';
+        listEl.style.display = 'grid';
+        listEl.innerHTML = '';
+
+        activeRecords.forEach(({ record, stats }) => {
+            const row = document.createElement('div');
+            row.className = 'budget-debt-item';
+            const isReceivable = record.type === 'receivable';
+            const tone = isReceivable ? '#0284c7' : '#b45309';
+            const safeName = this.escapeHtml(record.personName);
+            const safeDescription = this.escapeHtml(record.description || (isReceivable ? 'Dana talangan' : 'Utang pribadi'));
+            const dueLabel = record.dueDate ? ` &bull; jatuh tempo ${this.escapeHtml(record.dueDate)}` : '';
+
+            row.innerHTML = `
+                <div class="budget-debt-item-main">
+                    <span class="budget-debt-type" style="color:${tone}; background:${isReceivable ? 'rgba(14,165,233,0.12)' : 'rgba(245,158,11,0.12)'};">
+                        ${isReceivable ? 'Piutang' : 'Utang'}
+                    </span>
+                    <div>
+                        <strong>${safeName}</strong>
+                        <small>${safeDescription}${dueLabel}</small>
+                    </div>
+                </div>
+                <div class="budget-debt-item-side">
+                    <strong>${this.formatSensitiveCurrency(stats.remaining)}</strong>
+                    <small>${stats.progress}% lunas</small>
+                </div>
+                <div class="budget-debt-progress">
+                    <span style="width:${Math.min(100, stats.progress)}%; background:${tone};"></span>
+                </div>
+                <div class="budget-debt-actions">
+                    <button type="button" class="btn btn-primary" onclick="budgetManager.openDebtPaymentModal('${record.id}')">
+                        <i class="ph ph-hand-coins"></i> Catat Bayar
+                    </button>
+                    <button type="button" class="btn btn-outline" onclick="budgetManager.deleteDebtRecord('${record.id}')">
+                        <i class="ph ph-trash"></i>
+                    </button>
+                </div>
+            `;
+            listEl.appendChild(row);
+        });
     },
 
     renderSavingsGoalCard: function () {
@@ -1835,7 +2034,7 @@ const budgetManager = {
 
         const expenseDays = new Set(
             (Array.isArray(currentMonthTx) ? currentMonthTx : [])
-                .filter((tx) => tx?.type === 'expense' && !tx?.isTransfer)
+                .filter((tx) => this.isBudgetExpense(tx))
                 .map((tx) => this.toDateInputValue(this.getTransactionDate(tx)))
                 .filter(Boolean)
         ).size;
@@ -1997,7 +2196,7 @@ const budgetManager = {
         }
 
         (Array.isArray(monthTransactions) ? monthTransactions : []).forEach((tx) => {
-            if (!tx || tx.type !== 'expense' || tx.isTransfer) return;
+            if (!this.isBudgetExpense(tx)) return;
             const txDate = this.getTransactionDate(tx);
             if (Number.isNaN(txDate.getTime())) return;
             dayStats[txDate.getDay()].total += Number(tx.amount) || 0;
@@ -2034,7 +2233,7 @@ const budgetManager = {
         if (!start || !end) return 0;
 
         return (Array.isArray(transactions) ? transactions : []).reduce((sum, tx) => {
-            if (!tx || tx.type !== 'expense' || tx.isTransfer) return sum;
+            if (!this.isBudgetExpense(tx)) return sum;
             const txDate = this.getTransactionDate(tx);
             if (Number.isNaN(txDate.getTime())) return sum;
             if (txDate >= start && txDate < end) {
@@ -2072,12 +2271,12 @@ const budgetManager = {
     },
 
     getUnusualExpenseStatus: function (tx) {
-        if (!tx || tx.type !== 'expense' || tx.isTransfer) {
+        if (!this.isBudgetExpense(tx)) {
             return { isUnusual: false, averageAmount: 0 };
         }
 
         const comparable = this.transactions.filter((item) => {
-            if (!item || item.type !== 'expense' || item.isTransfer) return false;
+            if (!this.isBudgetExpense(item)) return false;
             if ((item.id || '') === (tx.id || '')) return false;
             return item.category === tx.category;
         });
@@ -2133,8 +2332,13 @@ const budgetManager = {
 
             if (typeFilter === 'transfer') {
                 if (!tx.isTransfer) return false;
+            } else if (typeFilter === 'debt') {
+                if (!tx.isDebtFlow) return false;
             } else {
                 if (tx.isTransfer && (typeFilter === 'income' || typeFilter === 'expense')) {
+                    return false;
+                }
+                if (tx.isDebtFlow && (typeFilter === 'income' || typeFilter === 'expense')) {
                     return false;
                 }
                 if (typeFilter !== 'all' && tx.type !== typeFilter) {
@@ -2229,20 +2433,30 @@ const budgetManager = {
             el.style.cursor = 'pointer';
             el.style.transition = 'transform 0.2s, box-shadow 0.2s';
             el.style.animationDelay = `${index * 0.04}s`;
-            el.onclick = () => this.openEditModal(tx.id);
+            el.onclick = () => {
+                if (tx.isDebtFlow) {
+                    if (typeof inboxManager !== 'undefined') inboxManager.showToast('Kelola transaksi ini dari kartu Utang/Piutang');
+                    return;
+                }
+                this.openEditModal(tx.id);
+            };
 
             const isIncome = tx.type === 'income';
             const isTransfer = !!tx.isTransfer;
+            const isDebtFlow = !!tx.isDebtFlow;
             const isTransferIn = isTransfer && tx.transferDirection === 'in';
-            const accentBg = isTransfer
-                ? 'rgba(37, 99, 235, 0.12)'
-                : (isIncome ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)');
-            const accentColor = isTransfer
-                ? '#2563eb'
-                : (isIncome ? '#10b981' : '#f59e0b');
-            const amountColor = isTransfer
-                ? '#2563eb'
-                : (isIncome ? '#10b981' : 'var(--text-main)');
+            let accentBg = isIncome ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)';
+            let accentColor = isIncome ? '#10b981' : '#f59e0b';
+            let amountColor = isIncome ? '#10b981' : 'var(--text-main)';
+            if (isTransfer) {
+                accentBg = 'rgba(37, 99, 235, 0.12)';
+                accentColor = '#2563eb';
+                amountColor = '#2563eb';
+            } else if (isDebtFlow) {
+                accentBg = 'rgba(14, 165, 233, 0.12)';
+                accentColor = '#0284c7';
+                amountColor = '#0284c7';
+            }
             const amountPrefix = isTransfer ? '' : (isIncome ? '+' : '-');
 
             const iconMap = {
@@ -2261,6 +2475,10 @@ const budgetManager = {
             let iconName = iconMap[tx.category] || 'receipt';
             if (isTransfer) {
                 iconName = isTransferIn ? 'arrow-bend-down-left' : 'arrow-bend-up-right';
+            } else if (isDebtFlow) {
+                iconName = tx.debtFlowType === 'receivable_in' || tx.debtFlowType === 'payable_out'
+                    ? 'hand-coins'
+                    : 'handshake';
             }
             const catName = i18n.t('budget_cat_' + tx.category) || tx.category;
             const fundSourceName = this.getFundSourceLabelById(tx.fundSourceId);
@@ -2276,7 +2494,7 @@ const budgetManager = {
 
             const typeLabel = isTransfer
                 ? (isTransferIn ? 'Transfer Masuk' : 'Transfer Keluar')
-                : (isIncome ? 'Pemasukan' : 'Pengeluaran');
+                : (isDebtFlow ? this.getDebtFlowLabel(tx) : (isIncome ? 'Pemasukan' : 'Pengeluaran'));
             const dateObj = this.getTransactionDate(tx);
             const displayTimeSource = tx.createdAt || tx.timestamp || tx.date;
             const displayTimeObj = new Date(displayTimeSource);
@@ -2348,7 +2566,8 @@ const budgetManager = {
             all: 'catatan',
             expense: 'pengeluaran',
             income: 'pemasukan',
-            transfer: 'transfer'
+            transfer: 'transfer',
+            debt: 'utang/piutang'
         };
         const sourceLabel = filterLabelMap[sourceTypeFilter];
         const typeLabel = typeLabelMap[typeFilter] || 'catatan';
@@ -2369,7 +2588,7 @@ const budgetManager = {
         if (this.monthlyLimit <= 0) return '';
 
         const ordered = [...(Array.isArray(monthTransactions) ? monthTransactions : [])]
-            .filter((tx) => tx?.type === 'expense' && !tx?.isTransfer)
+            .filter((tx) => this.isBudgetExpense(tx))
             .sort((a, b) => {
                 const dateDiff = this.getTransactionDate(a) - this.getTransactionDate(b);
                 if (dateDiff !== 0) return dateDiff;
@@ -2398,6 +2617,12 @@ const budgetManager = {
         if (tx?.isTransfer) {
             badges.push({ type: 'static', tone: 'slate', label: 'Transfer' });
             badges.push({ type: 'static', tone: 'slate', label: tx.transferDirection === 'in' ? 'Masuk' : 'Keluar' });
+            return badges;
+        }
+
+        if (tx?.isDebtFlow) {
+            badges.push({ type: 'static', tone: 'slate', label: this.getDebtFlowLabel(tx) });
+            badges.push({ type: 'static', tone: 'slate', label: 'Tidak masuk budget' });
             return badges;
         }
 
@@ -2455,7 +2680,7 @@ const budgetManager = {
     },
 
     estimateRecurringExpense: function () {
-        const expenseTx = this.transactions.filter(tx => tx.type === 'expense' && !tx.isTransfer);
+        const expenseTx = this.transactions.filter(tx => this.isBudgetExpense(tx));
         if (expenseTx.length < 4) return 0;
 
         const groups = {};
@@ -2491,7 +2716,7 @@ const budgetManager = {
             const date = this.toDateInputValue(this.getTransactionDate(tx));
             const typeLabel = tx.isTransfer
                 ? (tx.transferDirection === 'in' ? 'Transfer Masuk' : 'Transfer Keluar')
-                : (tx.type === 'income' ? 'Pemasukan' : 'Pengeluaran');
+                : (tx.isDebtFlow ? this.getDebtFlowLabel(tx) : (tx.type === 'income' ? 'Pemasukan' : 'Pengeluaran'));
             const fundSourceName = this.getFundSourceLabelById(tx.fundSourceId);
             const catName = i18n.t('budget_cat_' + tx.category) || tx.category;
             const safeNote = (tx.note || '').replace(/\"/g, '""');
@@ -2520,7 +2745,7 @@ const budgetManager = {
     cloneLastMonthExpenses: function () {
         const previousMonth = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth() - 1, 1);
         const previousMonthTx = this.getTransactionsByMonth(previousMonth)
-            .filter(tx => tx.type === 'expense' && !tx.isTransfer);
+            .filter(tx => this.isBudgetExpense(tx));
 
         if (previousMonthTx.length === 0) {
             if (typeof inboxManager !== 'undefined') inboxManager.showToast('Tidak ada pengeluaran bulan lalu untuk di-clone');
@@ -3240,7 +3465,7 @@ const budgetManager = {
             const monthDate = new Date(year, month, 1);
             const monthLabel = monthDate.toLocaleDateString(i18n.locale(), { month: 'short' });
             const monthExpense = this.getTransactionsByMonth(monthDate)
-                .filter((tx) => tx?.type === 'expense' && !tx?.isTransfer)
+                .filter((tx) => this.isBudgetExpense(tx))
                 .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
 
             labels.push(monthLabel);
@@ -3317,8 +3542,8 @@ const budgetManager = {
             : [];
         const totals = this.calculateTotals(weekTx);
         const previousTotals = this.calculateTotals(previousTx);
-        const expenseTx = weekTx.filter((tx) => tx?.type === 'expense' && !tx?.isTransfer);
-        const previousExpenseTx = previousTx.filter((tx) => tx?.type === 'expense' && !tx?.isTransfer);
+        const expenseTx = weekTx.filter((tx) => this.isBudgetExpense(tx));
+        const previousExpenseTx = previousTx.filter((tx) => this.isBudgetExpense(tx));
         const byCategory = this.getExpensesByCategory(expenseTx);
         const previousByCategory = this.getExpensesByCategory(previousExpenseTx);
         const categoryEntries = Object.entries(byCategory).sort((a, b) => b[1] - a[1]);
@@ -3847,7 +4072,7 @@ const budgetManager = {
         listEl.innerHTML = '';
 
         const monthTx = this.getTransactionsByMonth(this.selectedMonth);
-        const hasExpense = monthTx.some((tx) => tx?.type === 'expense' && !tx?.isTransfer);
+        const hasExpense = monthTx.some((tx) => this.isBudgetExpense(tx));
 
         if (!hasExpense) {
             listEl.innerHTML = `
@@ -3909,7 +4134,7 @@ const budgetManager = {
         this.topCategoryEntries.forEach((entry, index) => {
             const [cat, value] = entry;
             const categoryTransactions = monthTransactions.filter((tx) =>
-                tx?.type === 'expense' && !tx?.isTransfer && tx?.category === cat
+                this.isBudgetExpense(tx) && tx?.category === cat
             );
             const categoryCount = categoryTransactions.length;
             const average = categoryCount > 0 ? Math.round(value / categoryCount) : 0;
@@ -5194,6 +5419,225 @@ const budgetManager = {
         }
     },
 
+    openDebtModal: function (type = 'receivable') {
+        const modal = document.getElementById('modal-budget-debt');
+        if (!modal) return;
+
+        document.getElementById('form-budget-debt').reset();
+        document.getElementById('budget-debt-type').value = type === 'payable' ? 'payable' : 'receivable';
+        document.getElementById('budget-debt-date').value = this.getSuggestedTransactionDate();
+        document.getElementById('budget-debt-due-date').value = '';
+        this.setNominalInputValue('budget-debt-amount', '');
+        this.populateFundSourceSelect('budget-debt-fund-source');
+        this.handleDebtTypeChange();
+
+        modal.classList.add('active');
+        setTimeout(() => document.getElementById('budget-debt-person')?.focus(), 100);
+    },
+
+    closeDebtModal: function () {
+        document.getElementById('modal-budget-debt')?.classList.remove('active');
+    },
+
+    handleDebtTypeChange: function () {
+        const type = document.getElementById('budget-debt-type')?.value === 'payable' ? 'payable' : 'receivable';
+        const title = document.getElementById('budget-debt-modal-title');
+        const personLabel = document.getElementById('budget-debt-person-label');
+        const fundLabel = document.getElementById('budget-debt-fund-label');
+        const note = document.getElementById('budget-debt-modal-note');
+        const saveBtn = document.getElementById('budget-debt-save-btn');
+
+        if (type === 'payable') {
+            if (title) title.innerText = 'Catat Utang Saya';
+            if (personLabel) personLabel.innerText = 'Saya utang ke siapa?';
+            if (fundLabel) fundLabel.innerText = 'Dana masuk ke';
+            if (note) note.innerText = 'Saldo sumber dana bertambah, tapi tidak dihitung sebagai pemasukan bulanan.';
+            if (saveBtn) saveBtn.innerHTML = '<i class="ph ph-plus"></i> Simpan Utang';
+        } else {
+            if (title) title.innerText = 'Catat Piutang / Talangan';
+            if (personLabel) personLabel.innerText = 'Siapa yang kamu talangi?';
+            if (fundLabel) fundLabel.innerText = 'Sumber dana talangan';
+            if (note) note.innerText = 'Saldo sumber dana berkurang sesuai mutasi nyata, tapi tidak dihitung sebagai pengeluaran bulanan.';
+            if (saveBtn) saveBtn.innerHTML = '<i class="ph ph-plus"></i> Simpan Piutang';
+        }
+    },
+
+    saveDebtRecord: function (e) {
+        e.preventDefault();
+
+        const type = document.getElementById('budget-debt-type')?.value === 'payable' ? 'payable' : 'receivable';
+        const personName = (document.getElementById('budget-debt-person')?.value || '').trim();
+        const amount = this.parseNominalInput(document.getElementById('budget-debt-amount')?.value || '');
+        const fundSourceId = document.getElementById('budget-debt-fund-source')?.value || this.getDefaultAccountId();
+        const txDateRaw = document.getElementById('budget-debt-date')?.value || this.getSuggestedTransactionDate();
+        const dueDate = document.getElementById('budget-debt-due-date')?.value || '';
+        const description = (document.getElementById('budget-debt-description')?.value || '').trim();
+
+        if (!personName) {
+            if (typeof inboxManager !== 'undefined') inboxManager.showToast('Nama orang belum diisi');
+            return;
+        }
+
+        if (amount <= 0) {
+            if (typeof inboxManager !== 'undefined') inboxManager.showToast('Nominal tidak valid');
+            return;
+        }
+
+        if (!this.getAccountById(fundSourceId)) {
+            if (typeof inboxManager !== 'undefined') inboxManager.showToast('Sumber dana tidak valid');
+            return;
+        }
+
+        if (type === 'receivable') {
+            const balances = this.calculateAccountBalances(this.transactions);
+            const currentBalance = Number(balances[fundSourceId]) || 0;
+            if (currentBalance < amount) {
+                const confirmed = confirm(`Saldo sumber dana ini kurang (${this.formatCurrency(currentBalance)}). Lanjutkan dan izinkan saldo minus?`);
+                if (!confirmed) return;
+            }
+        }
+
+        const nowIso = new Date().toISOString();
+        const debtId = (typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        const txId = (typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-debt`;
+        const txDate = this.buildTransactionDateIso(txDateRaw, nowIso);
+        const record = {
+            id: debtId,
+            type,
+            personName,
+            description,
+            originalAmount: amount,
+            fundSourceId,
+            dueDate,
+            status: 'active',
+            openedTxId: txId,
+            createdAt: nowIso,
+            updatedAt: nowIso
+        };
+        const tx = {
+            id: txId,
+            type: type === 'receivable' ? 'expense' : 'income',
+            amount,
+            category: type === 'receivable' ? 'other' : 'other_income',
+            note: description || (type === 'receivable' ? `Talangan untuk ${personName}` : `Utang dari ${personName}`),
+            date: txDate,
+            createdAt: nowIso,
+            fundSourceId,
+            isDebtFlow: true,
+            debtId,
+            debtFlowType: type === 'receivable' ? 'receivable_out' : 'payable_in'
+        };
+
+        this.debtRecords.push(record);
+        this.transactions.push(tx);
+        this.selectedMonth = new Date(new Date(txDate).getFullYear(), new Date(txDate).getMonth(), 1);
+
+        this.persistDebtLedgerState();
+        window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_debt_records' } }));
+        window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_tx' } }));
+
+        this.closeDebtModal();
+        if (typeof inboxManager !== 'undefined') inboxManager.showToast(type === 'receivable' ? 'Piutang berhasil dicatat' : 'Utang berhasil dicatat');
+    },
+
+    openDebtPaymentModal: function (debtId) {
+        const record = this.debtRecords.find((entry) => entry.id === debtId);
+        const modal = document.getElementById('modal-budget-debt-payment');
+        if (!record || !modal) return;
+
+        const stats = this.getDebtRecordStats(record);
+        document.getElementById('form-budget-debt-payment').reset();
+        document.getElementById('budget-debt-payment-id').value = record.id;
+        document.getElementById('budget-debt-payment-title').innerText = record.type === 'receivable' ? 'Catat Pelunasan Piutang' : 'Catat Bayar Utang';
+        document.getElementById('budget-debt-payment-note').innerText = `${record.personName} - sisa ${this.formatCurrency(stats.remaining)}`;
+        this.setNominalInputValue('budget-debt-payment-amount', stats.remaining);
+        this.populateFundSourceSelect('budget-debt-payment-fund-source', record.fundSourceId);
+        document.getElementById('budget-debt-payment-date').value = this.getSuggestedTransactionDate();
+
+        modal.classList.add('active');
+        setTimeout(() => document.getElementById('budget-debt-payment-amount')?.focus(), 100);
+    },
+
+    closeDebtPaymentModal: function () {
+        document.getElementById('modal-budget-debt-payment')?.classList.remove('active');
+    },
+
+    saveDebtPayment: function (e) {
+        e.preventDefault();
+
+        const debtId = document.getElementById('budget-debt-payment-id')?.value || '';
+        const record = this.debtRecords.find((entry) => entry.id === debtId);
+        if (!record) return;
+
+        const stats = this.getDebtRecordStats(record);
+        const amount = this.parseNominalInput(document.getElementById('budget-debt-payment-amount')?.value || '');
+        const fundSourceId = document.getElementById('budget-debt-payment-fund-source')?.value || record.fundSourceId;
+        const txDateRaw = document.getElementById('budget-debt-payment-date')?.value || this.getSuggestedTransactionDate();
+        const note = (document.getElementById('budget-debt-payment-description')?.value || '').trim();
+
+        if (amount <= 0 || amount > stats.remaining) {
+            if (typeof inboxManager !== 'undefined') inboxManager.showToast('Nominal pembayaran melebihi sisa atau tidak valid');
+            return;
+        }
+
+        if (!this.getAccountById(fundSourceId)) {
+            if (typeof inboxManager !== 'undefined') inboxManager.showToast('Sumber dana tidak valid');
+            return;
+        }
+
+        if (record.type === 'payable') {
+            const balances = this.calculateAccountBalances(this.transactions);
+            const currentBalance = Number(balances[fundSourceId]) || 0;
+            if (currentBalance < amount) {
+                const confirmed = confirm(`Saldo sumber dana ini kurang (${this.formatCurrency(currentBalance)}). Lanjutkan dan izinkan saldo minus?`);
+                if (!confirmed) return;
+            }
+        }
+
+        const nowIso = new Date().toISOString();
+        const txDate = this.buildTransactionDateIso(txDateRaw, nowIso);
+        const tx = {
+            id: (typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-debt-payment`,
+            type: record.type === 'receivable' ? 'income' : 'expense',
+            amount,
+            category: record.type === 'receivable' ? 'other_income' : 'other',
+            note: note || (record.type === 'receivable' ? `Pelunasan dari ${record.personName}` : `Bayar utang ke ${record.personName}`),
+            date: txDate,
+            createdAt: nowIso,
+            fundSourceId,
+            isDebtFlow: true,
+            debtId: record.id,
+            debtFlowType: record.type === 'receivable' ? 'receivable_in' : 'payable_out'
+        };
+
+        this.transactions.push(tx);
+        record.updatedAt = nowIso;
+        if (amount >= stats.remaining) record.status = 'paid';
+
+        this.selectedMonth = new Date(new Date(txDate).getFullYear(), new Date(txDate).getMonth(), 1);
+        this.persistDebtLedgerState();
+        window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_debt_records' } }));
+        window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_tx' } }));
+
+        this.closeDebtPaymentModal();
+        if (typeof inboxManager !== 'undefined') inboxManager.showToast('Pembayaran berhasil dicatat');
+    },
+
+    deleteDebtRecord: function (debtId) {
+        const record = this.debtRecords.find((entry) => entry.id === debtId);
+        if (!record) return;
+
+        const confirmed = confirm(`Hapus catatan ${this.getDebtTypeLabel(record.type)} ${record.personName}? Transaksi talangan/pelunasan terkait juga akan dihapus.`);
+        if (!confirmed) return;
+
+        this.debtRecords = this.debtRecords.filter((entry) => entry.id !== debtId);
+        this.transactions = this.transactions.filter((tx) => !(tx?.isDebtFlow && tx.debtId === debtId));
+        this.persistDebtLedgerState();
+        window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_debt_records' } }));
+        window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_tx' } }));
+        if (typeof inboxManager !== 'undefined') inboxManager.showToast('Catatan utang/piutang dihapus');
+    },
+
     resetBudgetData: function () {
         const confirmed = confirm('Reset semua catatan keuangan? Semua transaksi dan limit bulanan akan dihapus.');
         if (!confirmed) return;
@@ -5206,6 +5650,7 @@ const budgetManager = {
         this.savingsGoals = [];
         this.recurringBills = [];
         this.impulseWishlist = [];
+        this.debtRecords = [];
         this.activeSavingsGoalId = null;
         this.selectedMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
@@ -5216,6 +5661,7 @@ const budgetManager = {
         Storage.setBudgetSavingsGoals([]);
         Storage.setBudgetRecurringBills([]);
         Storage.setBudgetImpulseWishlist([]);
+        Storage.setBudgetDebtRecords([]);
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_tx' } }));
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_accounts' } }));
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_limit' } }));
@@ -5223,6 +5669,7 @@ const budgetManager = {
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_savings_goals' } }));
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_recurring_bills' } }));
         window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_impulse_wishlist' } }));
+        window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_debt_records' } }));
 
         this.closeTopCategoriesModal();
         this.closeSavingsGoalModal();
@@ -5230,6 +5677,8 @@ const budgetManager = {
         this.closeRecurringBillModal();
         this.closeRecurringBillHistoryModal();
         this.closeImpulseWishlistModal();
+        this.closeDebtModal();
+        this.closeDebtPaymentModal();
         this.closeTransactionHistoryModal();
         if (typeof inboxManager !== 'undefined') inboxManager.showToast('Catatan keuangan berhasil di-reset');
     },
