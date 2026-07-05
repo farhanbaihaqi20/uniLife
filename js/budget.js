@@ -290,12 +290,13 @@ const budgetManager = {
         transactions.forEach(tx => {
             if (!tx || tx.isTransfer) return;
             const amount = Number(tx.amount) || 0;
+            const countsAsBudgetFlow = !tx.isDebtFlow && !this.isBalanceOnlyAdjustment(tx);
             if (tx.type === 'income') {
                 balance += amount;
-                if (!tx.isDebtFlow) income += amount;
+                if (countsAsBudgetFlow) income += amount;
             } else {
                 balance -= amount;
-                if (!tx.isDebtFlow) expense += amount;
+                if (countsAsBudgetFlow) expense += amount;
             }
         });
 
@@ -476,7 +477,11 @@ const budgetManager = {
     },
 
     isBudgetTrackedTransaction: function (tx) {
-        return !!tx && !tx.isTransfer && !tx.isDebtFlow;
+        return !!tx && !tx.isTransfer && !tx.isDebtFlow && !this.isBalanceOnlyAdjustment(tx);
+    },
+
+    isBalanceOnlyAdjustment: function (tx) {
+        return !!tx && (!!tx.isBalanceAdjustment || tx.excludeFromBudgetReports === true || tx.reconciliationMode === 'balance_sync');
     },
 
     isBudgetExpense: function (tx) {
@@ -883,7 +888,10 @@ const budgetManager = {
             const hasRealBalance = entry.realBalance !== null && entry.realBalance !== undefined && entry.realBalance !== '';
             normalized[accountId] = {
                 realBalance: hasRealBalance ? Number(entry.realBalance) || 0 : null,
-                checkedAt: entry.checkedAt || null
+                checkedAt: entry.checkedAt || null,
+                appliedTxId: entry.appliedTxId || null,
+                appliedAt: entry.appliedAt || null,
+                appliedMode: entry.appliedMode === 'balance_sync' ? 'balance_sync' : (entry.appliedMode || null)
             };
         });
 
@@ -2562,6 +2570,9 @@ const budgetManager = {
                 if (tx.isDebtFlow && (typeFilter === 'income' || typeFilter === 'expense')) {
                     return false;
                 }
+                if (this.isBalanceOnlyAdjustment(tx) && (typeFilter === 'income' || typeFilter === 'expense')) {
+                    return false;
+                }
                 if (typeFilter !== 'all' && tx.type !== typeFilter) {
                     return false;
                 }
@@ -2746,6 +2757,8 @@ const budgetManager = {
                 iconName = tx.debtFlowType === 'receivable_in' || tx.debtFlowType === 'payable_out'
                     ? 'hand-coins'
                     : 'handshake';
+            } else if (tx.isReconciliationAdjustment || tx.source === 'reconciliation') {
+                iconName = 'scales';
             }
             const catName = i18n.t('budget_cat_' + tx.category) || tx.category;
             const fundSourceName = this.getFundSourceLabelById(tx.fundSourceId);
@@ -2762,9 +2775,11 @@ const budgetManager = {
                 ? `<div class="budget-tx-tags">${this.getTransactionTags(tx).map((tag) => `<span>#${this.escapeHtml(tag)}</span>`).join('')}</div>`
                 : '';
 
-            const typeLabel = isTransfer
+            const typeLabel = this.isBalanceOnlyAdjustment(tx)
+                ? 'Penyesuaian Saldo'
+                : (isTransfer
                 ? (isTransferIn ? 'Transfer Masuk' : 'Transfer Keluar')
-                : (isDebtFlow ? this.getDebtFlowLabel(tx) : (isIncome ? 'Pemasukan' : 'Pengeluaran'));
+                : (isDebtFlow ? this.getDebtFlowLabel(tx) : (isIncome ? 'Pemasukan' : 'Pengeluaran')));
             const dateObj = this.getTransactionDate(tx);
             const displayTimeSource = tx.createdAt || tx.timestamp || tx.date;
             const displayTimeObj = new Date(displayTimeSource);
@@ -2884,6 +2899,7 @@ const budgetManager = {
         const badges = [];
         const unusualStatus = this.getUnusualExpenseStatus(tx);
         const limitCrossingId = context.limitCrossingId || '';
+        const isReconciliation = !!tx?.isReconciliationAdjustment || tx?.source === 'reconciliation';
 
         if (tx?.isTransfer) {
             badges.push({ type: 'static', tone: 'slate', label: 'Transfer' });
@@ -2897,6 +2913,11 @@ const budgetManager = {
             return badges;
         }
 
+        if (isReconciliation) {
+            badges.push({ type: 'static', tone: 'blue', label: 'Rekap Saldo' });
+            badges.push({ type: 'static', tone: this.isBalanceOnlyAdjustment(tx) ? 'warning' : 'slate', label: this.isBalanceOnlyAdjustment(tx) ? 'Penyesuaian saldo' : 'Dari mutasi' });
+        }
+
         if (tx?.source === 'recurring_bill' || tx?.recurringBillId || tx?.relation?.recurring_bill_id) {
             badges.push({ type: 'static', tone: 'rose', label: 'Tagihan' });
             badges.push({ type: 'static', tone: 'slate', label: 'Rutin' });
@@ -2906,7 +2927,7 @@ const budgetManager = {
             badges.push({ type: 'static', tone: 'danger', label: 'Melewati budget' });
         }
 
-        if (unusualStatus.isUnusual) {
+        if (!isReconciliation && unusualStatus.isUnusual) {
             badges.push({
                 type: 'unusual',
                 tone: 'warning',
@@ -2985,9 +3006,11 @@ const budgetManager = {
         const header = ['Tanggal', 'Tipe', 'Sumber Dana', 'Kategori', 'Nominal', 'Catatan', 'Tag'];
         const rows = currentMonthTx.map((tx) => {
             const date = this.toDateInputValue(this.getTransactionDate(tx));
-            const typeLabel = tx.isTransfer
+            const typeLabel = this.isBalanceOnlyAdjustment(tx)
+                ? 'Penyesuaian Saldo'
+                : (tx.isTransfer
                 ? (tx.transferDirection === 'in' ? 'Transfer Masuk' : 'Transfer Keluar')
-                : (tx.isDebtFlow ? this.getDebtFlowLabel(tx) : (tx.type === 'income' ? 'Pemasukan' : 'Pengeluaran'));
+                : (tx.isDebtFlow ? this.getDebtFlowLabel(tx) : (tx.type === 'income' ? 'Pemasukan' : 'Pengeluaran')));
             const fundSourceName = this.getFundSourceLabelById(tx.fundSourceId);
             const catName = i18n.t('budget_cat_' + tx.category) || tx.category;
             const safeNote = (tx.note || '').replace(/\"/g, '""');
@@ -3470,7 +3493,7 @@ const budgetManager = {
         const totalAbsDiff = checkedEntries.reduce((sum, entry) => sum + Math.abs(entry.diff), 0);
         if (summaryEl) {
             summaryEl.innerText = checkedEntries.length === 0
-                ? 'Masukkan saldo real dari mbanking/e-wallet untuk melihat selisih tanpa mengubah data app.'
+                ? 'Rekap Bulan Ini masuk laporan. Sinkron Saldo hanya menyamakan saldo untuk jeda panjang seperti libur semester.'
                 : `${checkedEntries.length}/${entries.length} sumber dicek • total selisih ${this.formatSensitiveCurrency(totalAbsDiff)}`;
         }
 
@@ -3489,6 +3512,7 @@ const budgetManager = {
                 ? lastTxDate.toLocaleDateString(i18n.locale(), { day: '2-digit', month: 'short', year: 'numeric' })
                 : '';
             const diffTone = !hasRealBalance || diff === 0 ? 'neutral' : (diff > 0 ? 'positive' : 'negative');
+            const canApplyDiff = !hasRealBalance || diff !== 0;
             const checkedText = checkedAt
                 ? `Dicek ${new Date(checkedAt).toLocaleString(i18n.locale(), { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}`
                 : 'Belum pernah dicek';
@@ -3523,6 +3547,12 @@ const budgetManager = {
                     <button type="button" class="btn btn-primary" onclick="budgetManager.saveReconciliationEntry('${this.escapeHtml(account.id)}')">
                         <i class="ph ph-check"></i> Simpan Cek
                     </button>
+                    <button type="button" class="btn btn-outline budget-reconciliation-apply-btn" ${canApplyDiff ? '' : 'disabled'} onclick="budgetManager.applyReconciliationAdjustment('${this.escapeHtml(account.id)}', 'monthly')">
+                        <i class="ph ph-receipt"></i> ${canApplyDiff ? 'Rekap Bulan Ini' : 'Saldo Pas'}
+                    </button>
+                    <button type="button" class="btn btn-outline budget-reconciliation-sync-btn" ${canApplyDiff ? '' : 'disabled'} onclick="budgetManager.applyReconciliationAdjustment('${this.escapeHtml(account.id)}', 'balance_sync')">
+                        <i class="ph ph-scales"></i> Sinkron Saldo
+                    </button>
                     <button type="button" class="btn btn-outline" onclick="budgetManager.clearReconciliationEntry('${this.escapeHtml(account.id)}')">
                         <i class="ph ph-x"></i>
                     </button>
@@ -3544,6 +3574,10 @@ const budgetManager = {
 
         const input = Array.from(document.querySelectorAll('.budget-reconciliation-real-input'))
             .find((element) => element.dataset.accountId === accountId);
+        if (!String(input?.value || '').trim()) {
+            if (typeof inboxManager !== 'undefined') inboxManager.showToast('Isi saldo real dulu');
+            return;
+        }
         const realBalance = this.parseNominalInput(input?.value || '');
 
         this.reconciliation = this.normalizeReconciliation(this.reconciliation);
@@ -3555,6 +3589,113 @@ const budgetManager = {
         Storage.setBudgetReconciliation(this.reconciliation);
         this.renderReconciliationModal();
         if (typeof inboxManager !== 'undefined') inboxManager.showToast(`Cek saldo ${account.name} disimpan`);
+    },
+
+    getReconciliationRealBalanceInput: function (accountId) {
+        const input = Array.from(document.querySelectorAll('.budget-reconciliation-real-input'))
+            .find((element) => element.dataset.accountId === accountId);
+        if (!input) return null;
+        if (!String(input.value || '').trim()) return null;
+        return this.parseNominalInput(input.value || '');
+    },
+
+    getReconciliationAdjustmentDate: function () {
+        const rawDate = this.getSuggestedTransactionDate();
+        return this.buildTransactionDateIso(rawDate, new Date().toISOString());
+    },
+
+    applyReconciliationAdjustment: function (accountId, mode = 'monthly') {
+        const account = this.getAccountById(accountId);
+        if (!account) return;
+        const adjustmentMode = mode === 'balance_sync' ? 'balance_sync' : 'monthly';
+        const isBalanceSync = adjustmentMode === 'balance_sync';
+
+        const balances = this.calculateAccountBalances(this.transactions);
+        const appBalance = Number(balances[accountId]) || 0;
+        const inputRealBalance = this.getReconciliationRealBalanceInput(accountId);
+        const storedRealBalance = this.reconciliation?.[accountId]?.realBalance;
+        const realBalance = typeof inputRealBalance === 'number' && Number.isFinite(inputRealBalance)
+            ? inputRealBalance
+            : (typeof storedRealBalance === 'number' && Number.isFinite(storedRealBalance) ? storedRealBalance : null);
+
+        if (realBalance === null) {
+            if (typeof inboxManager !== 'undefined') inboxManager.showToast('Isi saldo real dulu sebelum menerapkan rekap');
+            return;
+        }
+
+        const diff = realBalance - appBalance;
+        if (diff === 0) {
+            this.saveReconciliationEntry(accountId);
+            if (typeof inboxManager !== 'undefined') inboxManager.showToast(`Saldo ${account.name} sudah pas`);
+            return;
+        }
+
+        const type = diff > 0 ? 'income' : 'expense';
+        const amount = Math.abs(diff);
+        const noteType = diff > 0 ? 'pemasukan' : 'pengeluaran';
+        const confirmMessage = isBalanceSync
+            ? `Sinkron saldo ${account.name} sebesar ${this.formatCurrency(amount)} tanpa memasukkannya ke laporan pengeluaran/pemasukan bulan ini? Saldo app akan menjadi ${this.formatCurrency(realBalance)}.`
+            : `Terapkan selisih ${this.formatCurrency(amount)} sebagai rekap ${noteType} bulan ini untuk ${account.name}? Saldo app akan menjadi ${this.formatCurrency(realBalance)}.`;
+        const confirmed = confirm(confirmMessage);
+        if (!confirmed) return;
+
+        const txDate = this.getReconciliationAdjustmentDate();
+        const nowIso = new Date().toISOString();
+        const adjustmentNote = isBalanceSync
+            ? `Sinkron saldo ${account.name}`
+            : `Rekap saldo ${account.name}`;
+        const adjustmentTx = {
+            id: (typeof uuidv4 === 'function') ? uuidv4() : `${Date.now()}-rekap-saldo`,
+            type,
+            amount,
+            category: type === 'income' ? 'other_income' : 'other',
+            note: adjustmentNote,
+            date: txDate,
+            createdAt: nowIso,
+            fundSourceId: accountId,
+            source: 'reconciliation',
+            isReconciliationAdjustment: true,
+            isBalanceAdjustment: isBalanceSync,
+            excludeFromBudgetReports: isBalanceSync,
+            reconciliationMode: adjustmentMode,
+            reconciliationMeta: {
+                appBalance,
+                realBalance,
+                diff,
+                checkedAt: nowIso,
+                mode: adjustmentMode
+            },
+            tags: this.mergeTransactionTags(
+                'rekap-saldo',
+                isBalanceSync ? 'sinkron-saldo' : 'rekap-bulan-ini',
+                type === 'income' ? 'saldo-kurang-catat' : 'saldo-lebih-catat'
+            )
+        };
+
+        this.transactions.push(adjustmentTx);
+        this.reconciliation = this.normalizeReconciliation(this.reconciliation);
+        this.reconciliation[accountId] = {
+            realBalance,
+            checkedAt: nowIso,
+            appliedTxId: adjustmentTx.id,
+            appliedAt: nowIso,
+            appliedMode: adjustmentMode
+        };
+
+        const savedDate = new Date(txDate);
+        if (!Number.isNaN(savedDate.getTime())) {
+            this.selectedMonth = new Date(savedDate.getFullYear(), savedDate.getMonth(), 1);
+        }
+
+        Storage.setBudgetTransactions(this.transactions);
+        Storage.setBudgetReconciliation(this.reconciliation);
+        window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_tx' } }));
+        window.dispatchEvent(new CustomEvent('unilifeDataChanged', { detail: { key: 'unilife_budget_reconciliation' } }));
+
+        this.updateDashboard();
+        if (typeof inboxManager !== 'undefined') {
+            inboxManager.showToast(isBalanceSync ? `Saldo ${account.name} berhasil disinkronkan` : `Rekap bulan ini untuk ${account.name} berhasil diterapkan`);
+        }
     },
 
     clearReconciliationEntry: function (accountId) {
@@ -3926,6 +4067,7 @@ const budgetManager = {
 
         return (Array.isArray(transactions) ? transactions : []).filter((tx) => {
             if (!tx || tx.isTransfer) return false;
+            if (this.isBalanceOnlyAdjustment(tx)) return false;
             const txDate = this.getTransactionDate(tx);
             if (Number.isNaN(txDate.getTime())) return false;
             return txDate >= start && txDate < end;

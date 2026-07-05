@@ -5111,6 +5111,12 @@ select:focus {
     border-color: rgba(100, 116, 139, 0.18);
 }
 
+.budget-tx-badge.is-blue {
+    color: #0369a1;
+    background: rgba(14, 165, 233, 0.12);
+    border-color: rgba(2, 132, 199, 0.18);
+}
+
 .budget-tx-badge.is-danger {
     color: #b91c1c;
     background: rgba(248, 113, 113, 0.1);
@@ -5532,6 +5538,10 @@ select:focus {
     gap: 0.7rem;
 }
 
+.budget-reconciliation-actions {
+    flex-wrap: wrap;
+}
+
 .budget-reconciliation-row-head {
     align-items: flex-start;
     justify-content: space-between;
@@ -5627,9 +5637,30 @@ select:focus {
 }
 
 .budget-reconciliation-actions .btn {
-    flex: 1;
+    flex: 1 1 9rem;
     padding: 0.55rem 0.7rem;
     font-size: 0.78rem;
+}
+
+.budget-reconciliation-actions .btn:last-child {
+    flex: 0 0 2.75rem;
+}
+
+.budget-reconciliation-actions .btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.58;
+    transform: none;
+    box-shadow: none;
+}
+
+.budget-reconciliation-apply-btn:not(:disabled) {
+    border-color: #0284c7;
+    color: #0284c7;
+}
+
+.budget-reconciliation-sync-btn:not(:disabled) {
+    border-color: #7c3aed;
+    color: #7c3aed;
 }
 
 @media (max-width: 520px) {
@@ -6729,6 +6760,12 @@ select:focus {
     color: #cbd5e1;
     background: rgba(148, 163, 184, 0.16);
     border-color: rgba(148, 163, 184, 0.2);
+}
+
+[data-theme="dark"] .budget-tx-badge.is-blue {
+    color: #7dd3fc;
+    background: rgba(14, 165, 233, 0.18);
+    border-color: rgba(14, 165, 233, 0.24);
 }
 
 [data-theme="dark"] .budget-tx-badge.is-danger {
