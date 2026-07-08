@@ -1,6 +1,9 @@
 // Helper functions to interact with LocalStorage
 
 const Storage = {
+    BACKUP_FORMAT: 'unilife-localstorage-backup',
+    BACKUP_VERSION: 2,
+
     get: (key, defaultValue = null) => {
         try {
             const item = localStorage.getItem(key);
@@ -18,6 +21,65 @@ const Storage = {
         } catch (error) {
             console.error('Error writing to localStorage', error);
         }
+    },
+
+    getAllLocalData: () => {
+        const data = {};
+
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key) data[key] = localStorage.getItem(key);
+        }
+
+        return data;
+    },
+
+    createBackupPayload: () => {
+        const data = Storage.getAllLocalData();
+
+        return {
+            format: Storage.BACKUP_FORMAT,
+            version: Storage.BACKUP_VERSION,
+            exportedAt: new Date().toISOString(),
+            keyCount: Object.keys(data).length,
+            data
+        };
+    },
+
+    getBackupDataFromPayload: (payload) => {
+        if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
+
+        const isKnownBackup = payload.format === Storage.BACKUP_FORMAT;
+        const data = isKnownBackup && payload.data && typeof payload.data === 'object'
+            ? payload.data
+            : payload;
+
+        if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+
+        const keys = Object.keys(data);
+        const hasAppData = keys.some((key) => key.startsWith('unilife_'));
+        if (!isKnownBackup && !hasAppData) return null;
+
+        const normalized = {};
+        keys.forEach((key) => {
+            const value = data[key];
+            normalized[key] = typeof value === 'string' ? value : JSON.stringify(value);
+        });
+
+        return normalized;
+    },
+
+    restoreBackupPayload: (payload) => {
+        const data = Storage.getBackupDataFromPayload(payload);
+        if (!data) throw new Error('Invalid backup payload');
+
+        localStorage.clear();
+
+        Object.keys(data).forEach((key) => {
+            localStorage.setItem(key, data[key]);
+        });
+
+        return Object.keys(data).length;
     },
 
     // Specific Getters/Setters for our data models

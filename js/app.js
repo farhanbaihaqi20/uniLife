@@ -936,14 +936,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Budget changed
-        if (!key || key === 'unilife_budget_tx' || key === 'unilife_budget_limit' || key === 'unilife_budget_base_balance' || key === 'unilife_budget_accounts' || key === 'unilife_budget_recurring_bills' || key === 'unilife_budget_debt_records' || key === 'unilife_budget_reconciliation') {
+        if (!key || key === 'unilife_budget_tx' || key === 'unilife_budget_transactions' || key === 'unilife_budget_limit' || key === 'unilife_budget_base_balance' || key === 'unilife_budget_accounts' || key === 'unilife_budget_savings_goals' || key === 'unilife_budget_recurring_bills' || key === 'unilife_budget_impulse_wishlist' || key === 'unilife_budget_debt_records' || key === 'unilife_budget_reconciliation' || key === 'unilife_budget_balance_visible') {
             if (typeof budgetManager !== 'undefined') {
                 budgetManager.transactions = Storage.getBudgetTransactions();
                 budgetManager.accounts = Storage.getBudgetAccounts ? Storage.getBudgetAccounts() : [];
+                budgetManager.savingsGoals = Storage.getBudgetSavingsGoals ? Storage.getBudgetSavingsGoals() : [];
                 budgetManager.recurringBills = Storage.getBudgetRecurringBills ? Storage.getBudgetRecurringBills() : [];
+                budgetManager.impulseWishlist = Storage.getBudgetImpulseWishlist ? Storage.getBudgetImpulseWishlist() : [];
                 budgetManager.debtRecords = Storage.getBudgetDebtRecords ? Storage.getBudgetDebtRecords() : [];
                 budgetManager.reconciliation = Storage.getBudgetReconciliation ? Storage.getBudgetReconciliation() : {};
                 budgetManager.monthlyLimit = Storage.getBudgetLimit();
+                budgetManager.isBalanceVisible = Storage.get('unilife_budget_balance_visible', true) !== false;
                 budgetManager.baseBalance = typeof budgetManager.getTotalInitialBalance === 'function'
                     ? budgetManager.getTotalInitialBalance()
                     : Storage.getBudgetBaseBalance();

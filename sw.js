@@ -1,5 +1,5 @@
 // PENTING: Increment versi ini setiap kali ada update code!
-const CACHE_VERSION = '1.4'; // v1.4 - UniLife Complete App
+const CACHE_VERSION = '1.5'; // v1.5 - Backup, restore, and transfer fixes
 const CACHE_NAME = `unilife-tracker-v${CACHE_VERSION}`;
 
 // Static assets yang jarang berubah (agresif caching)git
@@ -24,6 +24,10 @@ const DYNAMIC_ASSETS = [
     './js/tasks.js',
     './js/focus.js',
     './js/profile.js',
+    './js/sync.js',
+    './js/budget.js',
+    './js/bbm.js',
+    './js/health.js',
     './js/calendarExport.js',
     './js/gradeGoals.js',
     './js/radar.js',

@@ -1274,47 +1274,64 @@ const profileManager = {
         }
     },
 
+    openImportPicker: function () {
+        const input = document.getElementById('import-file-input');
+        if (!input) return;
+
+        input.value = '';
+        input.click();
+    },
+
     exportData: function () {
-        const data = {};
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            data[key] = localStorage.getItem(key);
-        }
+        const data = (typeof Storage !== 'undefined' && typeof Storage.createBackupPayload === 'function')
+            ? Storage.createBackupPayload()
+            : (() => {
+                const fallbackData = {};
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key) fallbackData[key] = localStorage.getItem(key);
+                }
+                return fallbackData;
+            })();
 
         const timestamp = new Date().toISOString().split('T')[0];
         const fileName = `unilife-backup-${timestamp}.json`;
 
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
         const downloadAnchorNode = document.createElement('a');
-        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("href", url);
         downloadAnchorNode.setAttribute("download", fileName);
         document.body.appendChild(downloadAnchorNode); // required for firefox
         downloadAnchorNode.click();
         downloadAnchorNode.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
     },
 
     importData: function (event) {
-        const file = event.target.files[0];
+        const file = event.target.files?.[0];
         if (!file) return;
 
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
                 const data = JSON.parse(e.target.result);
+                const backupData = (typeof Storage !== 'undefined' && typeof Storage.getBackupDataFromPayload === 'function')
+                    ? Storage.getBackupDataFromPayload(data)
+                    : data;
 
-                // Very basic validation: Check if it looks like our app's data
-                if (!data || typeof data !== 'object') {
-                    throw new Error('Invalid format');
-                }
+                if (!backupData || typeof backupData !== 'object') throw new Error('Invalid format');
 
                 if (confirm(i18n.t('profile_import_confirm'))) {
-                    // Clear existing data to ensure a clean state
-                    localStorage.clear();
-
-                    // Import all keys
-                    for (const key in data) {
-                        if (Object.prototype.hasOwnProperty.call(data, key)) {
-                            localStorage.setItem(key, data[key]);
+                    if (typeof Storage !== 'undefined' && typeof Storage.restoreBackupPayload === 'function') {
+                        Storage.restoreBackupPayload(data);
+                    } else {
+                        localStorage.clear();
+                        for (const key in backupData) {
+                            if (Object.prototype.hasOwnProperty.call(backupData, key)) {
+                                const value = backupData[key];
+                                localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+                            }
                         }
                     }
 

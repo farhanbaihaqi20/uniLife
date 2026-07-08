@@ -429,11 +429,16 @@ const syncManager = {
                 
                 this.connection.on('open', () => {
                     // Send all localStorage data
-                    const data = {};
-                    for (let i = 0; i < localStorage.length; i++) {
-                        const key = localStorage.key(i);
-                        data[key] = localStorage.getItem(key);
-                    }
+                    const data = (typeof Storage !== 'undefined' && typeof Storage.getAllLocalData === 'function')
+                        ? Storage.getAllLocalData()
+                        : (() => {
+                            const fallbackData = {};
+                            for (let i = 0; i < localStorage.length; i++) {
+                                const key = localStorage.key(i);
+                                if (key) fallbackData[key] = localStorage.getItem(key);
+                            }
+                            return fallbackData;
+                        })();
                     
                     this.connection.send({ type: 'sync-data', payload: data });
                     
@@ -504,13 +509,25 @@ const syncManager = {
                 this.connection.on('data', (data) => {
                     if (data && data.type === 'sync-data' && data.payload) {
                         if (confirm(i18n.t('transfer_confirm_override') || 'Data diterima. Apakah Anda yakin ingin menimpa seluruh data di perangkat ini?')) {
-                            
-                            localStorage.clear();
-                            const payload = data.payload;
-                            for (const key in payload) {
-                                if (Object.prototype.hasOwnProperty.call(payload, key)) {
-                                    localStorage.setItem(key, payload[key]);
+                            try {
+                                if (typeof Storage !== 'undefined' && typeof Storage.restoreBackupPayload === 'function') {
+                                    Storage.restoreBackupPayload(data.payload);
+                                } else {
+                                    localStorage.clear();
+                                    const payload = data.payload;
+                                    for (const key in payload) {
+                                        if (Object.prototype.hasOwnProperty.call(payload, key)) {
+                                            const value = payload[key];
+                                            localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+                                        }
+                                    }
                                 }
+                            } catch (error) {
+                                console.error('Transfer restore error:', error);
+                                if (statusText) statusText.innerText = 'Data transfer tidak valid atau rusak.';
+                                if (statusIcon) statusIcon.className = 'ph ph-warning-circle';
+                                if (statusIcon) statusIcon.style.color = 'var(--danger)';
+                                return;
                             }
                             
                             if (statusText) statusText.innerText = i18n.t('transfer_status_success') || 'Berhasil! Memuat ulang aplikasi...';
