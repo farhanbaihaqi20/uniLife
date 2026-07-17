@@ -1,5 +1,5 @@
 // PENTING: Increment versi ini setiap kali ada update code!
-const CACHE_VERSION = '1.5'; // v1.5 - Backup, restore, and transfer fixes
+const CACHE_VERSION = '1.6'; // v1.6 - Grade chart semester filter update
 const CACHE_NAME = `unilife-tracker-v${CACHE_VERSION}`;
 
 // Static assets yang jarang berubah (agresif caching)git

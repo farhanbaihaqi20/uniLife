@@ -2,6 +2,7 @@ const gradesManager = {
     semesters: [],
     ipkChartInstance: null,
     courseChartInstance: null,
+    selectedCourseChartSemesterId: 'auto',
     gradeScale: {
         'A': 4.0, 'AB': 3.5, 'B': 3.0, 'BC': 2.5,
         'C': 2.0, 'D': 1.0, 'E': 0.0
@@ -40,12 +41,39 @@ const gradesManager = {
     },
 
     getCourseChartSemester: function () {
+        if (this.selectedCourseChartSemesterId && this.selectedCourseChartSemesterId !== 'auto') {
+            return this.semesters.find(s => s.id === this.selectedCourseChartSemesterId) || null;
+        }
+
         const activeSemester = this.getSemesterForActiveProfile();
         if (activeSemester && activeSemester.courses && activeSemester.courses.some(c => this.isCourseGraded(c))) {
             return activeSemester;
         }
 
         return [...this.semesters].reverse().find(s => s.courses && s.courses.some(c => this.isCourseGraded(c))) || null;
+    },
+
+    syncCourseChartSemesterFilter: function () {
+        const filter = document.getElementById('course-chart-semester-filter');
+        if (!filter) return;
+
+        if (this.selectedCourseChartSemesterId !== 'auto' && !this.semesters.some(s => s.id === this.selectedCourseChartSemesterId)) {
+            this.selectedCourseChartSemesterId = 'auto';
+        }
+
+        const reversedSemesters = [...this.semesters].reverse();
+        const semesterOptions = reversedSemesters.map(sem => `<option value="${sem.id}">${sem.name}</option>`).join('');
+
+        filter.innerHTML = `
+            <option value="auto">${i18n.t('grades_chart_semester_auto')}</option>
+            ${semesterOptions}
+        `;
+        filter.value = this.selectedCourseChartSemesterId;
+
+        filter.onchange = (event) => {
+            this.selectedCourseChartSemesterId = event.target.value;
+            this.renderCharts();
+        };
     },
 
     init: function () {
@@ -91,6 +119,21 @@ const gradesManager = {
         };
     },
 
+    calculateCumulativeIpkSeries: function () {
+        let cumulativeSks = 0;
+        let cumulativePoints = 0;
+
+        return this.semesters.map(semester => {
+            semester.courses.forEach(course => {
+                if (!this.isCourseGraded(course)) return;
+                cumulativeSks += course.sks;
+                cumulativePoints += (course.sks * this.gradeScale[course.grade]);
+            });
+
+            return cumulativeSks === 0 ? 0 : cumulativePoints / cumulativeSks;
+        });
+    },
+
     renderStats: function () {
         const stats = this.calculateOverallStats();
         const display = document.getElementById('ipk-display');
@@ -103,11 +146,14 @@ const gradesManager = {
         const ctxCourse = document.getElementById('courseChart');
         if (!ctxIpk || !ctxCourse) return;
 
+        this.syncCourseChartSemesterFilter();
+
         // 1. Line Chart for IPS
         if (this.ipkChartInstance) this.ipkChartInstance.destroy();
 
         const labels = [];
         const ipsData = [];
+        const cumulativeIpkData = this.calculateCumulativeIpkSeries();
         this.semesters.forEach(sem => {
             labels.push(sem.name.length > 10 ? sem.name.substring(0, 8) + '...' : sem.name);
             ipsData.push(parseFloat(this.calculateSemesterStats(sem).ips));
@@ -125,11 +171,27 @@ const gradesManager = {
                     tension: 0.4,
                     fill: true,
                     pointBackgroundColor: '#3b82f6'
+                }, {
+                    label: i18n.t('grades_chart_ipk_progress_label'),
+                    data: cumulativeIpkData,
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                    tension: 0.4,
+                    fill: false,
+                    pointBackgroundColor: '#ef4444',
+                    pointBorderColor: '#ef4444'
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: { display: true }
+                },
                 scales: {
                     y: { min: 0, max: 4, ticks: { stepSize: 1 } }
                 }
@@ -139,7 +201,8 @@ const gradesManager = {
         // 2. Simple Bar Chart for Final Course Grades
         if (this.courseChartInstance) this.courseChartInstance.destroy();
 
-        // Follow active profile semester first; fallback to latest semester that has graded courses.
+        // Default keeps old behavior: active semester first, then fallback to latest graded semester.
+        // User can override it by choosing a specific semester from the filter.
         const chartSemester = this.getCourseChartSemester();
         const compareNote = document.querySelector('[data-i18n="grades_course_compare_note"]');
         if (compareNote) {
